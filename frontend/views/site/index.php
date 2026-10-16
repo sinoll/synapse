@@ -27,6 +27,7 @@ $categories = [
         <h2 class="h3 mb-1">Explore content</h2>
         <p class="text-body-secondary mb-0">Choose a content type to get started.</p>
     </div>
+    <?= Html::a('Browse all content', ['/content/index'], ['class' => 'btn btn-primary']) ?>
 </div>
 <div class="row g-3">
     <?php foreach ($categories as [$type, $label, $description]): ?>

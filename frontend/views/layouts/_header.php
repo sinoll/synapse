@@ -18,6 +18,10 @@ $items = [
         'url' => ['/site/about'],
     ],
     [
+        'label' => '内容',
+        'url' => ['/content/index'],
+    ],
+    [
         'label' => '用户管理',
         'url' => ['/users/index'],
         'visible' => !Yii::$app->user->isGuest && Yii::$app->user->identity->isAdministrator(),
