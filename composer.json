@@ -51,12 +51,6 @@
             "enabled": false
         }
     },
-    "repositories": [
-        {
-            "type": "composer",
-            "url": "https://asset-packagist.org"
-        }
-    ],
     "scripts": {
         "cs": "./vendor/bin/phpcs",
         "cs-fix": "./vendor/bin/phpcbf",

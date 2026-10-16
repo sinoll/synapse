@@ -1,0 +1,293 @@
+配置自定义智能体
+或者叫做 夺舍 官方智能体配置方案
+
+
+那几个配置文件存放路径
+C:\Users\sino_\AppData\Roaming\Code\User\prompts
+
+
+0. 前置:Ollama
+
+ollama pull qwen3.5:4b
+ollama pull qwen2.5-coder:14b
+
+Ollama 在 Windows 上的设置
+
+1. 设置上下文长度(最重要)
+
+Ollama 默认上下文只有 4096 token,agent 的系统提示和工具定义就要占几千,会出现"忘记任务、工具调用失败、乱答"。
+
+powershell
+setx OLLAMA_CONTEXT_LENGTH 32768
+
+然后完全退出 Ollama(右下角托盘图标 → Quit),重新启动,setx 对已运行的进程不生效。验证:
+
+powershell
+ollama run qwen2.5-coder:14b "hi"
+ollama ps
+
+ollama ps 里能看到 CONTEXT 列。如果你更习惯图形界面,在 Ollama 应用的 Settings 里也有 Context length 滑块。
+
+2. 显存与内存估算
+
+qwen2.5-coder:14b(Q4)权重约 9 GB,32K 上下文 KV cache 再加 2~4 GB,建议 12 GB 显存起步,16 GB 更稳。
+显存不够时 Ollama 会自动把部分层放到 CPU,速度会明显下降(每秒几个 token)。
+如果显存紧张,先把上下文降到 16384,或开启:
+powershell
+setx OLLAMA_FLASH_ATTENTION 1
+setx OLLAMA_KV_CACHE_TYPE q8_0
+
+3. 同时加载两个模型
+
+Planner 用 4b,Coder 用 14b,切换时 Ollama 可能卸载再加载,第一次响应会慢十几秒。可以设:
+
+powershell
+setx OLLAMA_MAX_LOADED_MODELS 2
+setx OLLAMA_KEEP_ALIVE 30m
+
+前提是显存放得下两个模型(约 3 GB + 11 GB)。放不下就保持默认,接受切换延迟。
+
+4. 确认服务可用
+
+powershell
+curl http://localhost:11434/api/tags
+
+能列出两个模型即正常。若用了代理软件,把 localhost 和 127.0.0.1 加入直连/绕过列表,否则 VS Code 连不上 Ollama。
+
+
+
+
+
+
+
+1.Windows 完整配置(路径已写死)+ 详细注意事项
+一、路径总览
+用途	完整路径
+智能体/规则目录	%APPDATA%\Code\User\prompts\(即 C:\Users\你的用户名\AppData\Roaming\Code\User\prompts\)
+规划智能体	...\prompts\local-planner.agent.md
+编码智能体	...\prompts\local-coder.agent.md
+全局规则	...\prompts\global.instructions.md
+用户设置	%APPDATA%\Code\User\settings.json
+用户级 MCP	%APPDATA%\Code\User\mcp.json
+
+
+Continue 配置(可选)	C:\Users\你的用户名\.continue\config.yaml
+
+2设置(settings.json,用户设置)
+jsonc
+{
+  "github.copilot.chat.byok.ollamaEndpoint": "http://localhost:11434",
+
+  "chat.agent.enabled": true,
+  "chat.agent.maxRequests": 50,
+
+  "chat.promptFilesLocations": {
+    ".github/prompts": true,
+    "~/AppData/Roaming/Code/User/prompts": true
+  },
+  "chat.instructionsFilesLocations": {
+    ".github/instructions": true,
+    "~/AppData/Roaming/Code/User/prompts": true
+  },
+
+  "chat.tools.terminal.enableAutoApprove": true,
+  "chat.tools.terminal.autoApprove": {
+    "git status": true,
+    "git diff": true,
+    "git log": true,
+    "dir": true,
+    "Get-ChildItem": true,
+    "npm test": true,
+    "npm run build": true
+  }
+}
+
+
+3智能体一:规划/对话(qwen3.5:4b)
+
+文件:prompts/local-planner.agent.md
+
+markdown
+---
+name: Local Planner
+description: 只读的规划与问答智能体:分析代码库、解释代码、制定实施计划
+argument-hint: 描述你想了解或计划的内容
+model: Qwen3.5 4B (Ollama)
+tools: ['search', 'usages', 'problems', 'changes', 'fetch', 'todos', 'testFailure']
+handoffs:
+  - label: 开始实现
+    agent: Local Coder
+    prompt: 按上面的计划逐步实现,每步完成后运行相关测试。
+    send: false
+---
+
+你是一个本地运行的软件工程规划助手,只读,不修改任何文件。
+
+工作方式:
+1. 先用 search / usages 阅读相关代码,再回答,不凭空猜测。
+2. 复杂任务先用 todos 列出步骤,再输出方案。
+3. 方案包含:涉及文件、改动要点、风险、验证方式(测试/命令)。
+4. 回答简洁,使用与用户相同的语言(默认中文)。
+5. 信息不足时先提问,不要编造文件或 API。
+
+
+
+4. 智能体二:编码执行(qwen2.5-coder:14b)
+
+文件:prompts/local-coder.agent.md
+
+markdown
+---
+name: Local Coder
+description: 自主编码智能体:搜索代码、编辑文件、运行命令与测试、修复错误
+argument-hint: 描述要实现、修复或重构的任务
+model: Qwen2.5 Coder 14B (Ollama)
+tools: ['edit', 'search', 'usages', 'problems', 'changes', 'runCommands', 'runTasks', 'runTests', 'testFailure', 'terminalLastCommand', 'fetch', 'todos', 'new']
+---
+
+你是一个在 VS Code 中工作的自主编码智能体,使用本地模型,上下文有限,务必精准高效。
+
+工作流程:
+1. 理解任务;非平凡任务先用 todos 拆分步骤并逐项更新状态。
+2. 编辑前先用 search / usages 找到并阅读相关代码,遵循项目现有风格与依赖。
+3. 用 edit 做最小必要改动,不重写无关代码,不新增未要求的功能。
+4. 改完后检查 problems,并运行相关测试/构建(runTests / runCommands)。
+5. 失败时读取 terminalLastCommand / testFailure,定位根因后修复,最多重试 3 轮,仍失败则汇报现状与卡点。
+6. 删除文件、强制 git 操作、安装全局依赖等破坏性动作,先征得用户确认。
+7. 结束时用简短中文总结:改了什么、如何验证、遗留问题。
+
+约束:
+- 不确定的 API/路径先搜索确认,不要编造。
+- 每次只处理一个明确的子任务,避免一次读取过多文件。
+
+
+
+
+
+5. 全局规则(可选但推荐)
+
+文件:prompts/global.instructions.md
+
+markdown
+---
+applyTo: "**"
+---
+- 默认使用中文回复,代码与注释遵循项目现有语言习惯。
+- 修改前先阅读相关文件;小步修改,改完运行测试或类型检查。
+- 不提交、不推送代码,除非用户明确要求。
+6. 可选:用户级 MCP(扩展工具能力)
+
+路径:与 settings.json 同目录的 mcp.json(如 Windows %APPDATA%\Code\User\mcp.json)
+
+json
+{
+  "servers": {
+    "fetch": { "command": "uvx", "args": ["mcp-server-fetch"] },
+    "git": { "command": "uvx", "args": ["mcp-server-git"] }
+  }
+}
+
+
+
+注意事项
+model: 字段必须和模型选择器里显示的名字完全一致,格式通常是 显示名 (Ollama)。在聊天框的模型下拉里看一下实际名称再改。
+工具调用能力:agent 依赖模型的 tool calling。qwen2.5-coder:14b 在 Ollama 上可用但偶尔格式不稳;若出错,把 Local Coder 的 model 换成 qwen3.5:4b 对比测试。
+
+
+行内补全:
+安装 Continue 扩展
+编辑 C:\Users\你的用户名\.continue\config.yaml:
+yaml
+name: Local Config
+version: 1.0.0
+schema: v1
+models:
+  - name: Qwen2.5 Coder 14B
+    provider: ollama
+    model: qwen2.5-coder:14b
+    apiBase: http://localhost:11434
+    roles: [chat, edit, apply]
+  - name: Qwen Autocomplete
+    provider: ollama
+    model: qwen2.5-coder:1.5b
+    apiBase: http://localhost:11434
+    roles: [autocomplete]
+
+补全强烈建议用 1.5b 或 3b 小模型(ollama pull qwen2.5-coder:1.5b),14b 做补全延迟太高,体验差。
+
+七、排错清单
+现象									可能原因												处理
+模型下拉里没有 Ollama 模型			Ollama 没启动 / 没登录 Copilot / 组织禁用 BYOK		托盘里启动 Ollama,curl localhost:11434,检查登录
+选了自定义 agent 但模型是别的			model: 名称不匹配									按选择器里的显示名修改
+agent 不调用工具,只输出文字			模型不支持 tools / 上下文太小							ollama show 查 tools;提高 OLLAMA_CONTEXT_LENGTH
+回答越聊越离谱						上下文溢出被截断										新开对话,拆小任务,调大上下文
+响应极慢								显存不足、模型切换重载									ollama ps 看是否 CPU 占比高;降上下文或换小模型
+命令执行报错							模型用了 bash 语法									在规则里写明 PowerShell,或切换 Git Bash
+修改 .agent.md 后无变化				未重载 / 文件格式问题									Reload Window,检查扩展名与 frontmatter
+
+
+VS Code 侧注意事项
+
+1. 模型名称必须与选择器一致
+
+model: 字段写的是模型选择器里显示的名字,不是 Ollama 的 tag。操作:
+
+命令面板 → Chat: Manage Language Models → 添加 Ollama → 勾选两个模型
+打开聊天面板,点模型下拉,看实际显示的名称(例如 qwen3.5:4b (Ollama) 或别的格式)
+把两个 .agent.md 里的 model: 改成完全一致的字符串
+
+名字对不上时,智能体会静默回退到默认模型,这是最常见的"配了没生效"原因。
+
+2. 确认智能体已加载
+
+聊天面板左下角的 Agent 下拉里应该看到 Local Planner 和 Local Coder。没有的话:
+
+命令面板 → Developer: Reload Window
+检查文件扩展名是 .agent.md(别被记事本存成 .agent.md.txt,在资源管理器里打开"显示文件扩展名"检查)
+检查文件编码为 UTF-8,头部 --- 前不能有空行
+打开 Chat: Open Chat Customizations(或 Chat: Configure Custom Agents)看有没有报 frontmatter 错误
+
+2.5 Copilot 登录问题
+
+BYOK(自带模型)功能目前要求安装并登录 GitHub Copilot Chat 扩展(免费版账号即可),只是模型请求走本地 Ollama,不消耗 Copilot 额度。组织账号可能被管理员禁用 BYOK,此时模型管理里看不到 Ollama 选项。
+
+3. 工具名称与版本差异
+
+tools: 里的名称随版本变化较快。如果某个工具名写错,VS Code 通常只是忽略它,所以智能体看起来"能力少了"。排查办法:
+
+在聊天输入框点工具图标(扳手),看实际可用的工具列表,按列表里的名称对照修改
+在 .agent.md 里输入 tools: 时,编辑器会给出自动补全,用补全最可靠
+
+4. 终端与 PowerShell
+
+agent 默认在 PowerShell 里运行命令,而小模型常常生成 bash 语法(&&、ls -la、export)。我已建议在规则里写明,可在 global.instructions.md 追加:
+markdown
+- 本机为 Windows + PowerShell:命令用 PowerShell 语法,不要用 `&&`(用 `;`)、`export`、`rm -rf`、`grep`;
+  路径用反斜杠或引号包裹含空格的路径。
+
+如果项目依赖 bash,可把终端默认改为 Git Bash:"terminal.integrated.defaultProfile.windows": "Git Bash",并把上面规则改为 bash 语法。
+自动批准列表请保持保守,不要放 rm、del、Remove-Item、git push、git reset。
+
+5. 权限与安全
+
+保持 chat.tools.autoApprove 为 false(全局自动批准所有工具),本地小模型犯错概率高,直接执行文件删除或覆盖风险大。
+重要项目务必先 git init 并提交一次,agent 改乱了可以 git restore . 回滚。
+首次对工作区使用时,VS Code 会要求"信任工作区",必须信任,否则工具被禁用。
+五、模型能力的现实预期
+
+1. qwen3.5:4b 做规划
+
+4B 参数量,适合解释代码、简单问答、列步骤;对大型代码库的跨文件推理较弱。
+它可能带"思考模式",回复前输出一段推理,响应变慢。如果不需要,可在 Ollama 里对该模型禁用思考,或接受稍慢的响应。
+关键决策或复杂架构问题,建议交给 14b 的 Local Coder 或更大的云端模型。
+
+2. qwen2.5-coder:14b 做编码
+
+代码生成质量不错,但它不是为 agent 工具调用专门训练的,可能出现:漏调工具、参数格式错误、重复调用同一工具、一次改很多文件。
+缓解办法:任务拆小(一次一个文件/一个函数),提示里写明验证命令,把 chat.agent.maxRequests 控制在 30~50,防止它陷入死循环。
+如果工具调用特别不稳,可换成 qwen3-coder 系列或其他官方标注 tools 能力的模型(ollama show 模型名 看 capabilities 里是否包含 tools)。
+
+3. 与官方 agent 的差距
+
+本方案能复现的:自定义角色、工具编排、终端执行、测试与修复循环、规划到实现的交接、MCP 扩展。
+无法等同的:云端大模型的推理与长上下文能力、Copilot 的 Tab 补全、部分仅限官方模型的功能(如某些内置的代码库索引增强、后台/云端智能体)。速度也取决于你的显卡。
