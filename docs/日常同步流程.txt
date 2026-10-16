@@ -1,0 +1,33 @@
+日常同步流程
+假设你修改了项目中的 README.md 或 PHP 文件。
+在项目目录打开 Git Bash，依次执行：
+git add .
+git commit -m "更新项目代码"
+git push
+
+
+这三条命令分别表示：
+命令	作用
+git add .	把修改、新增和删除的文件加入暂存区
+git commit -m "更新项目代码"	在本地创建一个新的版本记录
+git push	将本地提交同步到 GitHub
+执行成功后，刷新 GitHub 仓库页面，就能看到更新后的文件。
+二、如果只修改了一个文件
+例如只修改了 config/web.php，可以只同步这个文件：
+git add config/web.php
+git commit -m "修改网站配置"
+git push
+
+
+这样更精确，不会把其他未打算提交的文件一起加入本次提交。
+三、如果想查看哪些文件被修改
+提交前可以执行：
+git status
+
+
+查看具体修改内容：
+git diff
+
+
+如果不小心执行了 git add .，也可以在提交前查看暂存区的修改：
+git diff --cached

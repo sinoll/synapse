@@ -1,5 +1,17 @@
 github.com同步简单手册
 
+如果第二此执行
+	第 4 步：添加代码并提交
+	git add .
+	git commit -m "Initial commit"
+
+	第 6 步：上传代码
+	git push -u origin main
+
+
+
+第一此执行 看下面
+
 你已经在 GitHub 上创建好仓库了，接下来只需要把本地代码通过 Git 推送到 GitHub。你使用的是 Windows 环境，我建议直接用 Git 命令行，以后更新代码也很方便。
 
 下面以“本地已经有一个项目文件夹，GitHub 上已经创建好一个空仓库”为例。
@@ -74,9 +86,15 @@ git config --global user.email "你的邮箱"
 
 这里的邮箱建议使用 GitHub 账户绑定的邮箱，或者 GitHub 提供的隐私邮箱。
 
+
+
+
+
 第 4 步：添加代码并提交
 git add .
 git commit -m "Initial commit"
+
+
 
 含义：
 
