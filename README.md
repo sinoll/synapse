@@ -1,66 +1,5 @@
-<p align="center">
-    <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://www.yiiframework.com/image/design/logo/yii3_full_for_dark.svg">
-        <source media="(prefers-color-scheme: light)" srcset="https://www.yiiframework.com/image/design/logo/yii3_full_for_light.svg">
-        <img src="https://www.yiiframework.com/image/design/logo/yii3_full_for_light.svg" alt="Yii Framework" height="100">
-    </picture>
-    <h1 align="center">Yii 2 Advanced Project Template</h1>
-    <br>
-</p>
+<<<<<<< HEAD
 
-Yii 2 Advanced Project Template is a skeleton [Yii 2](https://www.yiiframework.com/) application best for
-developing complex Web applications with multiple tiers.
-
-The template includes three tiers: front end, back end, and console, each of which
-is a separate Yii application.
-
-The template is designed to work in a team development environment. It supports
-deploying the application in different environments.
-
-Documentation is at [docs/guide/README.md](docs/guide/README.md).
-
-[![Latest Stable Version](https://img.shields.io/packagist/v/yiisoft/yii2-app-advanced.svg?style=for-the-badge&label=Stable&logo=packagist)](https://packagist.org/packages/yiisoft/yii2-app-advanced)
-[![Total Downloads](https://img.shields.io/packagist/dt/yiisoft/yii2-app-advanced.svg?style=for-the-badge&label=Downloads)](https://packagist.org/packages/yiisoft/yii2-app-advanced)
-[![build](https://img.shields.io/github/actions/workflow/status/yiisoft/yii2-app-advanced/build.yml?style=for-the-badge&logo=github&label=Build)](https://github.com/yiisoft/yii2-app-advanced/actions?query=workflow%3Abuild)
-[![Static Analysis](https://img.shields.io/github/actions/workflow/status/yiisoft/yii2-app-advanced/static.yml?style=for-the-badge&label=Static)](https://github.com/yiisoft/yii2-app-advanced/actions/workflows/static.yml)
-
-## Docker
-
-[![Apache](https://img.shields.io/github/actions/workflow/status/yiisoft/yii2-app-advanced/docker.yml?style=for-the-badge&logo=apache&label=Apache)](https://github.com/yiisoft/yii2-app-advanced/actions/workflows/docker.yml)
-
-REQUIREMENTS
-------------
-
-> [!IMPORTANT]
-> - The minimum required [PHP](https://www.php.net/) version of Yii is PHP `8.2`.
-
-## Install via Composer
-
-If you do not have [Composer](https://getcomposer.org/), you may install it by following the instructions
-at [getcomposer.org](https://getcomposer.org/doc/00-intro.md#installation-nix).
-
-You can then install this project template using the following commands:
-
-```bash
-composer create-project --prefer-dist yiisoft/yii2-app-advanced advanced
-cd advanced
-```
-
-### Frontend
-
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/frontend/home-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/images/frontend/home-light.png">
-    <img src="docs/images/frontend/home-light.png" alt="Web Application Advanced - Frontend">
-</picture>
-
-### Backend
-
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/backend/home-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/images/backend/home-light.png">
-    <img src="docs/images/backend/home-light.png" alt="Web Application Advanced - Backend">
-</picture>
 
 DIRECTORY STRUCTURE
 -------------------
@@ -257,3 +196,16 @@ composer tests
 ## License
 
 [![License](https://img.shields.io/badge/License-BSD--3--Clause-brightgreen.svg?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=555555)](LICENSE.md)
+=======
+
+
+# Synapse / 突触 （暂定名）
+神经元与另一个神经元、肌肉细胞或腺细胞之间进行信号传递的连接部位，是神经系统中细胞彼此“交接信息”的关键位置。它是一个名词，复数形式是 synapses。
+
+
+
+一个个人内容管理网站。内容包括  博客 图集 瞬间(微博) 短视频 资源(文件共享)（内容阅读有严格的权限）。  
+站点和站点之间 可以聚合 , 关注(输入另一个站的网址后) 在自己网站可见 人家授权的信息 在自己的站点也可以查看 也可以跳转到原文。 自己的内容发在自己的站点上，别人看见后可以引用或二创后转发到自己的网站。
+
+**自己为自己发布的内容负责，转发的人为自己转发的内容负责。**  每个人或站点就像一个网络节点，更像两个神经元的交汇点 **Synapse**
+>>>>>>> 3050e94bdb43fed343add3a47d5aac4a4cfe0766
