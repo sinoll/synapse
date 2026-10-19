@@ -12,6 +12,7 @@ use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\ErrorAction;
+use yii\web\ForbiddenHttpException;
 use yii\web\Response;
 
 /**
@@ -28,8 +29,7 @@ class SiteController extends Controller
         $user = Yii::$app->user->identity;
         $actionId = strtolower(str_replace('-', '', $action->id));
         if ($user !== null && !$user->isAdministrator() && !in_array($actionId, ['login', 'error', 'logout'], true)) {
-            $this->redirect(['/site/index']);
-            return false;
+            throw new ForbiddenHttpException('此页面仅限管理员访问。');
         }
         if ($user !== null && $user->must_change_password && !in_array($actionId, ['changepassword', 'logout'], true)) {
             $this->redirect(['change-password']);

@@ -1,3 +1,36 @@
+/* Keep the administration area visually aligned with the public site. */
+:root {
+    --bs-primary: #9b5e3c;
+    --bs-primary-rgb: 155, 94, 60;
+    --bs-primary-text-emphasis: #704229;
+    --bs-primary-bg-subtle: #f2e5dc;
+    --bs-primary-border-subtle: #ddc2af;
+    --bs-link-color: #895337;
+    --bs-link-hover-color: #6f422c;
+    --bs-body-bg: #faf7f2;
+    --bs-body-color: #38332e;
+    --bs-secondary-color: #716a62;
+    --bs-secondary-bg: #f5efe7;
+    --bs-tertiary-bg: #f0e9df;
+    --bs-border-color: #e6ddd2;
+}
+
+[data-bs-theme="dark"] {
+    --bs-primary: #d49a72;
+    --bs-primary-rgb: 212, 154, 114;
+    --bs-primary-text-emphasis: #edc4a4;
+    --bs-primary-bg-subtle: #493629;
+    --bs-primary-border-subtle: #70513a;
+    --bs-link-color: #e2b38f;
+    --bs-link-hover-color: #f1cfb3;
+    --bs-body-bg: #211f1c;
+    --bs-body-color: #eee8df;
+    --bs-secondary-color: #b9afa3;
+    --bs-secondary-bg: #2b2824;
+    --bs-tertiary-bg: #342f29;
+    --bs-border-color: #494239;
+}
+
 main > .container {
     padding: 70px 15px 20px;
     display: flex;
@@ -212,6 +245,51 @@ a.desc:after {
     filter: invert(1);
 }
 
+/* Shared Bootstrap palette and components. */
+html { scroll-padding-top: 5rem; }
+body { background: var(--bs-body-bg); color: var(--bs-body-color); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
+.navbar-warm {
+    --bs-navbar-color: rgba(255, 249, 242, .82);
+    --bs-navbar-hover-color: #fff;
+    --bs-navbar-active-color: #fff;
+    --bs-navbar-brand-color: #fffaf5;
+    --bs-navbar-brand-hover-color: #fff;
+    background: linear-gradient(110deg, #49372d, #6b4935 58%, #80583d);
+}
+.navbar-warm .navbar-toggler { border-color: rgba(255, 255, 255, .3); }
+#theme-toggle { color: var(--bs-navbar-color); text-decoration: none; }
+#theme-toggle:hover, #theme-toggle:focus { color: #fff; }
+.btn-primary, .login-btn {
+    --bs-btn-color: #fffaf5;
+    --bs-btn-bg: #9b5e3c;
+    --bs-btn-border-color: #9b5e3c;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #804b30;
+    --bs-btn-hover-border-color: #804b30;
+    --bs-btn-active-bg: #704229;
+    --bs-btn-active-border-color: #704229;
+    background: #9b5e3c;
+    border-color: #9b5e3c;
+    color: #fffaf5;
+}
+.btn-outline-primary {
+    --bs-btn-color: #895337;
+    --bs-btn-border-color: #b98665;
+    --bs-btn-hover-bg: #9b5e3c;
+    --bs-btn-hover-border-color: #9b5e3c;
+}
+.card { --bs-card-border-color: var(--bs-border-color); border-radius: .9rem; }
+.btn { transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.form-control:focus, .form-select:focus { border-color: rgba(var(--bs-primary-rgb), .65); box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), .16); }
+.form-check-input:checked { background-color: #9b5e3c; border-color: #9b5e3c; }
+.login-brand-panel, .dashboard-banner { background: linear-gradient(140deg, #79513a 0%, #9b6847 52%, #b98461 100%); }
+.login-brand-panel::before, .dashboard-banner::before { background: radial-gradient(circle at 18% 80%, rgba(236, 194, 148, .22), transparent 48%), radial-gradient(circle at 82% 18%, rgba(246, 222, 190, .18), transparent 42%); }
+.grid-view, .list-view { width: 100%; }
+.grid-view .table-responsive { border: 1px solid var(--bs-border-color); border-radius: .75rem; }
+.grid-view table { margin-bottom: 0; }
+[data-bs-theme="dark"] .btn-outline-primary { --bs-btn-color: #e2b38f; --bs-btn-border-color: #b88663; --bs-btn-hover-color: #211f1c; }
+.account-flow { width: min(100%, 700px); }
+
 /* dashboard welcome banner */
 .dashboard-banner {
     background: linear-gradient(135deg, #83C933 0%, #3a9cbd 40%, #40B3D8 100%);
@@ -244,6 +322,13 @@ a.desc:after {
     .site-error .site-error-content {
         max-width: 80%;
     }
+}
+
+/* Final theme overrides follow legacy page-specific styles above. */
+.dashboard-banner { background: linear-gradient(140deg, #79513a 0%, #9b6847 52%, #b98461 100%); }
+.dashboard-banner::before {
+    background: radial-gradient(circle at 18% 80%, rgba(236, 194, 148, .22), transparent 48%),
+        radial-gradient(circle at 82% 18%, rgba(246, 222, 190, .18), transparent 42%);
 }
 
 @media (min-width: 768px) {

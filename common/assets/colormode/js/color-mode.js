@@ -24,7 +24,7 @@
         toggle.textContent = theme === 'dark' ? '☀' : '🌙'
         toggle.setAttribute(
             'aria-label',
-            theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+            theme === 'dark' ? '切换至浅色主题' : '切换至深色主题'
         )
     }
 

@@ -36,11 +36,12 @@ class UsersController extends Controller
             Yii::$app->response->redirect(['/site/change-password']);
             return false;
         }
+        /***
         if (Yii::$app->user->identity->phone_verified_at === null) {
             Yii::$app->response->redirect(['/site/verify-phone']);
             return false;
         }
-
+        ***/
         return true;
     }
 

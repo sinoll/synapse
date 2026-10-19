@@ -23,18 +23,16 @@ foreach ($definitions as $key => $definition) {
             <h1 class="mb-1"><?= Html::encode($this->title) ?></h1>
             <p class="text-body-secondary mb-0">浏览公开内容，或查看你自己的内容。</p>
         </div>
-        <?php if (!Yii::$app->user->isGuest): ?>
             <div class="dropdown">
                 <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     发布内容
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <?php foreach ($definitions as $key => $definition): ?>
-                        <li><?= Html::a('发布' . $definition['label'], ['/content/create', 'type' => $key], ['class' => 'dropdown-item']) ?></li>
+                        <li><?= Html::a('发布' . $definition['label'], ['/' . $key . '/create'], ['class' => 'dropdown-item']) ?></li>
                     <?php endforeach; ?>
                 </ul>
             </div>
-        <?php endif; ?>
     </div>
 
     <div class="btn-group flex-wrap mb-4" role="group" aria-label="内容类型筛选">
@@ -57,6 +55,11 @@ foreach ($definitions as $key => $definition) {
                     Post::TYPE_SHARED_FILE => $post->sharedFile?->description,
                     default => ($post->images[0] ?? null)?->alt_text,
                 };
+                $summary = $summary === null ? null : trim(html_entity_decode(
+                    strip_tags((string) $summary),
+                    ENT_QUOTES | ENT_HTML5,
+                    'UTF-8'
+                ));
                 ?>
                 <div class="col-md-6 col-xl-4">
                     <article class="card h-100 shadow-sm">

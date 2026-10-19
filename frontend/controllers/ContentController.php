@@ -22,9 +22,15 @@ use yii\web\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
+use yii\web\UploadedFile;
 
 class ContentController extends Controller
 {
+    public function getViewPath(): string
+    {
+        return Yii::getAlias('@frontend/views/content');
+    }
+
     public function beforeAction($action): bool
     {
         if (!parent::beforeAction($action)) {
@@ -36,11 +42,12 @@ class ContentController extends Controller
             Yii::$app->response->redirect(['/site/change-password']);
             return false;
         }
+        /***
         if ($user !== null && $user->phone_verified_at === null) {
             Yii::$app->response->redirect(['/site/verify-phone']);
             return false;
         }
-
+        ***/
         return true;
     }
 
@@ -49,7 +56,7 @@ class ContentController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['create', 'update', 'delete'],
+                'only' => ['index', 'view', 'create', 'update', 'delete'],
                 'rules' => [['allow' => true, 'roles' => ['@']]],
             ],
             'verbs' => [
@@ -89,7 +96,7 @@ class ContentController extends Controller
                     'and',
                     ['p.visibility' => Post::VISIBILITY_SELECTED_USERS],
                     ['exists', (new Query())
-                        ->select('1')
+                        ->select('sf.id')
                         ->from(['sf' => '{{%shared_file}}'])
                         ->innerJoin(['recipient' => '{{%shared_file_recipient}}'], 'recipient.shared_file_id = sf.id')
                         ->where('sf.post_id = p.id')
@@ -130,7 +137,25 @@ class ContentController extends Controller
         ]);
     }
 
-    public function actionCreate(string $type): string|Response
+    /** Legacy entry point: send callers to the type-specific publisher. */
+    public function actionCreate(?string $type = null): string|Response
+    {
+        $routes = [
+            'blog' => ['/blog/create'],
+            'images' => ['/images/create'],
+            'moment' => ['/moment/create'],
+            'video' => ['/video/create'],
+            'file' => ['/file/create'],
+        ];
+        if ($type === null || !isset($routes[$type])) {
+            throw new \yii\web\BadRequestHttpException('未知的内容类型。');
+        }
+
+        return $this->redirect($routes[$type]);
+    }
+
+    /** Shared form and persistence workflow used by each type-specific controller. */
+    protected function createContent(string $type): string|Response
     {
         $definitions = $this->definitions();
         if (!isset($definitions[$type])) {
@@ -143,22 +168,61 @@ class ContentController extends Controller
         $recipientUsernames = '';
 
         if ($this->loadContentModel($model, $definition['fields']) && $this->loadVisibility($post)) {
+            $uploadedImages = $type === 'images'
+                ? UploadedFile::getInstances($model, 'file_path')
+                : [];
+            if ($type === 'images') {
+                if ($uploadedImages === []) {
+                    $model->addError('file_path', '请至少选择一张图片。');
+                }
+                foreach ($uploadedImages as $uploadedImage) {
+                    if ($uploadedImage->error !== UPLOAD_ERR_OK) {
+                        $model->addError('file_path', '图片上传失败，请重新选择。');
+                    } elseif (!in_array(strtolower($uploadedImage->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+                        $model->addError('file_path', '仅支持 JPG、PNG、GIF 或 WebP 图片。');
+                    } elseif ($uploadedImage->size > 10 * 1024 * 1024) {
+                        $model->addError('file_path', '单张图片不能超过 10 MB。');
+                    } elseif (@getimagesize($uploadedImage->tempName) === false) {
+                        $model->addError('file_path', '所选文件不是有效的图片。');
+                    }
+                }
+            }
             $post->user_id = (int) Yii::$app->user->id;
             $post->type = $definition['postType'];
             $post->status = Post::STATUS_PUBLISHED;
             $post->title = $this->contentTitle($model);
             $model->post_id = 0;
+            if ($type === 'images') {
+                // The actual path is generated after validation and upload.
+                $model->file_path = 'pending-upload';
+            }
             $recipientUsernames = trim((string) Yii::$app->request->post('recipient_usernames', ''));
             $recipientIds = $this->recipientIds($post, $recipientUsernames);
 
-            if ($recipientIds !== null && $post->validate() && $model->validate()) {
+            if ($recipientIds !== null && $post->validate() && $model->validate() && ($type !== 'images' || $uploadedImages !== [])) {
                 $transaction = Yii::$app->db->beginTransaction();
                 try {
+                    $imagePaths = $type === 'images' ? $this->storeImageUploads($uploadedImages) : [];
+                    if ($type === 'images' && $imagePaths === []) {
+                        throw new \RuntimeException('图片上传失败。');
+                    }
                     if (!$post->save(false)) {
                         throw new \RuntimeException('无法保存内容记录。');
                     }
                     $model->post_id = $post->id;
-                    if (!$model->save()) {
+                    if ($type === 'images') {
+                        foreach ($imagePaths as $sortOrder => $imagePath) {
+                            $image = $sortOrder === 0 ? $model : new Image();
+                            $image->post_id = $post->id;
+                            $image->title = (string) $model->title;
+                            $image->file_path = $imagePath;
+                            $image->alt_text = $model->alt_text;
+                            $image->sort_order = $sortOrder;
+                            if (!$image->save()) {
+                                throw new \RuntimeException('图片保存失败。');
+                            }
+                        }
+                    } elseif (!$model->save()) {
                         $transaction->rollBack();
                         return $this->render('create', [
                             'model' => $model,
@@ -173,8 +237,16 @@ class ContentController extends Controller
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
-                    return $this->redirect(['view', 'id' => $post->id]);
+                    return $this->redirect(['/content/view', 'id' => $post->id]);
                 } catch (\Throwable $exception) {
+                    if ($type === 'images' && !empty($imagePaths)) {
+                        foreach ($imagePaths as $imagePath) {
+                            $storedPath = Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $imagePath);
+                            if (is_file($storedPath)) {
+                                @unlink($storedPath);
+                            }
+                        }
+                    }
                     if ($transaction->isActive) {
                         $transaction->rollBack();
                     }
@@ -225,7 +297,7 @@ class ContentController extends Controller
                         $transaction->commit();
                         Yii::$app->session->setFlash('success', '内容已更新。');
 
-                        return $this->redirect(['view', 'id' => $post->id]);
+                        return $this->redirect(['/content/view', 'id' => $post->id]);
                     }
                 } catch (\Throwable $exception) {
                     if ($transaction->isActive) {
@@ -339,7 +411,32 @@ class ContentController extends Controller
             return trim((string) $model->getAttribute('title'));
         }
 
-        return mb_substr(trim((string) $model->getAttribute('content')), 0, 200);
+        $text = html_entity_decode(strip_tags((string) $model->getAttribute('content')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return mb_substr(trim($text), 0, 200);
+    }
+
+    /** @param UploadedFile[] $files @return string[] */
+    private function storeImageUploads(array $files): array
+    {
+        $directory = Yii::getAlias('@frontend/web/uploads/images');
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return [];
+        }
+
+        $paths = [];
+        foreach ($files as $file) {
+            $name = Yii::$app->security->generateRandomString(32) . '.' . strtolower($file->extension);
+            if (!$file->saveAs($directory . DIRECTORY_SEPARATOR . $name)) {
+                foreach ($paths as $path) {
+                    @unlink(Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $path));
+                }
+                return [];
+            }
+            $paths[] = '/uploads/images/' . $name;
+        }
+
+        return $paths;
     }
 
     private function loadContentModel(ActiveRecord $model, array $fields): bool

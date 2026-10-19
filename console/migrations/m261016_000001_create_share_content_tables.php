@@ -35,6 +35,7 @@ class m261016_000001_create_share_content_tables extends Migration
             'title' => $this->string(200)->notNull(),
             'summary' => $this->string(500)->null(),
             'content' => $this->text()->notNull(),
+            'views'   => $this->integer()->defaultValue(0),
             'created_at' => $this->integer()->notNull(),
             'updated_at' => $this->integer()->notNull(),
         ], $options);

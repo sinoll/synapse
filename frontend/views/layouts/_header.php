@@ -10,11 +10,11 @@ use yii\helpers\Html;
 
 $items = [
     [
-        'label' => 'Home',
+        'label' => '首页',
         'url' => ['/site/index'],
     ],
     [
-        'label' => 'About',
+        'label' => '关于',
         'url' => ['/site/about'],
     ],
     [
@@ -27,12 +27,12 @@ $items = [
         'visible' => !Yii::$app->user->isGuest && Yii::$app->user->identity->isAdministrator(),
     ],
     [
-        'label' => 'Login',
+        'label' => '登录',
         'url' => ['/site/login'],
         'visible' => Yii::$app->user->isGuest,
     ],
     [
-        'label' => 'Logout (' . Html::encode(Yii::$app->user->identity?->username) . ')',
+        'label' => '退出登录（' . Html::encode(Yii::$app->user->identity?->username) . '）',
         'url' => ['/site/logout'],
         'linkOptions' => [
             'data-method' => 'post',
@@ -48,7 +48,7 @@ $items = [
         [
             'brandLabel' => Yii::$app->name,
             'brandUrl' => Yii::$app->homeUrl,
-            'options' => ['class' => 'navbar-expand-md navbar-dark bg-dark fixed-top']
+            'options' => ['class' => 'navbar-expand-md navbar-dark navbar-warm fixed-top shadow-sm']
         ],
     ) ?>
     <?= Nav::widget(
@@ -59,11 +59,11 @@ $items = [
         ],
     ) ?>
     <?= Html::button(
-        '&#127769;',
+        '🌙',
         [
             'id' => 'theme-toggle',
             'class' => 'btn btn-link nav-link fs-5',
-            'aria-label' => 'Switch to dark mode',
+            'aria-label' => '切换至深色主题',
         ],
     ) ?>
     <?php NavBar::end() ?>

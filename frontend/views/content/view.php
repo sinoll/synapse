@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use common\models\Post;
 use yii\helpers\Html;
+use yii\helpers\HtmlPurifier;
 
 $this->title = $post->title;
 $typeLabels = [
@@ -35,9 +36,9 @@ $typeLabels = [
             <?php if ($contentModel->summary !== null && $contentModel->summary !== ''): ?>
                 <p class="lead"><?= Html::encode($contentModel->summary) ?></p>
             <?php endif; ?>
-            <div class="text-break" style="white-space: pre-wrap"><?= Html::encode($contentModel->content) ?></div>
+            <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span']) ?></div>
         <?php elseif ($post->type === Post::TYPE_MOMENT): ?>
-            <div class="text-break" style="white-space: pre-wrap"><?= Html::encode($contentModel->content) ?></div>
+            <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span']) ?></div>
             <?php if ($contentModel->image_paths): ?>
                 <p class="mt-3 mb-1 fw-semibold">图片路径</p>
                 <pre class="mb-0"><?= Html::encode((string) $contentModel->image_paths) ?></pre>
@@ -46,7 +47,13 @@ $typeLabels = [
             <?php if ($contentModel->alt_text): ?>
                 <p><?= Html::encode($contentModel->alt_text) ?></p>
             <?php endif; ?>
-            <p class="mb-0"><span class="fw-semibold">图片路径：</span><?= Html::encode($contentModel->file_path) ?></p>
+            <div class="image-collection-view row g-3">
+                <?php foreach ($post->images as $image): ?>
+                    <figure class="col-12 col-sm-6 col-lg-4 mb-0">
+                        <img src="<?= Html::encode($image->file_path) ?>" alt="<?= Html::encode($image->alt_text ?: $post->title) ?>" class="img-fluid rounded shadow-sm" loading="lazy">
+                    </figure>
+                <?php endforeach; ?>
+            </div>
         <?php elseif ($post->type === Post::TYPE_SHORT_VIDEO): ?>
             <?php if ($contentModel->description): ?>
                 <div class="text-break mb-3" style="white-space: pre-wrap"><?= Html::encode($contentModel->description) ?></div>

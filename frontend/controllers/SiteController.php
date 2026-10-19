@@ -32,11 +32,12 @@ class SiteController extends Controller
             $this->redirect(['change-password']);
             return false;
         }
+        /***
         if ($user !== null && $user->phone_verified_at === null && !in_array($actionId, ['changepassword', 'verifyphone', 'logout'], true)) {
             $this->redirect(['verify-phone']);
             return false;
         }
-
+        ***/
         return true;
     }
 
