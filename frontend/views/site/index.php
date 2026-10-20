@@ -20,11 +20,7 @@ $categories = [
     <div class="hero-warm p-4 p-md-5 rounded-4 text-white shadow-sm">
         <p class="text-uppercase small fw-semibold opacity-75 mb-2">记录 · 分享 · 发现</p>
         <h1 class="display-5 fw-bold mb-3">让每一份内容都有自己的位置</h1>
-        <p class="lead opacity-75 mb-4">在这里写文章、记动态、分享图片、视频和文件。</p>
-        <div class="d-flex flex-column flex-sm-row gap-2">
-            <?= Html::a($isGuest ? '登录后开始分享' : '进入内容中心', $isGuest ? ['/site/login'] : ['/content/index'], ['class' => 'btn btn-light btn-lg fw-semibold']) ?>
-            <?= Html::a('查看内容类型', '#content-types', ['class' => 'btn btn-outline-light btn-lg']) ?>
-        </div>
+        <p class="lead opacity-75 mb-4">在这里写文章、记动态、分享图片、视频和文件。</p>        
     </div>
 </section>
 

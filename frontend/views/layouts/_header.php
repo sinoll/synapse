@@ -18,7 +18,7 @@ $items = [
         'url' => ['/site/about'],
     ],
     [
-        'label' => '内容',
+        'label' => '内容管理',
         'url' => ['/content/index'],
     ],
     [

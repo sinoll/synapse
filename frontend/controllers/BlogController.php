@@ -12,4 +12,14 @@ class BlogController extends ContentController
     {
         return $this->createContent('blog');
     }
+
+    public function actionUpdate(int $id): string|Response
+    {
+        return $this->updateContent($id);
+    }
+
+    public function actionDelete(int $id): Response
+    {
+        return $this->deleteContent($id);
+    }
 }

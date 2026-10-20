@@ -19,6 +19,14 @@ $typeLabels = [
     Post::TYPE_SHORT_VIDEO => '短视频',
     Post::TYPE_SHARED_FILE => '文件分享',
 ];
+$typeControllers = [
+    Post::TYPE_BLOG => 'blog',
+    Post::TYPE_IMAGES => 'images',
+    Post::TYPE_MOMENT => 'moment',
+    Post::TYPE_SHORT_VIDEO => 'video',
+    Post::TYPE_SHARED_FILE => 'file',
+];
+$typeController = $typeControllers[$post->type] ?? null;
 ?>
 <article class="content-view mx-auto py-4" style="max-width: 900px">
     <p class="mb-2"><span class="badge text-bg-light"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span></p>
@@ -58,10 +66,9 @@ $typeLabels = [
             <?php if ($contentModel->description): ?>
                 <div class="text-break mb-3" style="white-space: pre-wrap"><?= Html::encode($contentModel->description) ?></div>
             <?php endif; ?>
-            <p class="mb-1"><span class="fw-semibold">视频路径：</span><?= Html::encode($contentModel->video_path) ?></p>
-            <?php if ($contentModel->cover_path): ?>
-                <p class="mb-1"><span class="fw-semibold">封面路径：</span><?= Html::encode($contentModel->cover_path) ?></p>
-            <?php endif; ?>
+            <video class="w-100 rounded shadow-sm mb-3" controls playsinline preload="metadata"
+                   src="<?= Html::encode($contentModel->video_path) ?>"
+                   <?php if ($contentModel->cover_path): ?>poster="<?= Html::encode($contentModel->cover_path) ?>"<?php endif; ?>></video>
             <?php if ($contentModel->duration_seconds !== null): ?>
                 <p class="mb-0"><span class="fw-semibold">时长：</span><?= Html::encode((string) $contentModel->duration_seconds) ?> 秒</p>
             <?php endif; ?>
@@ -86,9 +93,9 @@ $typeLabels = [
 
     <div class="d-flex flex-wrap gap-2">
         <?= Html::a('返回内容列表', ['index'], ['class' => 'btn btn-outline-secondary']) ?>
-        <?php if ($canEdit): ?>
-            <?= Html::a('编辑', ['update', 'id' => $post->id], ['class' => 'btn btn-primary']) ?>
-            <?= Html::a('删除', ['delete', 'id' => $post->id], [
+        <?php if ($canEdit && $typeController !== null): ?>
+            <?= Html::a('编辑', ['/' . $typeController . '/update', 'id' => $post->id], ['class' => 'btn btn-primary']) ?>
+            <?= Html::a('删除', ['/' . $typeController . '/delete', 'id' => $post->id], [
                 'class' => 'btn btn-outline-danger',
                 'data' => ['method' => 'post', 'confirm' => '确定删除这条内容吗？'],
             ]) ?>

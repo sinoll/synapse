@@ -11,28 +11,28 @@ use common\models\Post;
 use yii\bootstrap5\LinkPager;
 use yii\helpers\Html;
 
-$this->title = '内容';
+$this->title = '内容管理';
 $typeLabels = [];
+$typeControllers = [];
 foreach ($definitions as $key => $definition) {
     $typeLabels[$definition['postType']] = $definition['label'];
+    $typeControllers[$definition['postType']] = $key;
 }
 ?>
 <div class="content-index py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h1 class="mb-1"><?= Html::encode($this->title) ?></h1>
-            <p class="text-body-secondary mb-0">浏览公开内容，或查看你自己的内容。</p>
+            <p class="text-body-secondary mb-0">统一管理你发布的博客、动态、图片、视频和文件内容。</p>
         </div>
-            <div class="dropdown">
-                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    发布内容
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <?php foreach ($definitions as $key => $definition): ?>
-                        <li><?= Html::a('发布' . $definition['label'], ['/' . $key . '/create'], ['class' => 'dropdown-item']) ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">发布内容</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <?php foreach ($definitions as $key => $definition): ?>
+                    <li><?= Html::a('发布' . $definition['label'], ['/' . $key . '/create'], ['class' => 'dropdown-item']) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     </div>
 
     <div class="btn-group flex-wrap mb-4" role="group" aria-label="内容类型筛选">
@@ -43,48 +43,55 @@ foreach ($definitions as $key => $definition) {
     </div>
 
     <?php if ($dataProvider->getCount() === 0): ?>
-        <div class="alert alert-light border">目前没有可显示的内容。</div>
+        <div class="alert alert-light border">目前没有可管理的内容。</div>
     <?php else: ?>
-        <div class="row g-3">
-            <?php foreach ($dataProvider->getModels() as $post): ?>
-                <?php
-                $summary = match ($post->type) {
-                    Post::TYPE_BLOG => $post->blog?->summary ?: $post->blog?->content,
-                    Post::TYPE_MOMENT => $post->moment?->content,
-                    Post::TYPE_SHORT_VIDEO => $post->shortVideo?->description,
-                    Post::TYPE_SHARED_FILE => $post->sharedFile?->description,
-                    default => ($post->images[0] ?? null)?->alt_text,
-                };
-                $summary = $summary === null ? null : trim(html_entity_decode(
-                    strip_tags((string) $summary),
-                    ENT_QUOTES | ENT_HTML5,
-                    'UTF-8'
-                ));
-                ?>
-                <div class="col-md-6 col-xl-4">
-                    <article class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between gap-2 mb-2">
-                                <span class="badge text-bg-light"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
-                                <?php if ($post->status === Post::STATUS_DRAFT): ?>
-                                    <span class="badge text-bg-secondary">草稿</span>
-                                <?php endif; ?>
-                            </div>
-                            <h2 class="h5"><?= Html::a(Html::encode($post->title), ['/content/view', 'id' => $post->id], ['class' => 'text-decoration-none']) ?></h2>
-                            <?php if ($summary !== null && $summary !== ''): ?>
-                                <p class="text-body-secondary"><?= Html::encode(mb_substr((string) $summary, 0, 180)) ?></p>
+        <div class="table-responsive content-management-table">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th scope="col">类型</th>
+                    <th scope="col">标题</th>
+                    <th scope="col">作者</th>
+                    <th scope="col">可见范围</th>
+                    <th scope="col">发布时间</th>
+                    <th scope="col" class="text-end">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($dataProvider->getModels() as $post): ?>
+                    <?php
+                    $controller = $typeControllers[$post->type] ?? null;
+                    $isOwner = !Yii::$app->user->isGuest && (int) $post->user_id === (int) Yii::$app->user->id;
+                    $visibilityLabels = [
+                        Post::VISIBILITY_PRIVATE => '仅自己',
+                        Post::VISIBILITY_REGISTERED_USERS => '登录用户',
+                        Post::VISIBILITY_PUBLIC => '公开',
+                        Post::VISIBILITY_SELECTED_USERS => '指定用户',
+                    ];
+                    ?>
+                    <tr>
+                        <td><span class="badge text-bg-light"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span></td>
+                        <td class="content-management-title">
+                            <?= Html::a(Html::encode($post->title), ['/content/view', 'id' => $post->id], ['class' => 'fw-semibold text-decoration-none']) ?>
+                            <?php if ($post->status === Post::STATUS_DRAFT): ?><span class="badge text-bg-secondary ms-1">草稿</span><?php endif; ?>
+                        </td>
+                        <td><?= Html::encode($post->user?->nickname ?: $post->user?->username ?: '用户') ?></td>
+                        <td><?= Html::encode($visibilityLabels[$post->visibility] ?? '未知') ?></td>
+                        <td class="text-body-secondary"><?= Yii::$app->formatter->asDatetime($post->created_at) ?></td>
+                        <td class="text-end text-nowrap">
+                            <?= Html::a('查看', ['/content/view', 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
+                            <?php if ($isOwner && $controller !== null): ?>
+                                <?= Html::a('编辑', ['/' . $controller . '/update', 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-primary']) ?>
+                                <?= Html::a('删除', ['/' . $controller . '/delete', 'id' => $post->id], [
+                                    'class' => 'btn btn-sm btn-outline-danger',
+                                    'data' => ['method' => 'post', 'confirm' => '确定删除这条内容吗？'],
+                                ]) ?>
                             <?php endif; ?>
-                            <p class="small text-body-secondary mb-0">
-                                <?= Html::encode($post->user?->nickname ?: $post->user?->username ?: '用户') ?>
-                                · <?= Yii::$app->formatter->asDatetime($post->created_at) ?>
-                            </p>
-                        </div>
-                        <div class="card-footer bg-transparent border-0 pt-0">
-                            <?= Html::a('查看详情', ['/content/view', 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-primary']) ?>
-                        </div>
-                    </article>
-                </div>
-            <?php endforeach; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
         <div class="mt-4">
             <?= LinkPager::widget(['pagination' => $dataProvider->pagination]) ?>

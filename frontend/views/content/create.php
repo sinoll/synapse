@@ -19,11 +19,12 @@ use yii\helpers\HtmlPurifier;
 $isUpdate = $isUpdate ?? false;
 $hasRichEditor = in_array($type, ['blog', 'moment'], true);
 $hasImageCollection = $type === 'images';
+$hasVideoUploader = $type === 'video';
 $pageCopy = [
     'blog' => ['icon' => '✎', 'title' => $isUpdate ? '编辑博客' : '写一篇博客', 'intro' => '整理文章结构，添加摘要，并用格式工具排出清晰易读的正文。'],
     'moment' => ['icon' => '◉', 'title' => $isUpdate ? '编辑动态' : '记录一条动态', 'intro' => '分享一段近况或想法；标题会根据动态内容自动生成。'],
     'images' => ['icon' => '▧', 'title' => $isUpdate ? '编辑图片' : '发布图片', 'intro' => '选择一张或多张图片，上传后即可预览图片集。'],
-    'video' => ['icon' => '▶', 'title' => $isUpdate ? '编辑短视频' : '发布短视频', 'intro' => '填写视频、封面和说明信息，帮助访问者了解这段视频。'],
+    'video' => ['icon' => '▶', 'title' => $isUpdate ? '编辑短视频' : '发布短视频', 'intro' => '上传视频即可预览，时长自动读取，封面可自定义或使用第一帧。'],
     'file' => ['icon' => '↗', 'title' => $isUpdate ? '编辑文件分享' : '分享一个文件', 'intro' => '补充文件说明并设置可见范围，明确哪些人可以访问。'],
 ];
 $pageCopy += ['other' => ['icon' => '＋', 'title' => ($isUpdate ? '编辑' : '创建') . $label, 'intro' => '填写内容信息并设置合适的可见范围。']];
@@ -38,8 +39,8 @@ $labels = [
 $fieldHelp = [
     'summary' => '简要介绍文章内容；列表页会优先展示这段摘要。',
     'file_path' => '选择需要上传的图片文件。',
-    'video_path' => '填写站点可访问的视频文件路径或完整 URL。',
-    'cover_path' => '可选，填写视频封面的资源路径或完整 URL。',
+    'video_path' => '选择需要上传的视频文件。',
+    'cover_path' => '可选，选择自定义封面；不选择时使用视频第一帧。',
     'image_paths' => '可选，使用 JSON 数组填写图片路径。',
     'alt_text' => '描述图片内容，便于访问者理解，也有助于无障碍访问。',
     'duration_seconds' => '填写视频时长，单位为秒。',
@@ -75,6 +76,9 @@ $this->registerCss(<<<'CSS'
 .image-collection-preview figure { margin: 0; overflow: hidden; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-tertiary-bg); }
 .image-collection-preview img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .image-collection-preview figcaption { padding: .4rem .55rem; overflow: hidden; color: var(--bs-secondary-color); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
+.video-upload-preview { display: grid; gap: 1rem; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); }
+.video-upload-preview video, .video-upload-preview img { width: 100%; max-height: 360px; object-fit: contain; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: #191512; }
+@media (max-width: 575.98px) { .video-upload-preview { grid-template-columns: 1fr; } }
 @media (max-width: 575.98px) {
     .content-compose { padding-left: .25rem; padding-right: .25rem; }
     .rich-editor-surface { min-height: 220px; padding: .75rem; }
@@ -84,7 +88,7 @@ $this->registerCss(<<<'CSS'
 }
 CSS);
 
-if ($hasRichEditor || $hasImageCollection) {
+if ($hasRichEditor || $hasImageCollection || $hasVideoUploader) {
     $this->registerJs(<<<'JS'
 document.querySelectorAll('[data-rich-editor]').forEach((editor) => {
     const source = document.getElementById(editor.dataset.source);
@@ -130,6 +134,43 @@ document.querySelectorAll('[data-image-collection]').forEach((input) => {
     input.addEventListener('input', renderPreview);
     renderPreview();
 });
+const videoInput = document.querySelector('[data-video-input]');
+if (videoInput) {
+    const video = document.querySelector('[data-video-preview]');
+    const coverInput = document.querySelector('[data-cover-input]');
+    const cover = document.querySelector('[data-cover-preview]');
+    const duration = document.querySelector('[data-video-duration]');
+    let manualCover = false;
+    const showCover = (url) => { cover.src = url; cover.classList.remove('d-none'); };
+    coverInput.addEventListener('change', () => {
+        manualCover = coverInput.files.length > 0;
+        if (manualCover) showCover(URL.createObjectURL(coverInput.files[0]));
+    });
+    videoInput.addEventListener('change', () => {
+        const file = videoInput.files[0];
+        if (!file) return;
+        video.src = URL.createObjectURL(file);
+        video.classList.remove('d-none');
+        video.load();
+    });
+    video.addEventListener('loadedmetadata', () => {
+        duration.value = Number.isFinite(video.duration) ? Math.round(video.duration) : 0;
+    });
+    video.addEventListener('loadeddata', () => {
+        if (manualCover || coverInput.files.length || video.videoWidth === 0) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+            if (!blob) return;
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([blob], 'video-first-frame.jpg', {type: 'image/jpeg'}));
+            coverInput.files = transfer.files;
+            showCover(URL.createObjectURL(blob));
+        }, 'image/jpeg', .88);
+    });
+}
 JS);
 }
 ?>
@@ -169,6 +210,29 @@ JS);
                              data-placeholder="<?= $type === 'moment' ? '写下此刻的想法……' : '从这里开始撰写正文……' ?>"><?= HtmlPurifier::process((string) $model->getAttribute($field), ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span']) ?></div>
                         <div class="rich-editor-help text-body-secondary mt-2">支持加粗、斜体、标题、引用、列表和链接；手机上可横向换行使用工具栏。</div>
                     </div>
+                <?php elseif ($hasVideoUploader && $field === 'video_path'): ?>
+                    <?= $form->field($model, $field)->label('选择视频')->fileInput([
+                        'class' => 'form-control',
+                        'accept' => 'video/mp4,video/webm,video/quicktime,video/ogg',
+                        'data-video-input' => '1',
+                    ]) ?>
+                    <div class="form-text mb-2">支持 MP4、WebM、MOV、OGG，最大 500 MB。选择后可立即预览。</div>
+                    <div class="video-upload-preview mb-4">
+                        <video class="d-none" controls playsinline data-video-preview></video>
+                        <div>
+                            <p class="small fw-semibold mb-2">封面预览</p>
+                            <img class="d-none" alt="视频封面预览" data-cover-preview>
+                        </div>
+                    </div>
+                <?php elseif ($hasVideoUploader && $field === 'cover_path'): ?>
+                    <?= $form->field($model, $field)->label('自定义封面（可选）')->fileInput([
+                        'class' => 'form-control',
+                        'accept' => 'image/jpeg,image/png,image/gif,image/webp',
+                        'data-cover-input' => '1',
+                    ]) ?>
+                    <div class="form-text mb-3">不选择时自动使用视频第一帧作为封面。</div>
+                <?php elseif ($hasVideoUploader && $field === 'duration_seconds'): ?>
+                    <?= $form->field($model, $field)->hiddenInput(['data-video-duration' => '1'])->label(false) ?>
                 <?php elseif ($hasImageCollection && $field === 'file_path'): ?>
                     <?= $form->field($model, $field)->label('选择图片')->fileInput([
                         'class' => 'form-control image-collection-input',
@@ -206,8 +270,6 @@ JS);
                 <p class="small text-body-secondary">请填写已部署的资源路径；此表单目前不提供文件上传。</p>
                 <?= Html::label('授权用户名（用逗号、空格或换行分隔）', 'recipient_usernames', ['class' => 'form-label']) ?>
                 <?= Html::textInput('recipient_usernames', $recipientUsernames, ['id' => 'recipient_usernames', 'class' => 'form-control mb-3', 'autocomplete' => 'off', 'placeholder' => '仅“指定用户可见”时需要填写']) ?>
-            <?php elseif ($type === 'video'): ?>
-                <p class="small text-body-secondary">请填写已部署的资源路径；此表单目前不提供文件上传。</p>
             <?php endif; ?>
 
             <div class="content-compose-actions d-flex flex-column flex-sm-row gap-2 mt-4">

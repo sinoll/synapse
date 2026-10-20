@@ -171,6 +171,8 @@ class ContentController extends Controller
             $uploadedImages = $type === 'images'
                 ? UploadedFile::getInstances($model, 'file_path')
                 : [];
+            $uploadedVideo = $type === 'video' ? UploadedFile::getInstance($model, 'video_path') : null;
+            $uploadedCover = $type === 'video' ? UploadedFile::getInstance($model, 'cover_path') : null;
             if ($type === 'images') {
                 if ($uploadedImages === []) {
                     $model->addError('file_path', '请至少选择一张图片。');
@@ -187,6 +189,21 @@ class ContentController extends Controller
                     }
                 }
             }
+            if ($type === 'video') {
+                if ($uploadedVideo === null || $uploadedVideo->error !== UPLOAD_ERR_OK) {
+                    $model->addError('video_path', '请至少选择一个视频文件。');
+                } elseif (!in_array(strtolower($uploadedVideo->extension), ['mp4', 'webm', 'mov', 'ogv', 'ogg'], true)) {
+                    $model->addError('video_path', '仅支持 MP4、WebM、MOV 或 OGG 视频。');
+                } elseif ($uploadedVideo->size > 500 * 1024 * 1024) {
+                    $model->addError('video_path', '视频文件不能超过 500 MB。');
+                }
+                if ($uploadedCover !== null && $uploadedCover->error === UPLOAD_ERR_OK
+                    && (!in_array(strtolower($uploadedCover->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
+                        || $uploadedCover->size > 10 * 1024 * 1024
+                        || @getimagesize($uploadedCover->tempName) === false)) {
+                    $model->addError('cover_path', '封面必须是有效的图片，且不超过 10 MB。');
+                }
+            }
             $post->user_id = (int) Yii::$app->user->id;
             $post->type = $definition['postType'];
             $post->status = Post::STATUS_PUBLISHED;
@@ -196,15 +213,30 @@ class ContentController extends Controller
                 // The actual path is generated after validation and upload.
                 $model->file_path = 'pending-upload';
             }
+            if ($type === 'video') {
+                $model->video_path = 'pending-upload';
+                $model->duration_seconds = max(0, (int) $model->duration_seconds);
+            }
             $recipientUsernames = trim((string) Yii::$app->request->post('recipient_usernames', ''));
             $recipientIds = $this->recipientIds($post, $recipientUsernames);
 
-            if ($recipientIds !== null && $post->validate() && $model->validate() && ($type !== 'images' || $uploadedImages !== [])) {
+            if ($recipientIds !== null && $post->validate() && $model->validate()
+                && ($type !== 'images' || $uploadedImages !== [])
+                && ($type !== 'video' || $uploadedVideo !== null)) {
                 $transaction = Yii::$app->db->beginTransaction();
                 try {
                     $imagePaths = $type === 'images' ? $this->storeImageUploads($uploadedImages) : [];
                     if ($type === 'images' && $imagePaths === []) {
                         throw new \RuntimeException('图片上传失败。');
+                    }
+                    $videoPath = $type === 'video'
+                        ? $this->storeUploadedFile($uploadedVideo, '@frontend/web/uploads/videos')
+                        : null;
+                    $coverPath = $type === 'video' && $uploadedCover !== null
+                        ? $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/video-covers')
+                        : null;
+                    if ($type === 'video' && $videoPath === null) {
+                        throw new \RuntimeException('视频上传失败。');
                     }
                     if (!$post->save(false)) {
                         throw new \RuntimeException('无法保存内容记录。');
@@ -221,6 +253,12 @@ class ContentController extends Controller
                             if (!$image->save()) {
                                 throw new \RuntimeException('图片保存失败。');
                             }
+                        }
+                    } elseif ($type === 'video') {
+                        $model->video_path = $videoPath;
+                        $model->cover_path = $coverPath;
+                        if (!$model->save()) {
+                            throw new \RuntimeException('视频保存失败。');
                         }
                     } elseif (!$model->save()) {
                         $transaction->rollBack();
@@ -247,6 +285,14 @@ class ContentController extends Controller
                             }
                         }
                     }
+                    foreach ([$videoPath ?? null, $coverPath ?? null] as $storedPath) {
+                        if ($storedPath !== null) {
+                            $absolutePath = Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $storedPath);
+                            if (is_file($absolutePath)) {
+                                @unlink($absolutePath);
+                            }
+                        }
+                    }
                     if ($transaction->isActive) {
                         $transaction->rollBack();
                     }
@@ -265,7 +311,7 @@ class ContentController extends Controller
         ]);
     }
 
-    public function actionUpdate(int $id): string|Response
+    protected function updateContent(int $id): string|Response
     {
         $post = $this->findPost($id);
         $this->ensureOwner($post);
@@ -319,7 +365,7 @@ class ContentController extends Controller
         ]);
     }
 
-    public function actionDelete(int $id): Response
+    protected function deleteContent(int $id): Response
     {
         $post = $this->findPost($id);
         $this->ensureOwner($post);
@@ -437,6 +483,25 @@ class ContentController extends Controller
         }
 
         return $paths;
+    }
+
+    private function storeUploadedFile(?UploadedFile $file, string $directoryAlias): ?string
+    {
+        if ($file === null) {
+            return null;
+        }
+        $directory = Yii::getAlias($directoryAlias);
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return null;
+        }
+        $name = Yii::$app->security->generateRandomString(32) . '.' . strtolower($file->extension);
+        if (!$file->saveAs($directory . DIRECTORY_SEPARATOR . $name)) {
+            return null;
+        }
+        $webRoot = Yii::getAlias('@frontend/web');
+        $relativeDirectory = trim(str_replace('\\', '/', str_replace($webRoot, '', $directory)), '/');
+
+        return '/' . $relativeDirectory . '/' . $name;
     }
 
     private function loadContentModel(ActiveRecord $model, array $fields): bool
