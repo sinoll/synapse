@@ -8,6 +8,8 @@ use yii\web\Response;
 
 class VideoController extends ContentController
 {
+ 
+
     public function actionCreate(?string $type = null): string|Response
     {
         return $this->createContent('video');

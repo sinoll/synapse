@@ -11,7 +11,13 @@ use common\models\Post;
 use yii\helpers\Html;
 use yii\helpers\HtmlPurifier;
 
-$this->title = $post->title;
+$this->registerCss(<<<'CSS'
+.rich-content pre { overflow-x: auto; max-width: 100%; margin: 1rem 0; padding: 1rem 1.1rem; border: 1px solid var(--bs-border-color); border-radius: .65rem; background: var(--bs-tertiary-bg); color: var(--bs-body-color); font-family: var(--bs-font-monospace); font-size: .9em; line-height: 1.6; white-space: pre; }
+.rich-content pre code { padding: 0; background: transparent; color: inherit; font: inherit; white-space: inherit; }
+CSS);
+
+$displayTitle = $post->title ?: ($post->type === Post::TYPE_MOMENT ? '动态' : '');
+$this->title = $displayTitle;
 $typeLabels = [
     Post::TYPE_BLOG => '博客',
     Post::TYPE_IMAGES => '图片',
@@ -30,7 +36,7 @@ $typeController = $typeControllers[$post->type] ?? null;
 ?>
 <article class="content-view mx-auto py-4" style="max-width: 900px">
     <p class="mb-2"><span class="badge text-bg-light"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span></p>
-    <h1><?= Html::encode($post->title) ?></h1>
+    <?php if ($displayTitle !== ''): ?><h1><?= Html::encode($displayTitle) ?></h1><?php endif; ?>
     <p class="text-body-secondary">
         <?= Html::encode($post->user?->nickname ?: $post->user?->username ?: '用户') ?>
         · <?= Yii::$app->formatter->asDatetime($post->created_at) ?>
@@ -44,9 +50,9 @@ $typeController = $typeControllers[$post->type] ?? null;
             <?php if ($contentModel->summary !== null && $contentModel->summary !== ''): ?>
                 <p class="lead"><?= Html::encode($contentModel->summary) ?></p>
             <?php endif; ?>
-            <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span']) ?></div>
+            <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title],pre,code']) ?></div>
         <?php elseif ($post->type === Post::TYPE_MOMENT): ?>
-            <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span']) ?></div>
+            <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]']) ?></div>
             <?php if ($contentModel->image_paths): ?>
                 <p class="mt-3 mb-1 fw-semibold">图片路径</p>
                 <pre class="mb-0"><?= Html::encode((string) $contentModel->image_paths) ?></pre>

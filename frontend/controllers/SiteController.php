@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace frontend\controllers;
 
-use common\models\LoginForm;
 use common\models\ChangePasswordForm;
+use common\models\Post;
 use common\models\VerifyPhoneForm;
 use Yii;
 use yii\captcha\CaptchaAction;
@@ -16,122 +16,60 @@ use yii\web\ErrorAction;
 use yii\web\Response;
 
 /**
- * Site controller
+ * 公开 可访问控制器  不需要权限检查和限制
  */
 class SiteController extends Controller
 {
-    public function beforeAction($action): bool
-    {
-        if (!parent::beforeAction($action)) {
-            return false;
-        }
-
-        $user = Yii::$app->user->identity;
-        $actionId = strtolower(str_replace('-', '', $action->id));
-        if ($user !== null && $user->must_change_password && !in_array($actionId, ['changepassword', 'logout'], true)) {
-            $this->redirect(['change-password']);
-            return false;
-        }
-        /***
-        if ($user !== null && $user->phone_verified_at === null && !in_array($actionId, ['changepassword', 'verifyphone', 'logout'], true)) {
-            $this->redirect(['verify-phone']);
-            return false;
-        }
-        ***/
-        return true;
-    }
+    
 
     /**
-     * {@inheritdoc}
-     */
-    public function behaviors(): array
-    {
-        return [
-            'access' => [
-                'class' => AccessControl::class,
-                'only' => ['logout'],
-                'rules' => [
-                    [
-                        'actions' => ['logout'],
-                        'allow' => true,
-                        'roles' => ['@'],
-                    ],
-                ],
-            ],
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'logout' => ['post'],
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function actions(): array
-    {
-        return [
-            'error' => [
-                'class' => ErrorAction::class,
-            ],
-            'captcha' => [
-                'class' => CaptchaAction::class,
-                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
-            ],
-        ];
-    }
-
-    /**
-     * Displays homepage.
+     * 按发布时间先后顺序，显示post表的内容.
      *
      * @return string
      */
     public function actionIndex(): string
     {
-        return $this->render('index');
-    }
+        [$posts, $hasMore] = $this->publicFeed(1);
 
-    /**
-     * Logs in a user.
-     *
-     * @return string|Response
-     */
-    public function actionLogin(): string|Response
-    {
-        if (!Yii::$app->user->isGuest) {
-            return $this->goHome();
-        }
-
-        $model = new LoginForm();
-
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            if (Yii::$app->user->identity->must_change_password) {
-                return $this->redirect(['change-password']);
-            }
-            return $this->goBack();
-        }
-
-        $model->password = '';
-
-        return $this->render('login', [
-            'model' => $model,
+        return $this->render('index', [
+            'posts' => $posts,
+            'hasMore' => $hasMore,
         ]);
     }
 
-    /**
-     * Logs out the current user.
-     *
-     * @return Response
-     */
-    public function actionLogout(): Response
+    /** Return the next page of public content for the home feed. */
+    public function actionFeed(int $page = 1): Response
     {
-        Yii::$app->user->logout();
+        $page = max(1, $page);
+        [$posts, $hasMore] = $this->publicFeed($page);
 
-        return $this->goHome();
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        return $this->asJson([
+            'html' => $this->renderPartial('_feed_items', ['posts' => $posts]),
+            'hasMore' => $hasMore,
+        ]);
     }
 
+    /** @return array{0: Post[], 1: bool} */
+    private function publicFeed(int $page): array
+    {
+        $pageSize = 10;
+        $query = Post::find()
+            ->with(['user', 'blog', 'images', 'moment', 'shortVideo', 'sharedFile'])
+            ->where([
+                'status' => Post::STATUS_PUBLISHED,
+                'visibility' => Post::VISIBILITY_PUBLIC,
+            ])
+            ->orderBy(['created_at' => SORT_DESC, 'id' => SORT_DESC]);
+
+        $total = (clone $query)->count();
+        $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
+
+        return [$posts, $page * $pageSize < $total];
+    }
+
+    
     /**
      * Displays about page.
      *
@@ -142,42 +80,10 @@ class SiteController extends Controller
         return $this->render('about');
     }
 
-    public function actionChangePassword(): string|Response
-    {
-        if (Yii::$app->user->isGuest) {
-            return $this->redirect(['login']);
-        }
 
-        $model = new ChangePasswordForm();
-        if ($model->load(Yii::$app->request->post()) && $model->changePassword()) {
-            Yii::$app->session->setFlash('success', '密码已更新。');
-            return $this->goHome();
-        }
 
-        return $this->render('changePassword', compact('model'));
-    }
 
-    public function actionVerifyPhone(): string|Response
-    {
-        if (Yii::$app->user->isGuest) {
-            return $this->redirect(['login']);
-        }
-        if (Yii::$app->user->identity->must_change_password) {
-            return $this->redirect(['change-password']);
-        }
 
-        $model = new VerifyPhoneForm(['phone' => Yii::$app->user->identity->phone ?? '']);
-        $post = Yii::$app->request->post();
-        if ($model->load($post)) {
-            if (isset($post['sendCode']) && $model->sendCode(Yii::$app->smsSender)) {
-                Yii::$app->session->setFlash('success', '验证码已发送。');
-            } elseif (isset($post['verifyCode']) && $model->verify()) {
-                Yii::$app->session->setFlash('success', '手机号验证完成。');
-                return $this->goHome();
-            }
-        }
-
-        return $this->render('verifyPhone', compact('model'));
-    }
+    
 
 }

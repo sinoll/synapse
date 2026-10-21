@@ -37,7 +37,8 @@ class Post extends \common\models\base\Post
     public function rules(): array
     {
         return [
-            [['user_id', 'type', 'title'], 'required'],
+            [['user_id', 'type'], 'required'],
+            [['title'], 'required', 'when' => static fn (self $model): bool => $model->type !== self::TYPE_MOMENT],
             [['user_id', 'status', 'visibility'], 'integer'],
             [['status'], 'in', 'range' => [self::STATUS_DRAFT, self::STATUS_PUBLISHED]],
             [['visibility'], 'in', 'range' => [
@@ -59,7 +60,18 @@ class Post extends \common\models\base\Post
         }
     }
 
+    public function canHaveTags(): bool
+    {
+        return in_array($this->type, [
+            self::TYPE_BLOG,
+            self::TYPE_IMAGES,
+            self::TYPE_MOMENT,
+            self::TYPE_SHORT_VIDEO,
+        ], true);
+    }
+
     public function getUser(): ActiveQuery { return $this->hasOne(User::class, ['id' => 'user_id']); }
+    public function getTags(): ActiveQuery { return $this->hasMany(Tag::class, ['id' => 'tag_id'])->viaTable('{{%post_tag}}', ['post_id' => 'id']); }
     public function getBlog(): ActiveQuery { return $this->hasOne(BlogPost::class, ['post_id' => 'id']); }
     public function getImages(): ActiveQuery { return $this->hasMany(Image::class, ['post_id' => 'id'])->orderBy(['sort_order' => SORT_ASC]); }
     public function getMoment(): ActiveQuery { return $this->hasOne(Moment::class, ['post_id' => 'id']); }

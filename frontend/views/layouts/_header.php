@@ -20,20 +20,26 @@ $items = [
     [
         'label' => '内容管理',
         'url' => ['/content/index'],
+        'visible' => !Yii::$app->user->isGuest,
     ],
     [
-        'label' => '用户管理',
-        'url' => ['/users/index'],
+        'label' => '系统管理',
+        'url' => ['/manage/index'],
         'visible' => !Yii::$app->user->isGuest && Yii::$app->user->identity->isAdministrator(),
     ],
     [
+        'label' => '用户中心',
+        'url' => ['/users/index'],
+        'visible' => !Yii::$app->user->isGuest,
+    ],
+    [
         'label' => '登录',
-        'url' => ['/site/login'],
+        'url' => ['/users/login'],
         'visible' => Yii::$app->user->isGuest,
     ],
     [
         'label' => '退出登录（' . Html::encode(Yii::$app->user->identity?->username) . '）',
-        'url' => ['/site/logout'],
+        'url' => ['/users/logout'],
         'linkOptions' => [
             'data-method' => 'post',
             'class' => 'logout',

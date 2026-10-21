@@ -3,48 +3,95 @@
 declare(strict_types=1);
 
 /** @var yii\web\View $this */
+/** @var common\models\Post[] $posts */
+/** @var bool $hasMore */
 
 use yii\helpers\Html;
+use yii\helpers\Url;
 
-$this->title = '内容分享';
-$isGuest = Yii::$app->user->isGuest;
-$categories = [
-    ['blog', '博客文章', '记录经验、想法和值得留存的长篇内容。', '✎'],
-    ['images', '图片集', '整理并分享图片与相关说明。', '▧'],
-    ['moment', '生活动态', '用简短文字记录此刻的状态和灵感。', '◉'],
-    ['video', '短视频', '分享视频、封面和补充说明。', '▶'],
-    ['file', '文件分享', '整理资源，并按需要设置访问范围。', '↗'],
-];
+$this->title = '公开内容';
 ?>
-<section class="home-hero py-4 py-lg-5 mb-4 mb-lg-5">
-    <div class="hero-warm p-4 p-md-5 rounded-4 text-white shadow-sm">
-        <p class="text-uppercase small fw-semibold opacity-75 mb-2">记录 · 分享 · 发现</p>
-        <h1 class="display-5 fw-bold mb-3">让每一份内容都有自己的位置</h1>
-        <p class="lead opacity-75 mb-4">在这里写文章、记动态、分享图片、视频和文件。</p>        
-    </div>
-</section>
 
-<div id="content-types" class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-end gap-2 mb-3">
-    <div>
-        <h2 class="h3 mb-1">选择一种内容形式</h2>
-        <p class="text-body-secondary mb-0">每种内容都有专属的创建页面和编辑工具。</p>
-    </div>
-    <?php if (!$isGuest): ?>
-        <?= Html::a('进入内容中心', ['/content/index'], ['class' => 'btn btn-outline-primary']) ?>
-    <?php endif; ?>
-</div>
-
-<div class="row g-3 g-lg-4">
-    <?php foreach ($categories as [$type, $label, $description, $icon]): ?>
-        <div class="col-md-6 col-xl-4">
-            <article class="card content-type-card h-100 shadow-sm">
-                <div class="card-body d-flex flex-column p-4">
-                    <span class="content-type-icon mb-3" aria-hidden="true"><?= Html::encode($icon) ?></span>
-                    <h3 class="h5 mb-2"><?= Html::encode($label) ?></h3>
-                    <p class="text-body-secondary flex-grow-1"><?= Html::encode($description) ?></p>
-                    <?= Html::a($isGuest ? '登录后创建' : '创建' . $label, $isGuest ? ['/site/login'] : ['/' . $type . '/create'], ['class' => 'btn btn-outline-primary align-self-start']) ?>
-                </div>
-            </article>
+<div class="home-feed py-3 py-md-4">
+    <div class="home-feed-header mb-4">
+        <div>
+            <p class="home-feed-eyebrow mb-2">DISCOVER</p>
+            <h1 class="h2 mb-2">公开内容</h1>
+            <p class="text-body-secondary mb-0">浏览社区最新分享，所有内容按发布时间统一排列。</p>
         </div>
-    <?php endforeach; ?>
+        <?php if (!Yii::$app->user->isGuest): ?>
+            <?= Html::a('发布内容', ['/content/index'], ['class' => 'btn btn-primary']) ?>
+        <?php endif; ?>
+    </div>
+
+    <div id="home-feed-list" class="home-feed-list" data-next-page="2" data-has-more="<?= $hasMore ? '1' : '0' ?>">
+        <?= $this->render('_feed_items', ['posts' => $posts]) ?>
+    </div>
+
+    <div id="home-feed-status" class="home-feed-status text-center py-4" aria-live="polite">
+        <?php if ($hasMore): ?>
+            <span class="home-feed-loading d-none"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>正在加载更多内容…</span>
+            <span class="home-feed-hint">继续下滑加载更多</span>
+        <?php elseif ($posts !== []): ?>
+            <span class="text-body-secondary">已经到底了</span>
+        <?php else: ?>
+            <span class="text-body-secondary">暂时还没有公开内容</span>
+        <?php endif; ?>
+    </div>
+    <div id="home-feed-sentinel" aria-hidden="true"></div>
 </div>
+
+<?php
+$feedUrl = Url::to(['/site/feed']);
+$this->registerJs(<<<JS
+(function () {
+    const list = document.getElementById('home-feed-list');
+    const status = document.getElementById('home-feed-status');
+    const sentinel = document.getElementById('home-feed-sentinel');
+    if (!list || !status || !sentinel) return;
+
+    const loading = status.querySelector('.home-feed-loading');
+    const hint = status.querySelector('.home-feed-hint');
+    let loadingPage = false;
+
+    const loadNextPage = async function () {
+        if (loadingPage || list.dataset.hasMore !== '1') return;
+        loadingPage = true;
+        if (loading) loading.classList.remove('d-none');
+        if (hint) hint.classList.add('d-none');
+
+        try {
+            const page = list.dataset.nextPage;
+            const response = await fetch('{$feedUrl}?page=' + encodeURIComponent(page), {
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+            });
+            if (!response.ok) throw new Error('feed request failed');
+            const result = await response.json();
+            list.insertAdjacentHTML('beforeend', result.html || '');
+            list.dataset.nextPage = String(Number(page) + 1);
+            list.dataset.hasMore = result.hasMore ? '1' : '0';
+            if (!result.hasMore) status.innerHTML = '<span class="text-body-secondary">已经到底了</span>';
+        } catch (error) {
+            if (hint) {
+                hint.textContent = '加载失败，点击重试';
+                hint.classList.remove('d-none');
+                hint.classList.add('home-feed-retry');
+            }
+        } finally {
+            loadingPage = false;
+            if (loading) loading.classList.add('d-none');
+        }
+    };
+
+    if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+            if (entries[0].isIntersecting) loadNextPage();
+        }, {rootMargin: '500px 0px'}).observe(sentinel);
+    } else {
+        window.addEventListener('scroll', function () {
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadNextPage();
+        }, {passive: true});
+    }
+})();
+JS);
+?>

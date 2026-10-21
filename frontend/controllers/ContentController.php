@@ -11,6 +11,7 @@ use common\models\Post;
 use common\models\SharedFile;
 use common\models\SharedFileRecipient;
 use common\models\ShortVideo;
+use common\models\Tag;
 use common\models\User;
 use Yii;
 use yii\data\ActiveDataProvider;
@@ -18,6 +19,7 @@ use yii\db\ActiveRecord;
 use yii\db\Query;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
+use yii\helpers\Html;
 use yii\web\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
@@ -39,12 +41,12 @@ class ContentController extends Controller
 
         $user = Yii::$app->user->identity;
         if ($user !== null && $user->must_change_password) {
-            Yii::$app->response->redirect(['/site/change-password']);
+            Yii::$app->response->redirect(['/users/change-password']);
             return false;
         }
         /***
         if ($user !== null && $user->phone_verified_at === null) {
-            Yii::$app->response->redirect(['/site/verify-phone']);
+            Yii::$app->response->redirect(['/users/verify-phone']);
             return false;
         }
         ***/
@@ -166,6 +168,8 @@ class ContentController extends Controller
         $model = new $definition['class']();
         $post = new Post();
         $recipientUsernames = '';
+        $selectedTagNames = [];
+        $tagError = null;
 
         if ($this->loadContentModel($model, $definition['fields']) && $this->loadVisibility($post)) {
             $uploadedImages = $type === 'images'
@@ -173,6 +177,8 @@ class ContentController extends Controller
                 : [];
             $uploadedVideo = $type === 'video' ? UploadedFile::getInstance($model, 'video_path') : null;
             $uploadedCover = $type === 'video' ? UploadedFile::getInstance($model, 'cover_path') : null;
+            $editorImages = in_array($type, ['blog', 'moment'], true)
+                ? UploadedFile::getInstancesByName('editor_images') : [];
             if ($type === 'images') {
                 if ($uploadedImages === []) {
                     $model->addError('file_path', '请至少选择一张图片。');
@@ -207,7 +213,7 @@ class ContentController extends Controller
             $post->user_id = (int) Yii::$app->user->id;
             $post->type = $definition['postType'];
             $post->status = Post::STATUS_PUBLISHED;
-            $post->title = $this->contentTitle($model);
+            $post->title = $type === 'moment' ? null : $this->contentTitle($model);
             $model->post_id = 0;
             if ($type === 'images') {
                 // The actual path is generated after validation and upload.
@@ -219,27 +225,73 @@ class ContentController extends Controller
             }
             $recipientUsernames = trim((string) Yii::$app->request->post('recipient_usernames', ''));
             $recipientIds = $this->recipientIds($post, $recipientUsernames);
+            $parsedTagNames = $this->submittedTagNames($type);
+            $tagInputValid = $parsedTagNames !== null;
+            $selectedTagNames = $parsedTagNames ?? [];
+            if (!$tagInputValid) {
+                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+            }
+            $modelIsValid = $model->validate();
+            $this->validateRichEditorImages($model, $editorImages);
 
-            if ($recipientIds !== null && $post->validate() && $model->validate()
+            if ($recipientIds !== null && $post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid
                 && ($type !== 'images' || $uploadedImages !== [])
                 && ($type !== 'video' || $uploadedVideo !== null)) {
                 $transaction = Yii::$app->db->beginTransaction();
+                $richImagePaths = [];
                 try {
+                    if ($editorImages !== []) {
+                        $richImagePaths = $this->storeRichEditorImages($editorImages);
+                        if (count($richImagePaths) !== count($editorImages)) {
+                            throw new \RuntimeException('Rich-text image upload failed.');
+                        }
+                        $this->replaceRichEditorImageTokens($model, $richImagePaths);
+                        if (!$model->validate()) {
+                            $transaction->rollBack();
+                            $this->deleteRichEditorImages($richImagePaths);
+                            return $this->render('create', [
+                                'model' => $model, 'post' => $post, 'label' => $definition['label'],
+                                'fields' => $definition['fields'], 'type' => $type,
+                                'recipientUsernames' => $recipientUsernames,
+                                'selectedTagNames' => $selectedTagNames, 'tagError' => $tagError,
+                            ]);
+                        }
+                    }
                     $imagePaths = $type === 'images' ? $this->storeImageUploads($uploadedImages) : [];
                     if ($type === 'images' && $imagePaths === []) {
                         throw new \RuntimeException('图片上传失败。');
                     }
-                    $videoPath = $type === 'video'
-                        ? $this->storeUploadedFile($uploadedVideo, '@frontend/web/uploads/videos')
-                        : null;
                     $coverPath = $type === 'video' && $uploadedCover !== null
                         ? $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/video-covers')
+                        : ($type === 'video' ? $this->generateVideoCover($uploadedVideo) : null);
+                    $videoPath = $type === 'video'
+                        ? $this->storeUploadedFile($uploadedVideo, '@frontend/web/uploads/videos')
                         : null;
                     if ($type === 'video' && $videoPath === null) {
                         throw new \RuntimeException('视频上传失败。');
                     }
                     if (!$post->save(false)) {
                         throw new \RuntimeException('无法保存内容记录。');
+                    }
+                    if ($type === 'video' && $coverPath === null) {
+                        $model->addError('cover_path', '无法自动生成视频第 5 帧封面，请检查 FFmpeg 配置后重试。');
+                        $transaction->rollBack();
+                        if ($videoPath !== null) {
+                            $storedVideo = Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $videoPath);
+                            if (is_file($storedVideo)) {
+                                @unlink($storedVideo);
+                            }
+                        }
+                        return $this->render('create', [
+                            'model' => $model,
+                            'post' => $post,
+                            'label' => $definition['label'],
+                            'fields' => $definition['fields'],
+                            'type' => $type,
+                            'recipientUsernames' => $recipientUsernames,
+                            'selectedTagNames' => $selectedTagNames,
+                            'tagError' => $tagError,
+                        ]);
                     }
                     $model->post_id = $post->id;
                     if ($type === 'images') {
@@ -269,14 +321,18 @@ class ContentController extends Controller
                             'fields' => $definition['fields'],
                             'type' => $type,
                             'recipientUsernames' => $recipientUsernames,
+                            'selectedTagNames' => $selectedTagNames,
+                            'tagError' => $tagError,
                         ]);
                     }
+                    $this->syncPostTags($post, $selectedTagNames);
                     $this->saveRecipients($post, $recipientIds);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
                     return $this->redirect(['/content/view', 'id' => $post->id]);
                 } catch (\Throwable $exception) {
+                    $this->deleteRichEditorImages($richImagePaths);
                     if ($type === 'images' && !empty($imagePaths)) {
                         foreach ($imagePaths as $imagePath) {
                             $storedPath = Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $imagePath);
@@ -308,6 +364,8 @@ class ContentController extends Controller
             'fields' => $definition['fields'],
             'type' => $type,
             'recipientUsernames' => $recipientUsernames,
+            'selectedTagNames' => $selectedTagNames,
+            'tagError' => $tagError,
         ]);
     }
 
@@ -325,20 +383,163 @@ class ContentController extends Controller
             static fn (User $user): string => $user->username,
             $post->sharedFile?->users ?? [],
         ));
+        $selectedImageIds = [];
+        $selectedTagNames = $post->canHaveTags()
+            ? array_map(static fn (Tag $tag): string => $tag->name, $post->tags)
+            : [];
+        $tagError = null;
 
         if ($this->loadContentModel($model, $definition['fields']) && $this->loadVisibility($post)) {
+            $uploadedImages = $post->type === Post::TYPE_IMAGES
+                ? UploadedFile::getInstances($model, 'file_path')
+                : [];
+            $editorImages = in_array($post->type, [Post::TYPE_BLOG, Post::TYPE_MOMENT], true)
+                ? UploadedFile::getInstancesByName('editor_images') : [];
             $model->post_id = (int) $post->id;
             $post->type = $definition['postType'];
-            $post->title = $this->contentTitle($model);
+            $post->title = $post->type === Post::TYPE_MOMENT ? null : $this->contentTitle($model);
             $recipientUsernames = trim((string) Yii::$app->request->post('recipient_usernames', ''));
             $recipientIds = $this->recipientIds($post, $recipientUsernames);
+            $parsedTagNames = $this->submittedTagNames($post->type);
+            $tagInputValid = $parsedTagNames !== null;
+            $selectedTagNames = $parsedTagNames ?? [];
+            if (!$tagInputValid) {
+                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+            }
+            // The first Image model carries the persisted path, while this form
+            // has an optional multi-file input. Validate retained Image rows
+            // individually below after their stored paths are available.
+            $modelIsValid = $post->type === Post::TYPE_IMAGES || $model->validate();
+            if (in_array($post->type, [Post::TYPE_BLOG, Post::TYPE_MOMENT], true)) {
+                $this->validateRichEditorImages($model, $editorImages);
+            }
+            $imageSelectionIsValid = true;
+            if ($post->type === Post::TYPE_IMAGES) {
+                $requestedImageIds = Yii::$app->request->post('remove_image_ids', []);
+                if (!is_array($requestedImageIds)) {
+                    $imageSelectionIsValid = false;
+                } else {
+                    foreach ($requestedImageIds as $requestedImageId) {
+                        $imageId = filter_var($requestedImageId, FILTER_VALIDATE_INT);
+                        if ($imageId === false || $imageId < 1) {
+                            $imageSelectionIsValid = false;
+                            break;
+                        }
+                        $selectedImageIds[] = $imageId;
+                    }
+                    $selectedImageIds = array_values(array_unique($selectedImageIds));
+                    if ($selectedImageIds !== []) {
+                        $ownedSelectionCount = (int) Image::find()
+                            ->where(['post_id' => $post->id, 'id' => $selectedImageIds])
+                            ->count();
+                        $imageSelectionIsValid = $ownedSelectionCount === count($selectedImageIds);
+                    }
+                }
+                if (!$imageSelectionIsValid) {
+                    $model->addError('file_path', '删除选择无效，请刷新页面后重试。');
+                }
+                foreach ($uploadedImages as $uploadedImage) {
+                    if ($uploadedImage->error !== UPLOAD_ERR_OK) {
+                        $model->addError('file_path', '图片上传失败，请重新选择。');
+                    } elseif (!in_array(strtolower($uploadedImage->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+                        $model->addError('file_path', '仅支持 JPG、PNG、GIF 或 WebP 图片。');
+                    } elseif ($uploadedImage->size > 10 * 1024 * 1024) {
+                        $model->addError('file_path', '单张图片不能超过 10 MB。');
+                    } elseif (@getimagesize($uploadedImage->tempName) === false) {
+                        $model->addError('file_path', '所选文件不是有效的图片。');
+                    }
+                }
+                if ($imageSelectionIsValid && $selectedImageIds !== [] && $uploadedImages === []) {
+                    $remainingImages = Image::find()->where(['post_id' => $post->id]);
+                    $remainingImages->andWhere(['not in', 'id', $selectedImageIds]);
+                    if ((int) $remainingImages->count() === 0) {
+                        $model->addError('file_path', '图片集至少保留一张图片；如需全部替换，请同时上传新图片。');
+                    }
+                }
+            }
 
-            if ($recipientIds !== null && $post->validate() && $model->validate()) {
+            if ($recipientIds !== null && $post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid
+                && ($post->type !== Post::TYPE_IMAGES || (!$model->hasErrors() && $imageSelectionIsValid))) {
                 $transaction = Yii::$app->db->beginTransaction();
+                $imagePaths = [];
+                $richImagePaths = [];
+                $removedImagePaths = [];
                 try {
-                    if (!$post->save(false) || !$model->save()) {
+                    if ($editorImages !== []) {
+                        $richImagePaths = $this->storeRichEditorImages($editorImages);
+                        if (count($richImagePaths) !== count($editorImages)) {
+                            throw new \RuntimeException('Rich-text image upload failed.');
+                        }
+                        $this->replaceRichEditorImageTokens($model, $richImagePaths);
+                        if (!$model->validate()) {
+                            $transaction->rollBack();
+                            $this->deleteRichEditorImages($richImagePaths);
+                            return $this->render('create', [
+                                'model' => $model, 'post' => $post, 'label' => $definition['label'],
+                                'fields' => $definition['fields'], 'type' => $definition['key'],
+                                'recipientUsernames' => $recipientUsernames, 'isUpdate' => true,
+                                'selectedImageIds' => $selectedImageIds,
+                                'selectedTagNames' => $selectedTagNames, 'tagError' => $tagError,
+                            ]);
+                        }
+                    }
+                    if ($post->type === Post::TYPE_IMAGES && $uploadedImages !== []) {
+                        $imagePaths = $this->storeImageUploads($uploadedImages);
+                        if ($imagePaths === []) {
+                            throw new \RuntimeException('图片上传失败。');
+                        }
+                    }
+                    if (!$post->save(false)) {
+                        $transaction->rollBack();
+                    } elseif ($post->type === Post::TYPE_IMAGES) {
+                        $images = Image::find()->where(['post_id' => $post->id])->orderBy(['sort_order' => SORT_ASC])->all();
+                        if ($selectedImageIds !== []) {
+                            foreach ($images as $image) {
+                                if (in_array((int) $image->id, $selectedImageIds, true)) {
+                                    $removedImagePaths[] = (string) $image->file_path;
+                                }
+                            }
+                            Image::deleteAll(['post_id' => $post->id, 'id' => $selectedImageIds]);
+                            $images = array_values(array_filter(
+                                $images,
+                                static fn (Image $image): bool => !in_array((int) $image->id, $selectedImageIds, true),
+                            ));
+                        }
+                        foreach ($images as $sortOrder => $image) {
+                            $image->title = (string) $model->title;
+                            $image->alt_text = $model->alt_text;
+                            $image->sort_order = $sortOrder;
+                            if (!$image->save()) {
+                                throw new \RuntimeException('图片保存失败。');
+                            }
+                        }
+                        $nextSortOrder = count($images);
+                        foreach ($imagePaths as $offset => $imagePath) {
+                            $image = new Image();
+                            $image->post_id = $post->id;
+                            $image->title = (string) $model->title;
+                            $image->file_path = $imagePath;
+                            $image->alt_text = $model->alt_text;
+                            $image->sort_order = $nextSortOrder + $offset;
+                            if (!$image->save()) {
+                                throw new \RuntimeException('图片保存失败。');
+                            }
+                        }
+                        $this->syncPostTags($post, $selectedTagNames);
+                        $this->saveRecipients($post, $recipientIds);
+                        $transaction->commit();
+                        foreach (array_unique($removedImagePaths) as $removedImagePath) {
+                            if (!Image::find()->where(['file_path' => $removedImagePath])->exists()) {
+                                $this->deleteStoredImage($removedImagePath);
+                            }
+                        }
+                        Yii::$app->session->setFlash('success', '内容已更新。');
+
+                        return $this->redirect(['/content/view', 'id' => $post->id]);
+                    } elseif (!$model->save()) {
                         $transaction->rollBack();
                     } else {
+                        $this->syncPostTags($post, $selectedTagNames);
                         $this->saveRecipients($post, $recipientIds);
                         $transaction->commit();
                         Yii::$app->session->setFlash('success', '内容已更新。');
@@ -346,6 +547,13 @@ class ContentController extends Controller
                         return $this->redirect(['/content/view', 'id' => $post->id]);
                     }
                 } catch (\Throwable $exception) {
+                    $this->deleteRichEditorImages($richImagePaths);
+                    foreach ($imagePaths as $imagePath) {
+                        $storedPath = Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $imagePath);
+                        if (is_file($storedPath)) {
+                            @unlink($storedPath);
+                        }
+                    }
                     if ($transaction->isActive) {
                         $transaction->rollBack();
                     }
@@ -362,6 +570,9 @@ class ContentController extends Controller
             'type' => $definition['key'],
             'recipientUsernames' => $recipientUsernames,
             'isUpdate' => true,
+            'selectedImageIds' => $selectedImageIds,
+            'selectedTagNames' => $selectedTagNames,
+            'tagError' => $tagError,
         ]);
     }
 
@@ -375,6 +586,69 @@ class ContentController extends Controller
         Yii::$app->session->setFlash('success', '内容已删除。');
 
         return $this->redirect(['index']);
+    }
+
+    /** @return string[]|null Null means malformed or over-limit input. */
+    private function submittedTagNames(string $type): ?array
+    {
+        if (!in_array($type, ['blog', 'images', 'moment', 'video'], true)) {
+            return [];
+        }
+
+        $submittedNames = Yii::$app->request->post('tags', []);
+        if (!is_array($submittedNames)) {
+            return null;
+        }
+
+        $names = [];
+        $normalizedNames = [];
+        foreach ($submittedNames as $submittedName) {
+            if (!is_string($submittedName)) {
+                return null;
+            }
+            $name = preg_replace('/\s+/u', ' ', trim($submittedName)) ?? trim($submittedName);
+            $name = trim($name, "# \t\n\r\0\x0B");
+            if ($name === '') {
+                continue;
+            }
+            if (mb_strlen($name) > 50 || preg_match('/[\x00-\x1F\x7F]/u', $name)) {
+                return null;
+            }
+
+            $normalizedName = mb_strtolower($name);
+            if (isset($normalizedNames[$normalizedName])) {
+                continue;
+            }
+            $normalizedNames[$normalizedName] = true;
+            $names[] = $name;
+            if (count($names) > 10) {
+                return null;
+            }
+        }
+
+        return $names;
+    }
+
+    /** Replace a post's tags inside the caller's current transaction. */
+    private function syncPostTags(Post $post, array $tagNames): void
+    {
+        if (!$post->canHaveTags()) {
+            return;
+        }
+
+        Yii::$app->db->createCommand()->delete('{{%post_tag}}', ['post_id' => $post->id])->execute();
+        foreach ($tagNames as $name) {
+            $tag = Tag::find()->where(['name' => $name])->one();
+            if ($tag === null) {
+                $tag = new Tag();
+                $tag->name = $name;
+                $tag->slug = Tag::slugForName($name);
+                if (!$tag->save()) {
+                    throw new \RuntimeException('标签保存失败：' . json_encode($tag->getErrors(), JSON_UNESCAPED_UNICODE));
+                }
+            }
+            $post->link('tags', $tag);
+        }
     }
 
     private function definitions(): array
@@ -462,6 +736,65 @@ class ContentController extends Controller
         return mb_substr(trim($text), 0, 200);
     }
 
+    /** @param UploadedFile[] $files */
+    private function validateRichEditorImages(ActiveRecord $model, array $files): void
+    {
+        if (count($files) > 20) {
+            $model->addError('content', 'You can upload at most 20 images at a time.');
+        }
+        foreach ($files as $file) {
+            if ($file->error !== UPLOAD_ERR_OK
+                || !in_array(strtolower($file->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
+                || $file->size > 10 * 1024 * 1024
+                || @getimagesize($file->tempName) === false) {
+                $model->addError('content', 'Each inserted image must be a valid JPG, PNG, GIF, or WebP image no larger than 10 MB.');
+            }
+        }
+    }
+
+    /** @param UploadedFile[] $files @return string[] */
+    private function storeRichEditorImages(array $files): array
+    {
+        $directory = Yii::getAlias('@frontend/web/uploads/content-images');
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return [];
+        }
+        $paths = [];
+        foreach ($files as $file) {
+            $name = Yii::$app->security->generateRandomString(32) . '.' . strtolower($file->extension);
+            if (!$file->saveAs($directory . DIRECTORY_SEPARATOR . $name)) {
+                $this->deleteRichEditorImages($paths);
+                return [];
+            }
+            $paths[] = '/uploads/content-images/' . $name;
+        }
+        return $paths;
+    }
+
+    /** @param string[] $paths */
+    private function replaceRichEditorImageTokens(ActiveRecord $model, array $paths): void
+    {
+        $content = (string) $model->getAttribute('content');
+        foreach ($paths as $index => $path) {
+            $safePath = Html::encode($path);
+            $content = str_replace('[[EDITOR_IMAGE_' . $index . ']]', '<img src="' . $safePath . '" alt="">', $content);
+        }
+        $model->setAttribute('content', $content);
+    }
+
+    /** @param string[] $paths */
+    private function deleteRichEditorImages(array $paths): void
+    {
+        foreach ($paths as $path) {
+            if (preg_match('#^/uploads/content-images/([A-Za-z0-9_-]+\.(?:jpg|jpeg|png|gif|webp))$#i', $path, $matches)) {
+                $file = Yii::getAlias('@frontend/web/uploads/content-images/' . $matches[1]);
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+        }
+    }
+
     /** @param UploadedFile[] $files @return string[] */
     private function storeImageUploads(array $files): array
     {
@@ -485,6 +818,28 @@ class ContentController extends Controller
         return $paths;
     }
 
+    private function deleteStoredImage(string $filePath): void
+    {
+        $prefix = '/uploads/images/';
+        if (!str_starts_with($filePath, $prefix)) {
+            return;
+        }
+
+        $fileName = substr($filePath, strlen($prefix));
+        if ($fileName === '' || basename($fileName) !== $fileName) {
+            return;
+        }
+
+        $directory = realpath(Yii::getAlias('@frontend/web/uploads/images'));
+        $storedFile = $directory === false ? false : realpath($directory . DIRECTORY_SEPARATOR . $fileName);
+        $directoryPrefix = $directory === false ? '' : $directory . DIRECTORY_SEPARATOR;
+        if ($storedFile !== false
+            && strncasecmp($storedFile, $directoryPrefix, strlen($directoryPrefix)) === 0
+            && is_file($storedFile)) {
+            @unlink($storedFile);
+        }
+    }
+
     private function storeUploadedFile(?UploadedFile $file, string $directoryAlias): ?string
     {
         if ($file === null) {
@@ -504,6 +859,32 @@ class ContentController extends Controller
         return '/' . $relativeDirectory . '/' . $name;
     }
 
+    private function generateVideoCover(?UploadedFile $video): ?string
+    {
+        if ($video === null) {
+            return null;
+        }
+        $directory = Yii::getAlias('@frontend/web/uploads/video-covers');
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return null;
+        }
+        $name = Yii::$app->security->generateRandomString(32) . '.jpg';
+        $target = $directory . DIRECTORY_SEPARATOR . $name;
+        try {
+            $generated = Yii::$app->get('ffmpegService')->extractFrame($video->tempName, $target, 5);
+        } catch (\Throwable $exception) {
+            Yii::warning('FFmpeg cover generation failed: ' . $exception->getMessage(), __METHOD__);
+            $generated = false;
+        }
+        if (!$generated || !is_file($target)) {
+            if (is_file($target)) {
+                @unlink($target);
+            }
+            return null;
+        }
+        return '/uploads/video-covers/' . $name;
+    }
+
     private function loadContentModel(ActiveRecord $model, array $fields): bool
     {
         $attributes = Yii::$app->request->post($model->formName());
@@ -512,6 +893,11 @@ class ContentController extends Controller
         }
 
         foreach ($fields as $field) {
+            // A multi-file input submits file_path as an array. UploadedFile
+            // handles it separately; it must never overwrite the scalar DB path.
+            if ($model instanceof Image && $field === 'file_path') {
+                continue;
+            }
             if (array_key_exists($field, $attributes)) {
                 $model->setAttribute($field, $attributes[$field]);
             }

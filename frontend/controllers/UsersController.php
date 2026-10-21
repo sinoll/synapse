@@ -4,61 +4,177 @@ declare(strict_types=1);
 
 namespace frontend\controllers;
 
-use common\models\User;
-use frontend\models\CreateUserForm;
+use common\models\LoginForm;
+use common\models\ChangePasswordForm;
+use common\models\VerifyPhoneForm;
 use Yii;
+use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
 use yii\web\Controller;
-use yii\web\ForbiddenHttpException;
+use yii\web\ErrorAction;
 use yii\web\Response;
 
+/**
+ * 用户中心 controller
+ */
 class UsersController extends Controller
 {
-    public function behaviors(): array
-    {
-        return [
-            'access' => [
-                'class' => AccessControl::class,
-                'rules' => [['allow' => true, 'roles' => ['@']]],
-            ],
-        ];
-    }
-
     public function beforeAction($action): bool
     {
         if (!parent::beforeAction($action)) {
             return false;
         }
-        if (!Yii::$app->user->identity->isAdministrator()) {
-            throw new ForbiddenHttpException('只有默认管理员可以管理用户。');
-        }
-        if (Yii::$app->user->identity->must_change_password) {
-            Yii::$app->response->redirect(['/site/change-password']);
+
+        $user = Yii::$app->user->identity;
+        $actionId = strtolower(str_replace('-', '', $action->id));
+        if ($user !== null && $user->must_change_password && !in_array($actionId, ['changepassword', 'logout'], true)) {
+            $this->redirect(['change-password']);
             return false;
         }
         /***
-        if (Yii::$app->user->identity->phone_verified_at === null) {
-            Yii::$app->response->redirect(['/site/verify-phone']);
+        if ($user !== null && $user->phone_verified_at === null && !in_array($actionId, ['changepassword', 'verifyphone', 'logout'], true)) {
+            $this->redirect(['verify-phone']);
             return false;
         }
         ***/
         return true;
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors(): array
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::class,
+                'only' => ['logout'],
+                'rules' => [
+                    [
+                        'actions' => ['logout'],
+                        'allow' => true,
+                        'roles' => ['@'],
+                    ],
+                ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::class,
+                'actions' => [
+                    'logout' => ['post'],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function actions(): array
+    {
+        return [
+            'error' => [
+                'class' => ErrorAction::class,
+            ],
+            'captcha' => [
+                'class' => CaptchaAction::class,
+                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
+            ],
+        ];
+    }
+
+    /**
+     * Displays homepage.
+     *
+     * @return string
+     */
     public function actionIndex(): string
     {
-        $users = User::find()->orderBy(['id' => SORT_ASC])->all();
-        return $this->render('index', compact('users'));
+        return $this->render('index');
     }
 
-    public function actionCreate(): string|Response
+    /**
+     * Logs in a user.
+     *
+     * @return string|Response
+     */
+    public function actionLogin(): string|Response
     {
-        $model = new CreateUserForm();
-        if ($model->load(Yii::$app->request->post()) && $model->create()) {
-            Yii::$app->session->setFlash('success', '用户已创建，首次登录需要修改密码并完成手机号验证。');
-            return $this->redirect(['index']);
+        if (!Yii::$app->user->isGuest) {
+            return $this->goHome();
         }
 
-        return $this->render('create', compact('model'));
+        $model = new LoginForm();
+
+        if ($model->load(Yii::$app->request->post()) && $model->login()) {
+            if (Yii::$app->user->identity->must_change_password) {
+                return $this->redirect(['change-password']);
+            }
+            return $this->goBack();
+        }
+
+        $model->password = '';
+
+        return $this->render('login', [
+            'model' => $model,
+        ]);
     }
+
+    /**
+     * Logs out the current user.
+     *
+     * @return Response
+     */
+    public function actionLogout(): Response
+    {
+        Yii::$app->user->logout();
+
+        return $this->goHome();
+    }
+
+
+    /***
+     * 
+     * 两个刚注册  需要修改密码 和 电话号码 实名认证
+     * 
+    ***/
+
+    public function actionChangePassword(): string|Response
+    {
+        if (Yii::$app->user->isGuest) {
+            return $this->redirect(['login']);
+        }
+
+        $model = new ChangePasswordForm();
+        if ($model->load(Yii::$app->request->post()) && $model->changePassword()) {
+            Yii::$app->session->setFlash('success', '密码已更新。');
+            return $this->goHome();
+        }
+
+        return $this->render('changePassword', compact('model'));
+    }
+
+    public function actionVerifyPhone(): string|Response
+    {
+        if (Yii::$app->user->isGuest) {
+            return $this->redirect(['login']);
+        }
+        if (Yii::$app->user->identity->must_change_password) {
+            return $this->redirect(['change-password']);
+        }
+
+        $model = new VerifyPhoneForm(['phone' => Yii::$app->user->identity->phone ?? '']);
+        $post = Yii::$app->request->post();
+        if ($model->load($post)) {
+            if (isset($post['sendCode']) && $model->sendCode(Yii::$app->smsSender)) {
+                Yii::$app->session->setFlash('success', '验证码已发送。');
+            } elseif (isset($post['verifyCode']) && $model->verify()) {
+                Yii::$app->session->setFlash('success', '手机号验证完成。');
+                return $this->goHome();
+            }
+        }
+
+        return $this->render('verifyPhone', compact('model'));
+    }
+
 }

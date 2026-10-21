@@ -29,7 +29,7 @@ class BlogPost extends \common\models\base\Blog
     {
         if (is_string($this->content)) {
             $this->content = HtmlPurifier::process($this->content, [
-                'HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span',
+                'HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title],pre,code',
             ]);
         }
 

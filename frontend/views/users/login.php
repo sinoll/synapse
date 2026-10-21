@@ -20,33 +20,9 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
 ?>
 <div class="site-login d-flex align-items-center justify-content-center py-5">
     <div class="card border-0 overflow-hidden login-split-card">
-        <div class="row g-0">
+        <div class="row g-0 justify-content-center">
 
-            <!-- Brand panel -->
-            <div class="col-md-5 d-none d-md-flex login-brand-panel text-white">
-                <div class="d-flex flex-column justify-content-between p-4 p-lg-5 w-100">
-                    <div>
-                        <?= Html::img(
-                            Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
-                            [
-                                'alt' => 'Yii Framework',
-                                'class' => 'mb-4',
-                                'height' => 40,
-                            ],
-                        ) ?>
-                    </div>
-                    <div>
-                        <h2 class="fw-bold mb-3 login-brand-title">
-                            Welcome<br>Back
-                        </h2>
-                        <p class="opacity-75 mb-0 login-brand-text">
-                            Log in to access your Yii2 application and manage your account.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form panel -->
+        <!-- Form panel -->
             <div class="col-md-7">
                 <div class="p-4 p-lg-5">
                     <div class="text-center mb-4">
