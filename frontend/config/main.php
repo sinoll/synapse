@@ -14,9 +14,12 @@ return [
     'name' => '拾光',
     'language' => 'zh-CN',
     'basePath' => dirname(__DIR__),
-    'bootstrap' => ['log'],
+    'bootstrap' => ['log', 'siteSettings'],
     'controllerNamespace' => 'frontend\controllers',
     'components' => [
+        'siteSettings' => [
+            'class' => \common\components\SiteSettingsBootstrap::class,
+        ],
         'request' => [
             'csrfParam' => '_csrf-frontend',
         ],

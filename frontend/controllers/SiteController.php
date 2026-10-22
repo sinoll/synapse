@@ -14,6 +14,8 @@ use yii\filters\VerbFilter;
 use yii\web\Controller;
 use yii\web\ErrorAction;
 use yii\web\Response;
+use yii\db\Query;
+use common\models\SharedFile;
 
 /**
  * 公开 可访问控制器  不需要权限检查和限制
@@ -56,12 +58,23 @@ class SiteController extends Controller
     {
         $pageSize = 10;
         $query = Post::find()
+            ->alias('p')
             ->with(['user', 'blog', 'images', 'moment', 'shortVideo', 'sharedFile'])
             ->where([
-                'status' => Post::STATUS_PUBLISHED,
-                'visibility' => Post::VISIBILITY_PUBLIC,
+                'p.status' => Post::STATUS_PUBLISHED,
+                'p.visibility' => Post::VISIBILITY_PUBLIC,
             ])
-            ->orderBy(['created_at' => SORT_DESC, 'id' => SORT_DESC]);
+            ->andWhere([
+                'or',
+                ['<>', 'p.type', Post::TYPE_SHARED_FILE],
+                ['exists', (new Query())
+                    ->select('sf.id')
+                    ->from(['sf' => '{{%shared_file}}'])
+                    ->where('sf.post_id = p.id')
+                    ->andWhere(['sf.status' => SharedFile::STATUS_ACTIVE])
+                    ->andWhere(['sf.deleted_at' => null])],
+            ])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
 
         $total = (clone $query)->count();
         $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();

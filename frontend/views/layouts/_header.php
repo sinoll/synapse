@@ -12,16 +12,7 @@ $items = [
     [
         'label' => '首页',
         'url' => ['/site/index'],
-    ],
-    [
-        'label' => '关于',
-        'url' => ['/site/about'],
-    ],
-    [
-        'label' => '内容管理',
-        'url' => ['/content/index'],
-        'visible' => !Yii::$app->user->isGuest,
-    ],
+    ],        
     [
         'label' => '系统管理',
         'url' => ['/manage/index'],
@@ -45,6 +36,10 @@ $items = [
             'class' => 'logout',
         ],
         'visible' => !Yii::$app->user->isGuest,
+    ],
+    [
+        'label' => '关于',
+        'url' => ['/site/about'],
     ],
 ];
 

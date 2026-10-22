@@ -83,6 +83,16 @@ class ContentController extends Controller
         if ($type !== null) {
             $query->andWhere(['p.type' => $definitions[$type]['postType']]);
         }
+        $query->andWhere([
+            'or',
+            ['<>', 'p.type', Post::TYPE_SHARED_FILE],
+            ['exists', (new Query())
+                ->select('sf.id')
+                ->from(['sf' => '{{%shared_file}}'])
+                ->where('sf.post_id = p.id')
+                ->andWhere(['sf.status' => SharedFile::STATUS_ACTIVE])
+                ->andWhere(['sf.deleted_at' => null])],
+        ]);
 
         if ($userId === null) {
             $query->andWhere([
@@ -701,7 +711,8 @@ class ContentController extends Controller
             return true;
         }
         if ($post->status !== Post::STATUS_PUBLISHED
-            || ($post->type === Post::TYPE_SHARED_FILE && $post->sharedFile?->status !== SharedFile::STATUS_ACTIVE)) {
+            || ($post->type === Post::TYPE_SHARED_FILE
+                && ($post->sharedFile?->status !== SharedFile::STATUS_ACTIVE || $post->sharedFile->deleted_at !== null))) {
             return false;
         }
 

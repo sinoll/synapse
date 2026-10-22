@@ -7,6 +7,7 @@ namespace frontend\controllers;
 use common\models\LoginForm;
 use common\models\ChangePasswordForm;
 use common\models\VerifyPhoneForm;
+use frontend\models\ProfileForm;
 use Yii;
 use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;
@@ -146,12 +147,17 @@ class UsersController extends Controller
         }
 
         $model = new ChangePasswordForm();
+        $profile = new ProfileForm(['nickname' => Yii::$app->user->identity->nickname ?? '']);
+        if ($profile->load(Yii::$app->request->post()) && $profile->save()) {
+            Yii::$app->session->setFlash('success', '个人资料已更新。');
+            return $this->refresh();
+        }
         if ($model->load(Yii::$app->request->post()) && $model->changePassword()) {
             Yii::$app->session->setFlash('success', '密码已更新。');
             return $this->goHome();
         }
 
-        return $this->render('changePassword', compact('model'));
+        return $this->render('changePassword', compact('model', 'profile'));
     }
 
     public function actionVerifyPhone(): string|Response
