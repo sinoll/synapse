@@ -107,7 +107,7 @@ content_id、holder_node、received_from（从哪个节点获得，形成传播�
 
 # 应用
 
-目前采用 Yii2 Advanced 模板的 `frontend` 应用开发。 以后也可以开发 wordpress插件 实现以上功能
+目前采用 Yii2 Advanced 模板的 `frontend` 应用开发。 以后也可以开发 `wordpress` 插件 实现以上功能
 
 
 ## 本地测试与部署
