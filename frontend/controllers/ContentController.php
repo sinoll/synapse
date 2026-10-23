@@ -602,6 +602,21 @@ class ContentController extends Controller
         return $this->redirect(['index']);
     }
 
+    /** Download a shared file after applying the same visibility checks as its detail page. */
+    public function actionDownload(int $id): Response
+    {
+        $post = $this->findPost($id);
+        if ($post->type !== Post::TYPE_SHARED_FILE || !$this->canView($post) || $post->sharedFile === null) {
+            throw new ForbiddenHttpException('你没有权限下载此文件。');
+        }
+        $storedPath = $post->sharedFile->file_path;
+        $path = str_starts_with($storedPath, 'shared-files/')
+            ? Yii::getAlias('@runtime') . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $storedPath)
+            : Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $storedPath);
+        if (!is_file($path)) throw new NotFoundHttpException('文件不存在。');
+        return Yii::$app->response->sendFile($path, $post->sharedFile->original_name);
+    }
+
     /** @return string[]|null Null means malformed or over-limit input. */
     private function submittedTagNames(string $type): ?array
     {

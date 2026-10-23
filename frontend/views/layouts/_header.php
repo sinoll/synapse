@@ -24,6 +24,11 @@ $items = [
         'visible' => !Yii::$app->user->isGuest,
     ],
     [
+        'label' => '文件',
+        'url' => ['/file/index'],
+        'visible' => !Yii::$app->user->isGuest,
+    ],
+    [
         'label' => '登录',
         'url' => ['/users/login'],
         'visible' => Yii::$app->user->isGuest,

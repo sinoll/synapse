@@ -1,0 +1,118 @@
+/* File sharing form: Nextcloud Files' neutral gray, compact, utility-first look. */
+.nextcloud-file-page {
+    --nc-blue: #0082c9;
+    --nc-border: #ededed;
+    --nc-muted: #6b6b6b;
+    max-width: 1120px;
+    padding-top: 1.5rem !important;
+    color: #222;
+}
+
+.nextcloud-file-page .content-compose-mark { display: none; }
+.nextcloud-file-page > .d-flex { align-items: center !important; margin-bottom: 1.25rem !important; }
+.nextcloud-file-page > .d-flex > div:last-child > p:first-child { display: none; }
+.nextcloud-file-page h1 { margin: 0 !important; color: #222; font-size: 1.5rem; font-weight: 600; }
+.nextcloud-file-page > .d-flex > div:last-child > p:last-child { display: none; }
+.nextcloud-file-page .content-compose-card { overflow: hidden; border: 1px solid var(--nc-border) !important; border-radius: 4px; background: #fff; box-shadow: none !important; }
+.nextcloud-file-page .content-compose-card .card-body { padding: 1.5rem; }
+.nextcloud-file-page .form-label { margin-bottom: .35rem; color: #333; font-size: .875rem; font-weight: 600 !important; }
+.nextcloud-file-page .form-control,
+.nextcloud-file-page .form-select { min-height: 42px; border: 1px solid #c8c8c8; border-radius: 3px; background-color: #fff; color: #222; box-shadow: none; }
+.nextcloud-file-page textarea.form-control { min-height: 110px; }
+.nextcloud-file-page .form-control:focus,
+.nextcloud-file-page .form-select:focus { border-color: var(--nc-blue); box-shadow: 0 0 0 2px rgb(0 130 201 / 18%); }
+.nextcloud-file-page .form-text,
+.nextcloud-file-page .text-body-secondary { color: var(--nc-muted) !important; font-size: .8125rem; }
+.nextcloud-file-page .mb-3:has(> .form-control),
+.nextcloud-file-page .mb-4:has(> .form-control) { margin-bottom: 1.25rem !important; }
+.nextcloud-file-page .content-compose-actions { padding-top: 1rem; border-top: 1px solid var(--nc-border); }
+.nextcloud-file-page .content-compose-actions .btn { min-height: 40px; border-radius: 3px; font-weight: 600; }
+.nextcloud-file-page .content-compose-actions .btn-primary { border-color: var(--nc-blue); background: var(--nc-blue); }
+.nextcloud-file-page .content-compose-actions .btn-outline-secondary { border-color: #c8c8c8; color: #333; background: #fff; }
+.nextcloud-file-page .text-danger { font-size: .8125rem; }
+
+@media (max-width: 575.98px) {
+    .nextcloud-file-page { padding-right: .5rem; padding-left: .5rem; }
+    .nextcloud-file-page .content-compose-card .card-body { padding: 1rem; }
+}
+
+.nextcloud-drive { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 620px; margin: -1rem -15px 0; color: #222; background: #fff; border: 1px solid #ededed; }
+.drive-sidebar { display: flex; flex-direction: column; gap: .25rem; padding: 1.25rem .75rem; border-right: 1px solid #ededed; background: #fafafa; }
+.drive-sidebar > a:not(.drive-upload-button) { padding: .65rem .8rem; border-radius: 4px; color: #333; text-decoration: none; }
+.drive-sidebar > a.active, .drive-sidebar > a:hover:not(.drive-upload-button) { background: #ededed; }
+.drive-upload-button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: .55rem 1rem; border: 0; border-radius: 3px; color: #fff !important; background: #0082c9; font-weight: 600; text-decoration: none; cursor: pointer; }
+.drive-upload-button:hover { background: #006aa3; }
+.drive-folder-create { display: flex; gap: .3rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ededed; }
+.drive-folder-create input { width: 100%; min-width: 0; padding: .5rem; border: 1px solid #c8c8c8; border-radius: 3px; }
+.drive-folder-create button { border: 0; color: #0082c9; background: transparent; font-size: 1.35rem; }
+.drive-main { min-width: 0; padding: 1.5rem; }
+.drive-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+.drive-heading h1, .nextcloud-upload-card h1 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+.drive-heading p, .nextcloud-upload-card > p { margin: .35rem 0 0; color: #6b6b6b; font-size: .875rem; }
+.drive-breadcrumb { margin: 0 0 1rem; color: #6b6b6b; font-size: .875rem; }
+.drive-breadcrumb a { color: #0082c9; text-decoration: none; }
+.drive-breadcrumb span { padding: 0 .4rem; color: #aaa; }
+.drive-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .65rem; margin-bottom: 1rem; }
+.drive-folder-card { display: flex; align-items: center; gap: .6rem; padding: .8rem; border: 1px solid #ededed; border-radius: 4px; color: #333; text-decoration: none; }
+.drive-folder-card:hover { border-color: #c8c8c8; background: #fafafa; }
+.drive-table-wrap { overflow-x: auto; }
+.drive-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.drive-table th { padding: .75rem .65rem; border-bottom: 1px solid #d8d8d8; color: #6b6b6b; font-size: .75rem; font-weight: 600; text-align: left; }
+.drive-table td { padding: .75rem .65rem; border-bottom: 1px solid #ededed; vertical-align: middle; }
+.drive-table tbody tr:hover { background: #f7f7f7; }
+.drive-file-icon { display: inline-block; width: 2rem; margin-right: .6rem; font-size: 1.35rem; text-align: center; vertical-align: middle; }
+.drive-folder-card > i { color: #e5a400; font-size: 1.15rem; }
+.text-purple { color: #7b61a8 !important; }
+.drive-file-name { display: inline-flex; flex-direction: column; max-width: 320px; overflow-wrap: anywhere; }
+.drive-file-name small { margin-top: .15rem; color: #777; font-size: .75rem; }
+.drive-badge { padding: .2rem .5rem; border: 1px solid #ddd; border-radius: 999px; color: #555; font-size: .75rem; white-space: nowrap; }
+.drive-actions { display: flex; align-items: center; gap: .35rem; white-space: nowrap; }
+.drive-actions form { margin: 0; }
+.drive-context-menu { position: relative; }
+.drive-context-menu > summary, .drive-menu-share > summary { list-style: none; }
+.drive-context-menu > summary::-webkit-details-marker, .drive-menu-share > summary::-webkit-details-marker { display: none; }
+.drive-context-popover { position: absolute; z-index: 30; top: calc(100% + .25rem); right: 0; display: grid; min-width: 190px; padding: .35rem; border: 1px solid #dedede; border-radius: 6px; background: #fff; box-shadow: 0 8px 24px #0002; white-space: normal; }
+.drive-context-popover > form { display: contents; }
+.drive-menu-item { display: flex; align-items: center; gap: .65rem; width: 100%; min-height: 38px; padding: .5rem .65rem; border: 0; border-radius: 4px; color: #333; background: transparent; font: inherit; font-size: .875rem; text-align: left; text-decoration: none; cursor: pointer; }
+.drive-menu-item:hover, .drive-menu-item:focus-visible { color: #006aa3; background: #edf7fc; text-decoration: none; }
+.drive-menu-item.is-danger { color: #b42318; }
+.drive-menu-item.is-danger:hover, .drive-menu-item.is-danger:focus-visible { color: #a51f1f; background: #fff1f1; }
+.drive-share-popover { position: static; width: auto; padding: .5rem; border: 0; border-radius: 0; background: #fafafa; box-shadow: none; }
+.drive-preview-modal .modal-body { padding: 0; background: #f3f4f5; }
+.drive-preview-frame { display: block; width: 100%; height: min(78vh, 850px); border: 0; background: #fff; }
+.drive-action-button { display: inline-flex; align-items: center; justify-content: center; width: 2.15rem; height: 2.15rem; padding: 0; border: 1px solid transparent; border-radius: 5px; color: #52616b; background: transparent; font-size: 1rem; line-height: 1; text-decoration: none; cursor: pointer; transition: color .15s ease, background-color .15s ease, border-color .15s ease, transform .15s ease; }
+.drive-action-button:hover, .drive-action-button:focus-visible { border-color: #d8e7f0; color: #006aa3; background: #edf7fc; transform: translateY(-1px); }
+.drive-action-button.is-danger { color: #bf3434; }
+.drive-action-button.is-danger:hover, .drive-action-button.is-danger:focus-visible { border-color: #f0d1d1; color: #a51f1f; background: #fff1f1; }
+.drive-text-button { padding: 0; border: 0; color: #0082c9; background: transparent; font: inherit; text-decoration: none; cursor: pointer; }
+.drive-text-button:hover { text-decoration: underline; }
+.drive-text-button.danger { color: #c00; }
+.drive-share { position: relative; }
+.drive-share summary { color: #0082c9; cursor: pointer; list-style: none; }
+.drive-share summary::-webkit-details-marker { display: none; }
+.drive-share-popover { position: absolute; z-index: 20; top: 1.7rem; right: 0; display: grid; gap: .75rem; width: 290px; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; background: #fff; box-shadow: 0 4px 18px #0002; white-space: normal; }
+.drive-share-popover form, .drive-share-popover label { display: grid; gap: .35rem; }
+.drive-share-popover label { color: #444; font-size: .8rem; font-weight: 600; }
+.drive-share-popover .form-control, .drive-share-popover .form-select { min-height: 38px; font-size: .875rem; font-weight: 400; }
+.drive-empty { height: 250px; color: #777; text-align: center !important; }
+.drive-empty strong, .drive-empty span { display: block; }
+.drive-empty strong { color: #444; font-size: 1rem; }
+.drive-empty span { margin-top: .3rem; }
+.nextcloud-upload-page { max-width: 760px; margin: 1.5rem auto; color: #222; }
+.nextcloud-upload-card { padding: 1.75rem; border: 1px solid #ededed; border-radius: 4px; background: #fff; }
+.nextcloud-upload-form { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.nextcloud-upload-form > label:not(.drive-dropzone) { display: grid; gap: .4rem; color: #333; font-size: .875rem; font-weight: 600; }
+.nextcloud-upload-form .form-control, .nextcloud-upload-form .form-select { font-weight: 400; }
+.drive-dropzone { display: grid; justify-items: center; gap: .3rem; padding: 2rem 1rem; border: 2px dashed #c8c8c8; border-radius: 4px; color: #333; cursor: pointer; }
+.drive-dropzone:hover { border-color: #0082c9; background: #f5fbff; }
+.drive-dropzone > span:not(.drive-upload-symbol) { color: #777; font-size: .8rem; }
+.drive-upload-symbol { display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: 50%; color: #0082c9; background: #e5f4fc; font-size: 1.5rem; }
+.drive-dropzone input { max-width: 230px; margin-top: .6rem; font-size: .8rem; }
+.drive-picked-file { color: #666; font-size: .8rem; text-align: center; }
+.drive-upload-actions { display: flex; justify-content: flex-end; gap: .7rem; margin-top: .5rem; padding-top: 1rem; border-top: 1px solid #ededed; }
+.upload-limit-info { margin-top: 1.25rem; padding: .9rem 1rem; border: 1px solid #d8e7f0; border-radius: 4px; color: #334b59; background: #f4f9fc; font-size: .8125rem; }
+.upload-limit-info ul { display: grid; gap: .3rem; margin: .5rem 0 0; padding-left: 1.2rem; }
+.upload-limit-info b { color: #111; }
+.upload-limit-error { margin: .55rem 0 0; color: #b42318; font-weight: 600; }
+.drive-cancel-button { display: inline-flex; align-items: center; padding: .55rem 1rem; border: 1px solid #c8c8c8; border-radius: 3px; color: #333; text-decoration: none; }
+@media (max-width: 767.98px) { .nextcloud-drive { grid-template-columns: 1fr; margin: -.5rem -15px 0; } .drive-sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-right: 0; border-bottom: 1px solid #ededed; } .drive-folder-create { grid-column: 1 / -1; } .drive-main { padding: 1rem .75rem; } .drive-heading { align-items: flex-start; } .drive-heading p { max-width: 220px; } .drive-table { min-width: 690px; } .nextcloud-upload-card { padding: 1rem; } }

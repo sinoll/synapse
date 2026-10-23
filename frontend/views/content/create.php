@@ -40,6 +40,9 @@ $pageCopy = [
 $pageCopy += ['other' => ['icon' => '＋', 'title' => ($isUpdate ? '编辑' : '创建') . $label, 'intro' => '填写内容信息并设置合适的可见范围。']];
 $copy = $pageCopy[$type] ?? $pageCopy['other'];
 $this->title = $copy['title'];
+if ($type === 'file') {
+    $this->registerCssFile('@web/css/content-file.css');
+}
 $labels = [
     'title' => '标题', 'summary' => '摘要', 'content' => $type === 'moment' ? '动态内容' : '正文',
     'description' => '描述', 'video_path' => '视频文件路径', 'cover_path' => '封面图片路径',
@@ -301,7 +304,7 @@ if (videoInput) {
 JS);
 }
 ?>
-<div class="content-compose container-fluid py-3 py-md-5">
+<div class="content-compose container-fluid py-3 py-md-5<?= $type === 'file' ? ' nextcloud-file-page' : '' ?>">
     <div class="d-flex align-items-start gap-3 mb-3 mb-md-4">
         <div class="content-compose-mark" aria-hidden="true"><?= Html::encode($copy['icon']) ?></div>
         <div>

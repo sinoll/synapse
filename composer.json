@@ -16,7 +16,8 @@
     "require": {
         "php": ">=8.2",
         "yiisoft/yii2": "~2.0.54",
-        "yiisoft/yii2-bootstrap5": "~2.0.2"
+        "yiisoft/yii2-bootstrap5": "~2.0.2",
+        "twbs/bootstrap-icons": "^1.13"
     },
     "require-dev": {
         "codeception/c3": "^2.8",

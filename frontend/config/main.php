@@ -27,6 +27,7 @@ return [
             'identityClass' => \common\models\User::class,
             'enableAutoLogin' => true,
             'identityCookie' => ['name' => '_identity-frontend', 'httpOnly' => true],
+            'loginUrl' => ['/users/login'],
         ],
         'session' => [
             // this is the name of the session cookie used for login on the frontend

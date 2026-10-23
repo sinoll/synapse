@@ -85,8 +85,8 @@ $typeController = $typeControllers[$post->type] ?? null;
             <dl class="row mb-0">
                 <dt class="col-sm-3">文件名</dt>
                 <dd class="col-sm-9"><?= Html::encode($contentModel->original_name) ?></dd>
-                <dt class="col-sm-3">文件路径</dt>
-                <dd class="col-sm-9 text-break"><?= Html::encode($contentModel->file_path) ?></dd>
+                <dt class="col-sm-3">下载</dt>
+                <dd class="col-sm-9"><?= Html::a('下载文件', ['/content/download', 'id' => $post->id], ['class' => 'btn btn-primary btn-sm']) ?></dd>
                 <?php if ($contentModel->mime_type): ?>
                     <dt class="col-sm-3">类型</dt>
                     <dd class="col-sm-9"><?= Html::encode($contentModel->mime_type) ?></dd>
@@ -100,8 +100,8 @@ $typeController = $typeControllers[$post->type] ?? null;
     <div class="d-flex flex-wrap gap-2">
         <?= Html::a('返回内容列表', ['index'], ['class' => 'btn btn-outline-secondary']) ?>
         <?php if ($canEdit && $typeController !== null): ?>
-            <?= Html::a('编辑', ['/' . $typeController . '/update', 'id' => $post->id], ['class' => 'btn btn-primary']) ?>
-            <?= Html::a('删除', ['/' . $typeController . '/delete', 'id' => $post->id], [
+            <?= Html::a('编辑', ['/' . $typeController . '/update', 'id' => $post->type === Post::TYPE_SHARED_FILE ? $post->sharedFile->id : $post->id], ['class' => 'btn btn-primary']) ?>
+            <?= Html::a('删除', ['/' . $typeController . '/delete', 'id' => $post->type === Post::TYPE_SHARED_FILE ? $post->sharedFile->id : $post->id], [
                 'class' => 'btn btn-outline-danger',
                 'data' => ['method' => 'post', 'confirm' => '确定删除这条内容吗？'],
             ]) ?>

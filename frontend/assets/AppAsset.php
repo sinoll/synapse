@@ -12,6 +12,7 @@ namespace frontend\assets;
 
 use common\assets\ColorModeAsset;
 use yii\bootstrap5\BootstrapAsset;
+use yii\bootstrap5\BootstrapIconAsset;
 use yii\web\AssetBundle;
 use yii\web\YiiAsset;
 
@@ -28,6 +29,7 @@ class AppAsset extends AssetBundle
     public $depends = [
         YiiAsset::class,
         BootstrapAsset::class,
+        BootstrapIconAsset::class,
         ColorModeAsset::class,
     ];
 }

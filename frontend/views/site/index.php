@@ -15,7 +15,7 @@ $this->title = '拾光';
 <div class="home-feed py-3 py-md-4">
     <div class="home-feed-header mb-4">
         <div>
-            <p class="home-feed-eyebrow mb-2">你好，<?= Yii::$app->user->identity->nickname ?? '访客' ?> ！</p>           
+            <p class="home-feed-eyebrow mb-2">欢迎回来，<?= Yii::$app->user->identity->nickname ?? '访客' ?> ！</p>           
         </div>
         <?php if (!Yii::$app->user->isGuest): ?>
             <div class="dropdown">
