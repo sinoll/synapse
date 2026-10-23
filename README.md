@@ -1,4 +1,4 @@
-# Synapse / 突触 （暂定名）
+### Synapse / 突触 （暂定名）
 神经元与另一个神经元、肌肉细胞或腺细胞之间进行信号传递的连接部位，是神经系统中细胞彼此“交接信息”的关键位置。它是一个名词，复数形式是 synapses。
 
 
@@ -8,32 +8,110 @@
 
 **自己为自己发布的内容负责，转发的人为自己转发的内容负责。**  每个人或站点就像一个网络节点，更像两个神经元的交汇点 **Synapse**
 
+### AI 给的架构设计思路。
+做"订阅 + 受控复制"。
+
+## 一、核心设计原则
+  内容是不可变的"对象"，站点是"节点"：每篇文章有全网唯一 ID，内容一旦发布，原文用哈希固定，任何节点都不能篡改。
+拉取（pull）优于推送（push）：节点主动决定收不收。
+原作者与来源永远随内容走：署名、原站点、原链接、发布时间属于内容本身。
+联邦式而非中心式：没有中心服务器，节点之间互相通信（思路类似 ActivityPub / RSS / Git）。
+
+## 二、数据模型
+
+# 文章对象（Content Object）
+
+content_id：内容哈希（如 SHA-256），同一内容全网同一 ID
+canonical_url：原始出处地址
+author：作者名 + 作者公钥/去中心化身份（DID）
+origin_node：原站点标识
+published_at：原发布时间
+body、title、license（授权声明）
+signature：作者私钥对内容的签名
+version：修订链（见下文）
+
+# 副本记录（Replica）
+
+content_id、holder_node、received_from（从哪个节点获得，形成传播链）、received_at、status（active / hidden / tombstoned）
+
+# 为什么要签名：这是整个设计的信任基石。节点收到副本时用作者公钥验签，就能确认"这确实是原作者写的、没被改过"，传播过程中任何中间节点都无法伪造或篡改。
+
+## 三、聚合流程
+读者访问文章 → 站点判断读者是否是节点主人 → 询问/按偏好触发
+→ 读者的节点向源节点发起"订阅/收藏"请求
+→ 源节点返回签名后的内容包
+→ 目标节点验签 → 去重（按 content_id）→ 入库为副本 → 展示时标注来源
+
+读者 识别方式有三种，建议组合：
+
+身份关联：读者用自己的站点身份登录（类似 IndieAuth / OpenID），源站就知道他拥有哪个节点
+浏览器侧发现：页面带 <link rel="content-node">，读者点"收藏到我的站点"，由浏览器带着他的节点地址跳转
+节点间订阅：节点 A 订阅节点 B，B 发新文章时自动通知 A
+
+## 四、"自动聚合"的触发策略
+
+# 优秀内容传播方式
+
+级别          机制                                                      适用
+手动收藏    读者点击"存入我的站点"                                        默认
+规则自动    节点主人设定规则：如"凡我阅读超过 80% 并点赞的文章自动保存"       愿意自动化的人
+阈值自动    一篇文章被 N 个独立节点收藏后，向更多节点推荐"热门内容"          优质内容扩散
+
+是否保存到该节点数据库，由节点主人事先授权。
+
+## 五、必须解决的关键问题
+
+# 1. 去重与规范化
+同一篇文章被转存 100 次，要能识别为同一内容。用 content_id 做主键，副本只记录"谁持有"，展示时指向统一的 canonical 页面，也有利于 SEO（用 rel=canonical）。
+
+# 2. 修订与撤回
+
+作者修改文章：发布新版本，version 链接到旧版本，订阅节点可选择自动同步或停留旧版。
+作者删除文章：发布签名的墓碑记录（tombstone），守约节点收到后隐藏或删除副本。
+这和"保存千古名篇"有张力，需要明确政策：我建议默认尊重作者撤回权，但允许节点保留"存档快照"（不公开展示，仅该节点所有人可以查看）。
+
+# 3. 防垃圾与防滥用
+
+节点需要有信誉：新节点只能被"邀请"或经过人工审核后才能被接收
+副本接收端设置过滤规则（作者黑名单、关键词、体积限制）
+限速：单个节点单位时间内最多拉取 N 篇
+内容举报与全网黑名单（由多个节点投票，而非中心裁决）
+
+# 4. 传播链与溯源
+每个副本记录 received_from，形成一棵传播树。好处：能统计一篇文章的扩散范围，也能在源站下线后，从其他节点找回内容。
+
+# 5. 链接与引用完整性
+原文里的图片、内部链接要处理：图片一并打包存储（或用内容寻址如 IPFS 风格），内部链接改写为指向 canonical 地址，避免副本"断链"。
+
+## 六、"让名篇保存下去"的长期存续设计
+
+这是你目标的核心，建议增加：
+
+多副本冗余：监控每篇文章的副本数，低于阈值（如 3 个）且文章评分高时，主动向高可用节点请求保存。
+存档节点：专门的长期保存节点，只存不展示，类似 Internet Archive，定期做格式迁移（如把内容导出为 Markdown + JSON 元数据，这是最稳妥的长期格式）。
+内容寻址存储：用哈希而非 URL 定位，源站倒闭后，任何持有者都能证明"这就是原文"。
+价值评估：不由单一算法评判"名篇"，而是综合：被独立收藏的节点数、被引用次数、阅读完成率、时间沉淀后的持续访问量（经得起时间考验的内容访问曲线更平缓）。
+
+## 七、技术选型参考
+协议层：ActivityPub（Mastodon 用的联邦协议，现成可用）或自定义 JSON-over-HTTPS + Webhook；轻量方案是 RSS/Atom 加签名扩展。
+身份层：站点域名 + 公钥（类似 SSH/Nostr 密钥），或 DID。
+存储层：关系库存元数据与副本表，对象存储存正文与资源，哈希做主键。
+同步层：消息队列处理拉取任务，失败重试，幂等写入（靠 content_id）。
+信任层：节点白名单 / 信誉分 / 邀请制。
 
 
-# 内容分享基础架构
+## 八、需要权衡的几点
+版权被你排除了，但"作者意愿"不应排除：技术上建议内置授权字段（如 CC 协议类型）和撤回机制，否则会影响创作者加入这个网络的意愿，网络的可信度也会下降。
+去中心化 vs 可管理：越开放，越难清理垃圾内容；越中心化，越违背"节点"理念。可以折中为"开放协议 + 多个自治社区各自管理准入"。
+自动聚合的"自动"程度：越自动，扩散越快，也越容易被刷量攻击（有人伪造阅读行为来推送垃圾内容）。因
 
-## 内容表
+### 应用
 
-- `post`：内容统一主表，保存作者、标题、类型、发布状态、可见级别和时间；类型字段为字符串，后续新增类型不需要修改数据库字段定义。当前类型值为 `blog`、`images`、`moment`、`short_video`、`shared_file`。
-- `blog`：博客正文和摘要。
-- `images`：独立图片集的图片明细，每张图片一行，保存所属 `post_id`、图片标题、图片地址、说明和排序；一个图片集主记录可以关联多张图片，与博客没有关联。
-- `moment`：短动态；图片列表先以 JSON 保存。
-- `short_video`：视频元数据、存储路径、封面和时长。
-- `shared_file`：文件元数据、原文件名、MIME 类型、字节数、正常/回收站状态、删除时间及共享起止时间。内容作者与可见级别统一从 `post` 读取。
-- `shared_file_recipient`：指定用户共享的授权名单；仅当对应 `post.visibility` 为指定用户时生效。
-- `shared_file_folder`：用户网盘目录树，保存父目录、所有者、回收站状态和目录共享规则。
-- `shared_file_folder_recipient`：文件夹共享给指定用户时的授权名单。
+目前采用 Yii2 Advanced 模板的 `frontend` 应用开发。 以后也可以开发 wordpress插件 实现以上功能
 
-`post.visibility` 控制博客、图片集、瞬间、短视频，以及显式单文件共享：`0` 仅作者可见（默认）、`1` 已登录用户可见、`2` 公开访问、`3` 指定用户可见。指定用户通过 `shared_file_recipient` 授权。
 
-文件夹 `share_mode` 为 `0` 时继承最近的父目录规则，根目录默认仅所有者可见；也可以设置为 `1` 私有、`2` 指定用户、`3` 注册用户或 `4` 公开。`shared_file.share_mode=0` 时继承所在文件夹规则；设为 `1` 时使用该文件对应 `post.visibility`。文件/目录的共享开始和结束时间为空时分别表示立即生效和不设到期时间。文件访问必须同时满足文件及其目录链都未进入回收站。放入或恢复目录时，应用层应在事务内处理整个子目录树；删除目录时优先使用回收站，物理清理需先处理子目录。
 
-五类内容通过 `post` 主表统一记录，并由各自详情表保存专属字段；详情表通过 `post_id` 关联主表，主表关联现有 `user` 表。图片集与其图片明细是一对多关系。文件夹通过 `parent_id` 构成目录树，文件通过可空 `folder_id` 归档；不同用户之间的目录移动必须由应用层拒绝。文件路径字段保存相对存储键，不应保存用户提交的本机绝对路径。文件上传、鉴权下载、大小与 MIME 白名单、缩略图/转码和审核需要在上线前接入专门的存储服务。
-
-## 应用
-
-主站采用 Yii2 Advanced 模板的 `frontend` 应用。登录用户可以从首页进入 `/content/create?type=blog|images|moment|video|file` 创建记录；匿名访问创建入口会被重定向到登录。图片集数据库关系已就绪，批量图片上传/编辑流程后续接入。
-
+### 其它没有删除的
 ## 初始化数据库
 
 确认 `common/config/main-local.php` 的连接指向目标库后，在项目根目录执行：
@@ -44,199 +122,7 @@ php yii migrate --migrationPath=@console/migrations
 
 迁移采用 `safeUp`，只创建新表、索引和外键，不更改现有用户表。回滚这条迁移会删除新增内容表、共享授权表及其数据。
 
-
-
-DIRECTORY STRUCTURE
--------------------
-
-```
-common
-    config/              contains shared configurations
-    mail/                contains view files for e-mails
-    models/              contains model classes used in both backend and frontend
-    tests/               contains tests for common classes
-console
-    config/              contains console configurations
-    controllers/         contains console controllers (commands)
-    migrations/          contains database migrations
-    models/              contains console-specific model classes
-    runtime/             contains files generated during runtime
-backend
-    assets/              contains application assets such as JavaScript and CSS
-    config/              contains backend configurations
-    controllers/         contains Web controller classes
-    models/              contains backend-specific model classes
-    runtime/             contains files generated during runtime
-    tests/               contains tests for backend application
-    views/               contains view files for the Web application
-    web/                 contains the entry script and Web resources
-frontend
-    assets/              contains application assets such as JavaScript and CSS
-    config/              contains frontend configurations
-    controllers/         contains Web controller classes
-    models/              contains frontend-specific model classes
-    runtime/             contains files generated during runtime
-    tests/               contains tests for frontend application
-    views/               contains view files for the Web application
-    web/                 contains the entry script and Web resources
-    widgets/             contains frontend widgets
-vendor/                  contains dependent 3rd-party packages
-environments/            contains environment-based overrides
-```
-
-Initialize the application for the `Development` environment:
-
-```bash
-php init --env=Development --overwrite=All
-```
-
-Now you should be able to access the application through the following URLs, assuming `advanced` is the directory
-directly under the Web root.
-
-```
-http://localhost/advanced/frontend/web/
-http://localhost/advanced/backend/web/
-```
-
-## Install with Docker
-
-Build and start the containers:
-
-```bash
-docker compose up -d --build
-```
-
-Install dependencies inside the container:
-
-```bash
-docker compose exec frontend composer update --prefer-dist --no-interaction
-```
-
-Initialize the application for the `Development` environment:
-
-```bash
-docker compose exec frontend php /app/init --env=Development --overwrite=All
-```
-
-After running `init`, update the database connection in `common/config/main-local.php` to use the `mysql`
-service hostname:
-
-```php
-'db' => [
-    'class' => \yii\db\Connection::class,
-    'dsn' => 'mysql:host=mysql;dbname=yii2advanced',
-    'username' => 'yii2advanced',
-    'password' => 'secret',
-    'charset' => 'utf8',
-],
-```
-
-You can then access the application through the following URLs:
-
-```
-http://127.0.0.1:20080  (frontend)
-http://127.0.0.1:21080  (backend)
-```
-
-To run the test suite, also update `common/config/test-local.php` to use the `mysql` hostname and create the
-test database:
-
-```php
-'db' => [
-    'dsn' => 'mysql:host=mysql;dbname=yii2advanced_test',
-],
-```
-
-```bash
-docker compose exec -T mysql mysql -uroot -pverysecret -e "CREATE DATABASE IF NOT EXISTS yii2advanced_test; GRANT ALL PRIVILEGES ON yii2advanced_test.* TO 'yii2advanced'@'%'; FLUSH PRIVILEGES;"
-docker compose exec -T frontend php /app/yii_test migrate --interactive=0
-docker compose exec -T frontend vendor/bin/codecept build
-docker compose exec -T frontend vendor/bin/codecept run
-```
-
-**NOTES:**
-- Minimum required Docker engine version `17.04` for development (see [Performance tuning for volume mounts](https://docs.docker.com/docker-for-mac/osxfs-caching/))
-- The default configuration uses a host-volume in your home directory `~/.composer-docker/cache` for Composer caches
-
-CONFIGURATION
--------------
-
-## Database
-
-Edit the file `common/config/main-local.php` with real data, for example:
-
-```php
-return [
-    'components' => [
-        'db' => [
-            'class' => \yii\db\Connection::class,
-            'dsn' => 'mysql:host=localhost;dbname=yii2advanced',
-            'username' => 'root',
-            'password' => '1234',
-            'charset' => 'utf8',
-        ],
-    ],
-];
-```
-
-When using Docker, the MySQL service is pre-configured. Update `common/config/main-local.php` to use:
-
-```php
-'db' => [
-    'class' => \yii\db\Connection::class,
-    'dsn' => 'mysql:host=mysql;dbname=yii2advanced',
-    'username' => 'yii2advanced',
-    'password' => 'secret',
-    'charset' => 'utf8',
-],
-```
-
-Apply migrations:
-
-```bash
-php yii migrate
-```
-
-Or with Docker:
-
-```bash
-docker compose exec frontend php /app/yii migrate
-```
-
-**NOTES:**
-- Yii won't create the database for you, this has to be done manually before you can access it.
-  When using Docker, the MySQL service creates the database automatically.
-- Check and edit the other files in the `config/` directories to customize your application as required.
-- Refer to the README in the `tests` directory for information specific to application tests.
-
-TESTING
--------
-
-Tests are located in `frontend/tests`, `backend/tests`, and `common/tests` directories.
-They are developed with [Codeception PHP Testing Framework](https://codeception.com/).
-
-Tests can be executed by running:
-
-```bash
-vendor/bin/codecept run --env php-builtin
-```
-
-Or using the Composer script:
-
-```bash
-composer tests
-```
-
-## Support the project
-
-[![Open Collective](https://img.shields.io/badge/Open%20Collective-sponsor-7eadf1?style=for-the-badge&logo=open%20collective&logoColor=7eadf1&labelColor=555555)](https://opencollective.com/yiisoft)
-
-## Follow updates
-
-[![Official website](https://img.shields.io/badge/Powered_by-Yii_Framework-green.svg?style=for-the-badge&logo=yii)](https://www.yiiframework.com/)
-[![Follow on X](https://img.shields.io/badge/-Follow%20on%20X-1DA1F2.svg?style=for-the-badge&logo=x&logoColor=white&labelColor=000000)](https://x.com/yiiframework)
-[![Telegram](https://img.shields.io/badge/telegram-join-1DA1F2?style=for-the-badge&logo=telegram)](https://t.me/yii_framework_in_english)
-[![Slack](https://img.shields.io/badge/slack-join-1DA1F2?style=for-the-badge&logo=slack)](https://yiiframework.com/go/slack)
+ogo=slack)](https://yiiframework.com/go/slack)
 
 ## License
 
