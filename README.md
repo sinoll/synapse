@@ -105,24 +105,22 @@ content_id、holder_node、received_from（从哪个节点获得，形成传播�
 去中心化 vs 可管理：越开放，越难清理垃圾内容；越中心化，越违背"节点"理念。可以折中为"开放协议 + 多个自治社区各自管理准入"。
 自动聚合的"自动"程度：越自动，扩散越快，也越容易被刷量攻击（有人伪造阅读行为来推送垃圾内容）。因
 
-### 应用
+# 应用
 
 目前采用 Yii2 Advanced 模板的 `frontend` 应用开发。 以后也可以开发 wordpress插件 实现以上功能
 
 
-
-### 其它没有删除的
-## 初始化数据库
+## 本地测试与部署
 
 确认 `common/config/main-local.php` 的连接指向目标库后，在项目根目录执行：
 
 ```powershell
-php yii migrate --migrationPath=@console/migrations
+php yii migrate 
 ```
 
-迁移采用 `safeUp`，只创建新表、索引和外键，不更改现有用户表。回滚这条迁移会删除新增内容表、共享授权表及其数据。
+### 数据迁移后 有 默认用户名 default 默认密码default
+第一次登录必须 修改默认密码，预留了 手机短信 验证接口
 
-ogo=slack)](https://yiiframework.com/go/slack)
 
 ## License
 
