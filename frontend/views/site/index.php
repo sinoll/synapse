@@ -9,18 +9,23 @@ declare(strict_types=1);
 use yii\helpers\Html;
 use yii\helpers\Url;
 
-$this->title = '公开内容';
+$this->title = '拾光';
 ?>
 
 <div class="home-feed py-3 py-md-4">
     <div class="home-feed-header mb-4">
         <div>
-            <p class="home-feed-eyebrow mb-2">DISCOVER</p>
-            <h1 class="h2 mb-2">公开内容</h1>
-            <p class="text-body-secondary mb-0">浏览社区最新分享，所有内容按发布时间统一排列。</p>
+            <p class="home-feed-eyebrow mb-2">你好，<?= Yii::$app->user->identity->nickname ?? '访客' ?> ！</p>           
         </div>
         <?php if (!Yii::$app->user->isGuest): ?>
-            <?= Html::a('发布内容', ['/content/index'], ['class' => 'btn btn-primary']) ?>
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">发布内容</button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <?php foreach ($definitions as $key => $definition): ?>
+                        <li><?= Html::a('发布' . $definition['label'], ['/' . $key . '/create'], ['class' => 'dropdown-item']) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
         <?php endif; ?>
     </div>
 

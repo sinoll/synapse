@@ -13,7 +13,8 @@ $displayName = $isGuest ? '游客' : ($user->nickname ?: $user->username);
 
 $navigation = [
     ['label' => '用户首页', 'description' => '查看账号概览', 'icon' => '⌂', 'url' => ['/users/index'], 'active' => true],
-    ['label' => '用户设置', 'description' => '修改密码与安全设置', 'icon' => '⚙', 'url' => ['/users/change-password']],    
+    ['label' => '个人资料设置', 'description' => '修改昵称与头像', 'icon' => '⚙', 'url' => ['/users/settings']],
+    ['label' => '修改密码', 'description' => '更新登录密码', 'icon' => '🔒', 'url' => ['/users/change-password']],
 ];
 
 $publishItems = [

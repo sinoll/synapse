@@ -147,17 +147,27 @@ class UsersController extends Controller
         }
 
         $model = new ChangePasswordForm();
-        $profile = new ProfileForm(['nickname' => Yii::$app->user->identity->nickname ?? '']);
-        if ($profile->load(Yii::$app->request->post()) && $profile->save()) {
-            Yii::$app->session->setFlash('success', '个人资料已更新。');
-            return $this->refresh();
-        }
         if ($model->load(Yii::$app->request->post()) && $model->changePassword()) {
             Yii::$app->session->setFlash('success', '密码已更新。');
             return $this->goHome();
         }
 
-        return $this->render('changePassword', compact('model', 'profile'));
+        return $this->render('changePassword', compact('model'));
+    }
+
+    public function actionSettings(): string|Response
+    {
+        if (Yii::$app->user->isGuest) {
+            return $this->redirect(['login']);
+        }
+
+        $profile = new ProfileForm(['nickname' => Yii::$app->user->identity->nickname ?? '']);
+        if ($profile->load(Yii::$app->request->post()) && $profile->save()) {
+            Yii::$app->session->setFlash('success', '个人资料已更新。');
+            return $this->refresh();
+        }
+
+        return $this->render('settings', compact('profile'));
     }
 
     public function actionVerifyPhone(): string|Response

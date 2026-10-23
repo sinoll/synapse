@@ -32,7 +32,7 @@ $availableTagNames = $hasTagPicker
     : [];
 $pageCopy = [
     'blog' => ['icon' => '✎', 'title' => $isUpdate ? '编辑博客' : '写一篇博客', 'intro' => '整理文章结构，添加摘要，并用格式工具排出清晰易读的正文。'],
-    'moment' => ['icon' => '◉', 'title' => $isUpdate ? '编辑动态' : '记录一条动态', 'intro' => '分享一段近况或想法；动态不需要标题，内容不能为空。'],
+    'moment' => ['icon' => '◉', 'title' => $isUpdate ? '编辑动态' : '记录一条动态', 'intro' => '动态标题默认取内容前 8 个字。内容不能为空。'],
     'images' => ['icon' => '▧', 'title' => $isUpdate ? '编辑图片' : '发布图片', 'intro' => '选择一张或多张图片，上传后即可预览图片集。'],
     'video' => ['icon' => '▶', 'title' => $isUpdate ? '编辑短视频' : '发布短视频', 'intro' => '上传视频即可预览，时长自动读取，封面可自定义或使用第一帧。'],
     'file' => ['icon' => '↗', 'title' => $isUpdate ? '编辑文件分享' : '分享一个文件', 'intro' => '补充文件说明并设置可见范围，明确哪些人可以访问。'],

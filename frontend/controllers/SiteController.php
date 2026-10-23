@@ -36,6 +36,13 @@ class SiteController extends Controller
         return $this->render('index', [
             'posts' => $posts,
             'hasMore' => $hasMore,
+            'definitions' => [
+                'blog' => ['label' => '博客'],
+                'images' => ['label' => '图片'],
+                'moment' => ['label' => '动态'],
+                'video' => ['label' => '短视频'],
+                'file' => ['label' => '文件分享'],
+            ],
         ]);
     }
 
@@ -57,13 +64,41 @@ class SiteController extends Controller
     private function publicFeed(int $page): array
     {
         $pageSize = 10;
+        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
         $query = Post::find()
             ->alias('p')
             ->with(['user', 'blog', 'images', 'moment', 'shortVideo', 'sharedFile'])
-            ->where([
-                'p.status' => Post::STATUS_PUBLISHED,
-                'p.visibility' => Post::VISIBILITY_PUBLIC,
-            ])
+            ->where(['p.status' => Post::STATUS_PUBLISHED]);
+
+        if ($userId === null) {
+            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
+        } else {
+            $visibleToUser = [
+                'or',
+                ['p.visibility' => Post::VISIBILITY_PUBLIC],
+                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
+                [
+                    'and',
+                    ['p.visibility' => Post::VISIBILITY_PRIVATE],
+                    ['p.user_id' => $userId],
+                ],
+                [
+                    'and',
+                    ['p.visibility' => Post::VISIBILITY_SELECTED_USERS],
+                    ['exists', (new Query())
+                        ->select('sf.id')
+                        ->from(['sf' => '{{%shared_file}}'])
+                        ->innerJoin(['recipient' => '{{%shared_file_recipient}}'], 'recipient.shared_file_id = sf.id')
+                        ->where('sf.post_id = p.id')
+                        ->andWhere(['recipient.user_id' => $userId])
+                        ->andWhere(['sf.status' => SharedFile::STATUS_ACTIVE])
+                        ->andWhere(['sf.deleted_at' => null])],
+                ],
+            ];
+            $query->andWhere($visibleToUser);
+        }
+
+        $query
             ->andWhere([
                 'or',
                 ['<>', 'p.type', Post::TYPE_SHARED_FILE],

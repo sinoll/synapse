@@ -223,7 +223,9 @@ class ContentController extends Controller
             $post->user_id = (int) Yii::$app->user->id;
             $post->type = $definition['postType'];
             $post->status = Post::STATUS_PUBLISHED;
-            $post->title = $type === 'moment' ? null : $this->contentTitle($model);
+            $post->title = $type === 'moment'
+                ? $this->contentTitle($model, 8)
+                : $this->contentTitle($model);
             $model->post_id = 0;
             if ($type === 'images') {
                 // The actual path is generated after validation and upload.
@@ -407,7 +409,9 @@ class ContentController extends Controller
                 ? UploadedFile::getInstancesByName('editor_images') : [];
             $model->post_id = (int) $post->id;
             $post->type = $definition['postType'];
-            $post->title = $post->type === Post::TYPE_MOMENT ? null : $this->contentTitle($model);
+            $post->title = $post->type === Post::TYPE_MOMENT
+                ? $this->contentTitle($model, 8)
+                : $this->contentTitle($model);
             $recipientUsernames = trim((string) Yii::$app->request->post('recipient_usernames', ''));
             $recipientIds = $this->recipientIds($post, $recipientUsernames);
             $parsedTagNames = $this->submittedTagNames($post->type);
@@ -736,7 +740,7 @@ class ContentController extends Controller
         }
     }
 
-    private function contentTitle(ActiveRecord $model): string
+    private function contentTitle(ActiveRecord $model, int $maxLength = 200): string
     {
         if ($model->hasAttribute('title') && trim((string) $model->getAttribute('title')) !== '') {
             return trim((string) $model->getAttribute('title'));
@@ -744,7 +748,9 @@ class ContentController extends Controller
 
         $text = html_entity_decode(strip_tags((string) $model->getAttribute('content')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-        return mb_substr(trim($text), 0, 200);
+        $title = mb_substr(trim($text), 0, $maxLength);
+
+        return $title !== '' ? $title : '动态';
     }
 
     /** @param UploadedFile[] $files */

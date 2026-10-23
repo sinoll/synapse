@@ -18,7 +18,7 @@ class m261016_000001_create_share_content_tables extends Migration
             'id' => $this->bigPrimaryKey(),
             'user_id' => $this->integer()->notNull(),
             'type' => $this->string(32)->notNull(),
-            'title' => $this->string(200)->notNull(),
+            'title' => $this->string(200)->null(),
             'status' => $this->smallInteger()->notNull()->defaultValue(1),
             // 0: owner only, 1: authenticated users, 2: public, 3: selected users (shared files only)
             'visibility' => $this->smallInteger()->notNull()->defaultValue(0),
@@ -150,6 +150,25 @@ class m261016_000001_create_share_content_tables extends Migration
         $this->createIndex('idx_shared_file_folder_recipient_user', '{{%shared_file_folder_recipient}}', 'user_id');
         $this->addForeignKey('fk_shared_file_folder_recipient_folder', '{{%shared_file_folder_recipient}}', 'folder_id', '{{%shared_file_folder}}', 'id', 'CASCADE');
         $this->addForeignKey('fk_shared_file_folder_recipient_user', '{{%shared_file_folder_recipient}}', 'user_id', '{{%user}}', 'id', 'CASCADE');
+
+        $this->createTable('{{%tag}}', [
+            'id' => $this->bigPrimaryKey(),
+            'name' => $this->string(50)->notNull(),
+            'slug' => $this->string(64)->notNull(),
+            'created_at' => $this->integer()->notNull(),
+            'updated_at' => $this->integer()->notNull(),
+        ], $options);
+        $this->createIndex('uq_tag_name', '{{%tag}}', 'name', true);
+        $this->createIndex('uq_tag_slug', '{{%tag}}', 'slug', true);
+
+        $this->createTable('{{%post_tag}}', [
+            'post_id' => $this->bigInteger()->notNull(),
+            'tag_id' => $this->bigInteger()->notNull(),
+        ], $options);
+        $this->addPrimaryKey('pk_post_tag', '{{%post_tag}}', ['post_id', 'tag_id']);
+        $this->createIndex('idx_post_tag_tag_post', '{{%post_tag}}', ['tag_id', 'post_id']);
+        $this->addForeignKey('fk_post_tag_post', '{{%post_tag}}', 'post_id', '{{%post}}', 'id', 'CASCADE', 'CASCADE');
+        $this->addForeignKey('fk_post_tag_tag', '{{%post_tag}}', 'tag_id', '{{%tag}}', 'id', 'CASCADE', 'CASCADE');
     }
 
     public function safeDown(): void
