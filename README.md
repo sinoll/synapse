@@ -128,15 +128,3 @@ ogo=slack)](https://yiiframework.com/go/slack)
 
 [![License](https://img.shields.io/badge/License-BSD--3--Clause-brightgreen.svg?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=555555)](LICENSE.md)
 =======
-
-
-# Synapse / 突触 （暂定名）
-神经元与另一个神经元、肌肉细胞或腺细胞之间进行信号传递的连接部位，是神经系统中细胞彼此“交接信息”的关键位置。它是一个名词，复数形式是 synapses。
-
-
-
-一个个人内容管理网站。内容包括  博客 图集 瞬间(微博) 短视频 资源(文件共享)（内容阅读有严格的权限）。  
-站点和站点之间 可以聚合 , 关注(输入另一个站的网址后) 在自己网站可见 人家授权的信息 在自己的站点也可以查看 也可以跳转到原文。 自己的内容发在自己的站点上，别人看见后可以引用或二创后转发到自己的网站。
-
-**自己为自己发布的内容负责，转发的人为自己转发的内容负责。**  每个人或站点就像一个网络节点，更像两个神经元的交汇点 **Synapse**
->>>>>>> 3050e94bdb43fed343add3a47d5aac4a4cfe0766
