@@ -1,8 +1,0 @@
-
-
-汉化插件
-https://github.com/maboloshi/github-chinese
-
-
-github.com 中文文档
-https://docs.github.com/zh?utm_source=chatgpt.com
