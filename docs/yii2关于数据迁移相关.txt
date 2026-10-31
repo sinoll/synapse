@@ -1,0 +1,69 @@
+cmd 执行
+初始化 yii2
+php yii init
+
+初始化 数据库  需要先配置 数据库 common/config/main.php
+php yii migrate
+
+初始化 权限管理  需要先配置 authmanage  
+php yii migrate --migrationPath=@yii/rbac/migrations
+
+php yii user/init
+
+从旧表导入数据到 blog
+php yii data-sync/cate
+php yii data-sync/tag
+php yii data-sync/post
+
+
+删除所有缓存
+php yii cache/flush-all
+
+php yii migrate/create 创建新表的迁移
+# 例子：
+php yii migrate/create create_user_table
+php yii migrate/create create_post_table
+php yii migrate/create create_order_item_table
+
+
+restful 调试插件  RESTED		firefox
+另一个
+Postman Interceptor			firefox
+
+
+关于文件上传 
+首页得配置根目录，其次是php.ini的上传设置
+								music		video
+memory_limit	512M			512M		2048M
+post_max_size	8M				128M		1024M
+upload_max_filesize	64M			256M		1536M
+upload_tmp_dir
+composer 更新问题
+
+composer update --with-all-dependencies
+
+试试这个编辑器  会出现 body字段为空的bug  目前只能再模型中 不验证body字段
+"bestyii/yii2-ueditor-plus": "~3.9"
+https://github.com/bestyii/yii2-ueditor-plus
+
+新注册用户 验证  url
+http://localhost:631/site/verify-email?token=
+http://192.168.2.7/site/verify-email?token=
+这个值 目前查表
+
+http://localhost:631/site/verify-email?token=NoSwc8Y2F58ddP44XSGvLZVSAdj1Xy84_1768964997
+
+依据表创建模型 快捷方式
+php yii gii/model --modelClass=Blog --tableName=blog
+
+
+命令                                      作用说明                                            示例场景
+php yii migrate/safeDown                回退最近一次应用的迁移（最常用）                        刚执行 migrate 错了，想马上撤销
+php yii migrate/down 3                  回退最近 3 回退最近一次应用的迁移（最常用）              连续错了几个迁移
+php yii migrate/down                    回退所有已应用的迁移（小心！清空迁移历史）               测试环境重置数据库
+php yii migrate/redo                    回退最近一次 + 立即重新应用（redo = down + up）         测试迁移的 up/down 是否对称
+php yii migrate/redo 2                  redo 最近 2 次     
+php yii migrate/to mXXXXXX_create_table 回退/应用到指定迁移（自动处理中间的）                     想跳回某个历史版本
+php yii migrate/to 20250116_040000      用时间戳指定（不带 m 前缀也行）
+
+yii migrate/fresh 						刷新迁移

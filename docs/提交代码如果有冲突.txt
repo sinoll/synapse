@@ -1,0 +1,32 @@
+提交代码如果有冲突
+
+建议先把 GitHub 上的内容拉取下来，与本地代码合并，再推送。 不要直接使用 git push --force。
+方案一：推荐，保留本地和 GitHub 两边的内容
+在本地项目目录打开 Git Bash，按顺序执行。
+第 1 步：检查当前状态
+git status
+git remote -v
+
+
+第 2 步：拉取远程提交并合并
+git pull origin main --allow-unrelated-histories
+
+
+这里的 --allow-unrelated-histories 适用于本地和 GitHub 仓库分别初始化、没有共同提交历史的情况。
+如果只是普通的远程更新，通常不需要这个参数；但你目前的错误信息还不能确定是哪一种情况。
+第 3 步：根据结果处理
+- 如果自动合并成功，继续第 4 步。
+- 如果提示 CONFLICT，说明有文件冲突，先不要继续推送。需要打开冲突文件，解决冲突后再提交。
+- 如果提示 Already up to date，说明没有需要合并的新提交，可以检查是否还有其他问题。
+第 4 步：提交合并结果（如果 Git 要求提交）
+git add .
+git commit -m "Merge remote main"
+
+
+如果 Git 已经自动完成合并并创建了合并提交，就不需要重复执行。
+第 5 步：再次上传
+git push -u origin main
+
+
+成功后，刷新 GitHub 仓库页面检查文件。
+

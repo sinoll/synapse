@@ -1,0 +1,344 @@
+/* Keep the administration area visually aligned with the public site. */
+:root {
+    --bs-primary: #9b5e3c;
+    --bs-primary-rgb: 155, 94, 60;
+    --bs-primary-text-emphasis: #704229;
+    --bs-primary-bg-subtle: #f2e5dc;
+    --bs-primary-border-subtle: #ddc2af;
+    --bs-link-color: #895337;
+    --bs-link-hover-color: #6f422c;
+    --bs-body-bg: #faf7f2;
+    --bs-body-color: #38332e;
+    --bs-secondary-color: #716a62;
+    --bs-secondary-bg: #f5efe7;
+    --bs-tertiary-bg: #f0e9df;
+    --bs-border-color: #e6ddd2;
+}
+
+[data-bs-theme="dark"] {
+    --bs-primary: #d49a72;
+    --bs-primary-rgb: 212, 154, 114;
+    --bs-primary-text-emphasis: #edc4a4;
+    --bs-primary-bg-subtle: #493629;
+    --bs-primary-border-subtle: #70513a;
+    --bs-link-color: #e2b38f;
+    --bs-link-hover-color: #f1cfb3;
+    --bs-body-bg: #211f1c;
+    --bs-body-color: #eee8df;
+    --bs-secondary-color: #b9afa3;
+    --bs-secondary-bg: #2b2824;
+    --bs-tertiary-bg: #342f29;
+    --bs-border-color: #494239;
+}
+
+main > .container {
+    padding: 70px 15px 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+.not-set {
+    color: var(--bs-danger);
+    font-style: italic;
+}
+
+/* add sorting icons to gridview sort links */
+a.asc:after, a.desc:after {
+    content: '';
+    left: 3px;
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border: solid 5px transparent;
+    margin: 4px 4px 2px 4px;
+    background: transparent;
+}
+
+a.asc:after {
+    border-bottom: solid 7px var(--bs-body-color);
+    border-top-width: 0;
+}
+
+a.desc:after {
+    border-top: solid 7px var(--bs-body-color);
+    border-bottom-width: 0;
+}
+
+.grid-view th {
+    white-space: nowrap;
+}
+
+.hint-block {
+    display: block;
+    margin-top: 5px;
+    color: var(--bs-secondary-color);
+}
+
+.error-summary {
+    color: var(--bs-danger-text-emphasis);
+    background: var(--bs-danger-bg-subtle);
+    border-left: 3px solid var(--bs-danger-border-subtle);
+    padding: 10px 20px;
+    margin: 0 0 15px 0;
+}
+
+/* align navbar brand baseline with nav links */
+.navbar > .container,
+.navbar > .container-fluid {
+    align-items: baseline;
+}
+
+/* style navbar logout link color, hover state, and mobile layout */
+.navbar-nav .nav-link.logout {
+    color: var(--bs-navbar-color);
+}
+
+@media (max-width: 767.98px) {
+    .navbar-nav .nav-link.logout {
+        display: block;
+        text-align: left;
+        width: 100%;
+        padding: 10px 0;
+    }
+}
+
+.navbar-nav .nav-link.logout:focus,
+.navbar-nav .nav-link.logout:hover {
+    color: var(--bs-navbar-hover-color);
+}
+
+
+
+/* footer logo: light logo by default (light bg-body-tertiary), dark logo for dark theme */
+.footer-logo-dark { display: none; }
+
+[data-bs-theme="dark"] .footer-logo-light { display: none; }
+[data-bs-theme="dark"] .footer-logo-dark  { display: inline-block; }
+
+/* login inputs: seamless icon inside input (Volt style) */
+.login-split-card .input-group {
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    overflow: hidden;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+.login-split-card .input-group .input-group-text {
+    background: transparent;
+    border: 0;
+    padding-left: 1rem;
+    padding-right: .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-split-card .input-group .form-control {
+    border: 0;
+    background: transparent;
+}
+
+.login-split-card .input-group .form-control:focus {
+    box-shadow: none;
+}
+
+.login-split-card .input-group:focus-within {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), .25);
+}
+
+/* validation styles for browsers that support :has() */
+@supports selector(.input-group:has(.is-invalid)) {
+    /* show validation errors below the input-group */
+    .login-split-card .input-group:has(.is-invalid) ~ .invalid-feedback {
+        display: block;
+        margin-top: .35rem;
+        margin-bottom: .5rem;
+    }
+
+    /* red border on input-group when invalid */
+    .login-split-card .input-group:has(.is-invalid) {
+        border-color: var(--bs-danger);
+    }
+
+    .login-split-card .input-group:has(.is-invalid):focus-within {
+        box-shadow: 0 0 0 .25rem rgba(var(--bs-danger-rgb), .25);
+    }
+}
+
+/* fallback validation styles for browsers without :has() support */
+@supports not selector(.input-group:has(.is-invalid)) {
+    .login-split-card .invalid-feedback:not(:empty) {
+        display: block;
+        margin-top: .35rem;
+        margin-bottom: .5rem;
+    }
+
+    .login-split-card .input-group .form-control.is-invalid {
+        border: var(--bs-border-width) solid var(--bs-danger);
+    }
+
+    .login-split-card .input-group .form-control.is-invalid:focus {
+        box-shadow: 0 0 0 .25rem rgba(var(--bs-danger-rgb), .25);
+    }
+}
+
+/* login split card */
+.login-split-card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, .10);
+    background-color: var(--bs-gray-100);
+    width: 100%;
+    max-width: 900px;
+}
+
+.login-brand-title {
+    font-size: 1.75rem;
+    line-height: 1.3;
+}
+
+.login-brand-text {
+    font-size: .9rem;
+}
+
+.login-brand-panel {
+    background: linear-gradient(135deg, #40B3D8 0%, #3a9cbd 40%, #83C933 100%);
+    position: relative;
+    min-height: 480px;
+}
+
+.login-brand-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(241, 138, 42, .25) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(131, 201, 51, .2) 0%, transparent 40%);
+    pointer-events: none;
+}
+
+.login-btn {
+    background: linear-gradient(135deg, #40B3D8, #3a9cbd);
+    border: none;
+    font-weight: 600;
+    letter-spacing: .02em;
+    transition: opacity .2s, transform .1s;
+}
+
+.login-btn:hover {
+    opacity: .9;
+    transform: translateY(-1px);
+}
+
+.login-btn:active {
+    transform: translateY(0);
+}
+
+/* dark mode login card */
+[data-bs-theme="dark"] .login-split-card {
+    background-color: var(--bs-body-bg);
+    box-shadow: 0 0 0 1px var(--bs-border-color), 0 4px 24px rgba(0, 0, 0, .4);
+}
+
+[data-bs-theme="dark"] .login-mobile-logo {
+    filter: invert(1);
+}
+
+/* Shared Bootstrap palette and components. */
+html { scroll-padding-top: 5rem; }
+body { background: var(--bs-body-bg); color: var(--bs-body-color); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
+.navbar-warm {
+    --bs-navbar-color: rgba(255, 249, 242, .82);
+    --bs-navbar-hover-color: #fff;
+    --bs-navbar-active-color: #fff;
+    --bs-navbar-brand-color: #fffaf5;
+    --bs-navbar-brand-hover-color: #fff;
+    background: linear-gradient(110deg, #49372d, #6b4935 58%, #80583d);
+}
+.navbar-warm .navbar-toggler { border-color: rgba(255, 255, 255, .3); }
+#theme-toggle { color: var(--bs-navbar-color); text-decoration: none; }
+#theme-toggle:hover, #theme-toggle:focus { color: #fff; }
+.btn-primary, .login-btn {
+    --bs-btn-color: #fffaf5;
+    --bs-btn-bg: #9b5e3c;
+    --bs-btn-border-color: #9b5e3c;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #804b30;
+    --bs-btn-hover-border-color: #804b30;
+    --bs-btn-active-bg: #704229;
+    --bs-btn-active-border-color: #704229;
+    background: #9b5e3c;
+    border-color: #9b5e3c;
+    color: #fffaf5;
+}
+.btn-outline-primary {
+    --bs-btn-color: #895337;
+    --bs-btn-border-color: #b98665;
+    --bs-btn-hover-bg: #9b5e3c;
+    --bs-btn-hover-border-color: #9b5e3c;
+}
+.card { --bs-card-border-color: var(--bs-border-color); border-radius: .9rem; }
+.btn { transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.form-control:focus, .form-select:focus { border-color: rgba(var(--bs-primary-rgb), .65); box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), .16); }
+.form-check-input:checked { background-color: #9b5e3c; border-color: #9b5e3c; }
+.login-brand-panel, .dashboard-banner { background: linear-gradient(140deg, #79513a 0%, #9b6847 52%, #b98461 100%); }
+.login-brand-panel::before, .dashboard-banner::before { background: radial-gradient(circle at 18% 80%, rgba(236, 194, 148, .22), transparent 48%), radial-gradient(circle at 82% 18%, rgba(246, 222, 190, .18), transparent 42%); }
+.grid-view, .list-view { width: 100%; }
+.grid-view .table-responsive { border: 1px solid var(--bs-border-color); border-radius: .75rem; }
+.grid-view table { margin-bottom: 0; }
+[data-bs-theme="dark"] .btn-outline-primary { --bs-btn-color: #e2b38f; --bs-btn-border-color: #b88663; --bs-btn-hover-color: #211f1c; }
+.account-flow { width: min(100%, 700px); }
+
+/* dashboard welcome banner */
+.dashboard-banner {
+    background: linear-gradient(135deg, #83C933 0%, #3a9cbd 40%, #40B3D8 100%);
+    position: relative;
+}
+
+.dashboard-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        radial-gradient(circle at 80% 80%, rgba(241, 138, 42, .25) 0%, transparent 50%),
+        radial-gradient(circle at 20% 20%, rgba(131, 201, 51, .2) 0%, transparent 40%);
+    pointer-events: none;
+}
+
+/* centered page layout: error */
+.site-index,
+.site-error {
+    flex: 1;
+}
+
+.site-error .site-error-content {
+    width: 100%;
+    max-width: 90%;
+}
+
+@media (min-width: 576px) {
+    .site-error .site-error-content {
+        max-width: 80%;
+    }
+}
+
+/* Final theme overrides follow legacy page-specific styles above. */
+.dashboard-banner { background: linear-gradient(140deg, #79513a 0%, #9b6847 52%, #b98461 100%); }
+.dashboard-banner::before {
+    background: radial-gradient(circle at 18% 80%, rgba(236, 194, 148, .22), transparent 48%),
+        radial-gradient(circle at 82% 18%, rgba(246, 222, 190, .18), transparent 42%);
+}
+
+@media (min-width: 768px) {
+    .site-error .site-error-content {
+        max-width: 60%;
+    }
+}
+
+@media (min-width: 992px) {
+    .site-error .site-error-content {
+        max-width: 50%;
+    }
+}

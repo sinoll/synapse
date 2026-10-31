@@ -1,0 +1,179 @@
+用户手册
+
+git clone  后 
+
+composer update
+
+cd ~/synapse
+php init
+
+
+配置好数据库，
+vim ~/synapse/common/config/main-local.php
+
+注意为了安全：
+请在数据迁移前修改
+~/synapse/console/migrations/m130524_201442_init.php
+第46行  default 这个默认添加的用户名修改为 你自己的
+第48行  defualt 默认密码也可以修改
+
+然后数据库迁移
+yii php migrate
+
+默认登录 用户名 default  密码 default
+
+
+
+
+服务器必须安装 ffmpeg 给短视频 添加 默认封面 使用，
+必须配置好路径。Apache 的 PATH 必须有 FFmpeg
+
+windows编辑：
+
+D:\ser\Apache24\conf\extra\httpd-vhosts.conf
+
+在 ServerName 192.168.10.8 对应的 <VirtualHost *:80> 中添加：
+
+对于 Yii2 项目，最合适的做法是把 FFmpeg 路径配置放在配置文件中，再通过一个独立的服务类统一调用，不要把这段代码直接写进 web/index.php 或每个控制器。
+
+这样 Windows 本地开发使用 D:\software\ffmpeg\bin\ffmpeg.exe，Linux 部署使用 /usr/bin/ffmpeg，控制器和业务代码都不需要关心操作系统。
+
+下面按你使用 Yii2 的情况给出一套可直接落地的方案。
+一、推荐的文件结构
+以 Yii2 Basic 项目为例：
+项目根目录/
+├── config/
+│   ├── web.php
+│   └── ffmpeg.php
+├── services/
+│   └── FfmpegService.php
+├── controllers/
+│   └── VideoController.php
+├── web/
+│   └── index.php
+└── ...
+
+
+如果你使用的是 Yii2 Advanced，可以将服务类放到 common/services/，供前台和后台共用。
+二、第一步：在 config/params.php 配置路径
+Yii2 Basic 项目通常已经有 config/params.php 文件。
+
+打开它，添加 FFmpeg 配置。保留原有参数，只增加 ffmpegPath：
+<?php
+
+return [
+    // 其他已有参数保留
+
+    'ffmpegPath' => PHP_OS_FAMILY === 'Windows'
+        ? 'D:/software/ffmpeg/bin/ffmpeg.exe'
+        : '/usr/bin/ffmpeg',
+];
+
+
+这里不建议立即执行 is_file() 并抛出异常，因为某些环境可能暂时没有安装 FFmpeg，而你不一定希望整个 Yii2 应用因此无法启动。
+
+确认 config/web.php 已经加载该参数文件。Yii2 Basic 默认通常有类似配置：
+'params' => require __DIR__ . '/params.php',
+
+
+如果已经存在，就不需要重复添加。
+三、第二步：创建 services/FfmpegService.php
+在项目根目录新建 services 目录，再创建 FfmpegService.php。
+
+文件路径：
+services/FfmpegService.php
+
+
+代码如下：
+
+<?php
+
+namespace app\services;
+
+use Yii;
+use RuntimeException;
+
+class FfmpegService
+{
+    /**
+     * 获取 FFmpeg 可执行文件路径
+     */
+    public function getBinaryPath(): string
+    {
+        $ffmpeg = Yii::$app->params['ffmpegPath'] ?? '';
+
+        if ($ffmpeg === '' || !is_file($ffmpeg)) {
+            throw new RuntimeException(
+                'FFmpeg 不存在，请检查 config/params.php：' . $ffmpeg
+            );
+        }
+
+        return $ffmpeg;
+    }
+
+    /**
+     * 获取 FFmpeg 版本信息
+     */
+    public function getVersion(): array
+    {
+        $ffmpeg = $this->getBinaryPath();
+
+        $command = escapeshellarg($ffmpeg)
+            . ' -version 2>&1';
+
+        $output = [];
+        $returnCode = 0;
+
+        exec($command, $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            throw new RuntimeException(
+                'FFmpeg 执行失败：' . implode("\n", $output)
+            );
+        }
+
+        return $output;
+    }
+}
+
+
+
+这段代码就是之前那段路径判断逻辑的合适归属：由服务类负责获取和验证路径，配置文件只负责提供路径。
+
+注意：PHP 必须启用 exec()，且该函数没有被 disable_functions 禁用。
+四、第三步：在控制器中调用
+例如创建 controllers/VideoController.php：
+<?php
+
+namespace app\controllers;
+
+use Yii;
+use yii\web\Controller;
+use app\services\FfmpegService;
+
+class VideoController extends Controller
+{
+    public function actionTestFfmpeg()
+    {
+        $service = new FfmpegService();
+
+        $version = $service->getVersion();
+
+        return $this->renderContent(
+            '<pre>' . htmlspecialchars(
+                implode("\n", $version),
+                ENT_QUOTES,
+                'UTF-8'
+            ) . '</pre>'
+        );
+    }
+}
+
+
+启动 Apache 后访问：
+http://localhost/index.php?r=video/test-ffmpeg
+
+
+如果 FFmpeg 正常运行，页面会显示版本信息。
+
+
