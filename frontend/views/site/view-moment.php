@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var common\models\Post $post */
 /** @var common\models\Moment $moment */
 
+use common\models\Tag;
 use yii\helpers\HtmlPurifier;
 
 $displayTitle = $post->title ?: '动态';
@@ -25,7 +26,7 @@ CSS);
 
             <div class="border rounded-4 p-3 p-md-4 bg-body-tertiary">
                 <div class="rich-content text-break">
-                    <?= HtmlPurifier::process((string) $moment->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]']) ?>
+                    <?= Tag::linkifyHashtags(HtmlPurifier::process((string) $moment->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]'])) ?>
                 </div>
             </div>
         </article>

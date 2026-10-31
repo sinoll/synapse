@@ -8,6 +8,7 @@ declare(strict_types=1);
 /** @var bool $canEdit */
 
 use common\models\Post;
+use common\models\Tag;
 use yii\helpers\Html;
 use yii\helpers\HtmlPurifier;
 
@@ -40,7 +41,7 @@ $typeController = $typeControllers[$post->type] ?? null;
             <?php endif; ?>
             <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title],pre,code']) ?></div>
         <?php elseif ($post->type === Post::TYPE_MOMENT): ?>
-            <div class="rich-content text-break"><?= HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]']) ?></div>
+            <div class="rich-content text-break"><?= Tag::linkifyHashtags(HtmlPurifier::process((string) $contentModel->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]'])) ?></div>
         <?php elseif ($post->type === Post::TYPE_IMAGES): ?>
             <?php if ($contentModel->alt_text): ?>
                 <p><?= Html::encode($contentModel->alt_text) ?></p>

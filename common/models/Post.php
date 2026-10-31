@@ -104,4 +104,21 @@ class Post extends \common\models\base\Post
     public function getImages(): ActiveQuery { return $this->hasMany(Image::class, ['post_id' => 'id'])->orderBy(['sort_order' => SORT_ASC]); }
     public function getMoment(): ActiveQuery { return $this->hasOne(Moment::class, ['post_id' => 'id']); }
     public function getShortVideo(): ActiveQuery { return $this->hasOne(ShortVideo::class, ['post_id' => 'id']); }
+    public function getComments(): ActiveQuery { return $this->hasMany(PostComment::class, ['post_id' => 'id'])->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC]); }
+    public function getLikes(): ActiveQuery { return $this->hasMany(PostLike::class, ['post_id' => 'id']); }
+    public function getLikedUsers(): ActiveQuery { return $this->hasMany(User::class, ['id' => 'user_id'])->viaTable('{{%post_like}}', ['post_id' => 'id']); }
+
+    /** 关注该内容作者的用户。 */
+    public function getAuthorFollowers(): ActiveQuery
+    {
+        return $this->hasMany(User::class, ['id' => 'follower_id'])
+            ->viaTable('{{%user_follow}}', ['following_id' => 'user_id']);
+    }
+
+    /** 该内容作者关注的其他用户。 */
+    public function getAuthorFollowing(): ActiveQuery
+    {
+        return $this->hasMany(User::class, ['id' => 'following_id'])
+            ->viaTable('{{%user_follow}}', ['follower_id' => 'user_id']);
+    }
 }

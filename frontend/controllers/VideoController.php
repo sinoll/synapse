@@ -8,6 +8,7 @@ use common\models\Post;
 use common\models\ShortVideo;
 use common\models\Tag;
 use Yii;
+use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
@@ -58,6 +59,36 @@ class VideoController extends Controller
         ];
     }
 
+    public function actionIndex(): string
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->with(['user', 'shortVideo'])
+            ->where(['p.type' => Post::TYPE_SHORT_VIDEO, 'p.status' => Post::STATUS_PUBLISHED])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+        $this->applyVisibilityFilter($query);
+
+        $horizontalVideos = [];
+        $verticalVideos = [];
+        foreach ($query->all() as $post) {
+            $video = $post->shortVideo;
+            if ($video === null) {
+                continue;
+            }
+            if ($video->isVertical()) {
+                $verticalVideos[] = $post;
+            } else {
+                $horizontalVideos[] = $post;
+            }
+        }
+
+        return $this->render('index', [
+            'horizontalVideos' => $horizontalVideos,
+            'verticalVideos' => $verticalVideos,
+            'videoTags' => $this->videoTags(),
+        ]);
+    }
+
     public function actionView(int $id): string
     {
         $post = $this->findTypedContentPost($id, Post::TYPE_SHORT_VIDEO);
@@ -69,8 +100,68 @@ class VideoController extends Controller
             throw new NotFoundHttpException('找不到该内容。');
         }
 
-        return $this->render('@frontend/views/site/view-video', ['post' => $post, 'video' => $video]);
+        $viewData = ['post' => $post, 'video' => $video];
+        if ($video->isVertical()) {
+            [$previousVideo, $nextVideo] = $this->verticalNeighbors($post);
+            $viewData['previousVideo'] = $previousVideo;
+            $viewData['nextVideo'] = $nextVideo;
+        } else {
+            $viewData['relatedVideos'] = $this->relatedVideos($post);
+        }
+
+        return $this->render('@frontend/views/site/view-video', $viewData);
     }
+
+    /** @return Post[] Same-orientation videos first, then the rest. */
+    private function relatedVideos(Post $current, int $limit = 8): array
+    {
+        $horizontal = [];
+        $vertical = [];
+        foreach ($this->visibleVideoQuery()->andWhere(['<>', 'p.id', $current->id])->all() as $post) {
+            if ($post->shortVideo === null) {
+                continue;
+            }
+            if ($post->shortVideo->isVertical()) {
+                $vertical[] = $post;
+            } else {
+                $horizontal[] = $post;
+            }
+        }
+
+        return array_slice(array_merge($horizontal, $vertical), 0, $limit);
+    }
+
+    /** @return array{0: Post|null, 1: Post|null} [newer, older] vertical videos. */
+    private function verticalNeighbors(Post $current): array
+    {
+        $vertical = [];
+        foreach ($this->visibleVideoQuery()->all() as $post) {
+            if ($post->shortVideo !== null && $post->shortVideo->isVertical()) {
+                $vertical[] = $post;
+            }
+        }
+
+        foreach ($vertical as $index => $post) {
+            if ((int) $post->id === (int) $current->id) {
+                return [$vertical[$index - 1] ?? null, $vertical[$index + 1] ?? null];
+            }
+        }
+
+        return [null, null];
+    }
+
+    private function visibleVideoQuery(): ActiveQuery
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->with(['user', 'shortVideo'])
+            ->where(['p.type' => Post::TYPE_SHORT_VIDEO, 'p.status' => Post::STATUS_PUBLISHED])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+        $this->applyVisibilityFilter($query);
+
+        return $query;
+    }
+
 
     public function actionCreate(?string $type = null): string|Response
     {
@@ -351,6 +442,39 @@ class VideoController extends Controller
         if (Yii::$app->user->isGuest || (int) $post->user_id !== (int) Yii::$app->user->id) {
             throw new ForbiddenHttpException('你无权修改此内容。');
         }
+    }
+
+    private function applyVisibilityFilter(ActiveQuery $query, string $alias = 'p'): void
+    {
+        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
+        if ($userId === null) {
+            $query->andWhere([$alias . '.visibility' => Post::VISIBILITY_PUBLIC]);
+            return;
+        }
+
+        $query->andWhere([
+            'or',
+            [$alias . '.visibility' => Post::VISIBILITY_PUBLIC],
+            [$alias . '.visibility' => Post::VISIBILITY_REGISTERED_USERS],
+            ['and', [$alias . '.visibility' => Post::VISIBILITY_PRIVATE], [$alias . '.user_id' => $userId]],
+        ]);
+    }
+
+    /** Tags used by published short videos, ordered by usage. @return Tag[] */
+    private function videoTags(int $limit = 10): array
+    {
+        $query = Tag::find()
+            ->alias('t')
+            ->select(['t.id', 't.name', 't.slug', 'postCount' => 'COUNT([[pt]].[[post_id]])'])
+            ->innerJoin(['pt' => '{{%post_tag}}'], 'pt.tag_id = t.id')
+            ->innerJoin(['p' => '{{%post}}'], 'p.id = pt.post_id')
+            ->where(['p.type' => Post::TYPE_SHORT_VIDEO, 'p.status' => Post::STATUS_PUBLISHED])
+            ->groupBy(['t.id', 't.name', 't.slug'])
+            ->orderBy(['postCount' => SORT_DESC, 't.name' => SORT_ASC])
+            ->limit($limit);
+        $this->applyVisibilityFilter($query);
+
+        return $query->all();
     }
 
     private function loadContentModel(ActiveRecord $model): bool

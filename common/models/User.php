@@ -7,6 +7,7 @@ namespace common\models;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\behaviors\TimestampBehavior;
+use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
 
@@ -233,4 +234,9 @@ class User extends ActiveRecord implements IdentityInterface
     {
         return (bool) $this->is_admin;
     }
+
+    public function getFollowingRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['follower_id' => 'id']); }
+    public function getFollowerRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['following_id' => 'id']); }
+    public function getFollowing(): ActiveQuery { return $this->hasMany(self::class, ['id' => 'following_id'])->viaTable('{{%user_follow}}', ['follower_id' => 'id']); }
+    public function getFollowers(): ActiveQuery { return $this->hasMany(self::class, ['id' => 'follower_id'])->viaTable('{{%user_follow}}', ['following_id' => 'id']); }
 }

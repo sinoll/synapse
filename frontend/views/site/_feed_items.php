@@ -21,7 +21,10 @@ $momentFeedImages = static function (string $html): array {
         if (!str_starts_with($source, '/uploads/')) {
             continue;
         }
-        $thumbnail = (string) preg_replace('#^/uploads/blog/\d{4}/#', '/uploads/thumb/blog/', $source);
+        $thumbnail = (string) preg_replace('#^/uploads/moment/(\d{4})/(\d{2})/#', '/uploads/thumb/moment/$1/$2/', $source);
+        if ($thumbnail === $source) {
+            $thumbnail = (string) preg_replace('#^/uploads/blog/\d{4}/#', '/uploads/thumb/blog/', $source);
+        }
         $images[] = $thumbnail !== $source && is_file($webRoot . $thumbnail) ? $thumbnail : $source;
         if (count($images) === 9) {
             break;

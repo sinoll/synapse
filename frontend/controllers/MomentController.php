@@ -9,6 +9,7 @@ use common\models\Moment;
 use common\models\Post;
 use common\models\Tag;
 use Yii;
+use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
@@ -23,7 +24,7 @@ class MomentController extends Controller
 {
     use ContentVisibilityTrait;
 
-    private const FIELDS = ['title', 'content'];
+    private const FIELDS = ['content'];
 
     public function getViewPath(): string
     {
@@ -74,28 +75,148 @@ class MomentController extends Controller
         return $this->render('@frontend/views/site/view-moment', ['post' => $post, 'moment' => $moment]);
     }
 
+    public function actionIndex(?string $cate = null, int $page = 1): string
+    {
+        $activeCate = $this->findCateBySlug($cate);
+        $page = max(1, $page);
+        [$posts, $hasMore] = $this->momentFeed($activeCate?->id, $page);
+
+        return $this->render('index', [
+            'posts' => $posts,
+            'hasMore' => $hasMore,
+            'nextPage' => $page + 1,
+            'activeCate' => $activeCate,
+            'cateTabs' => $this->momentCateTabs(),
+            'momentTags' => $this->momentTags(),
+        ]);
+    }
+
+    /** Return the next page of the moment feed. */
+    public function actionFeed(?string $cate = null, int $page = 1): Response
+    {
+        $activeCate = $this->findCateBySlug($cate);
+        [$posts, $hasMore] = $this->momentFeed($activeCate?->id, max(1, $page));
+
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        return $this->asJson([
+            'html' => $this->renderPartial('_items', ['posts' => $posts]),
+            'hasMore' => $hasMore,
+        ]);
+    }
+
+    private function findCateBySlug(?string $slug): ?Cate
+    {
+        if ($slug === null || $slug === '') {
+            return null;
+        }
+
+        $cate = Cate::find()->where(['slug' => $slug])->one();
+        if ($cate === null) {
+            throw new NotFoundHttpException('找不到该分类。');
+        }
+
+        return $cate;
+    }
+
+    /** @return array{0: Post[], 1: bool} */
+    private function momentFeed(?int $cateId, int $page): array
+    {
+        $pageSize = 10;
+        $query = $this->momentQuery($cateId);
+        $total = (int) (clone $query)->count();
+        $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
+
+        return [$posts, $page * $pageSize < $total];
+    }
+
+    private function momentQuery(?int $cateId): ActiveQuery
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->with(['user', 'moment', 'tags', 'categories'])
+            ->where(['p.type' => Post::TYPE_MOMENT, 'p.status' => Post::STATUS_PUBLISHED])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+
+        if ($cateId !== null) {
+            $query->innerJoin(['pc' => '{{%post_cate}}'], 'pc.post_id = p.id')
+                ->andWhere(['pc.cate_id' => $cateId]);
+        }
+
+        $this->applyVisibilityFilter($query);
+
+        return $query;
+    }
+
+    private function applyVisibilityFilter(ActiveQuery $query, string $alias = 'p'): void
+    {
+        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
+        if ($userId === null) {
+            $query->andWhere([$alias . '.visibility' => Post::VISIBILITY_PUBLIC]);
+            return;
+        }
+
+        $query->andWhere([
+            'or',
+            [$alias . '.visibility' => Post::VISIBILITY_PUBLIC],
+            [$alias . '.visibility' => Post::VISIBILITY_REGISTERED_USERS],
+            ['and', [$alias . '.visibility' => Post::VISIBILITY_PRIVATE], [$alias . '.user_id' => $userId]],
+        ]);
+    }
+
+    /** @return Cate[] */
+    private function momentCateTabs(): array
+    {
+        $query = Cate::find()
+            ->alias('c')
+            ->select(['c.id', 'c.name', 'c.slug', 'postCount' => 'COUNT([[p]].[[id]])'])
+            ->innerJoin(['pc' => '{{%post_cate}}'], 'pc.cate_id = c.id')
+            ->innerJoin(['p' => '{{%post}}'], 'p.id = pc.post_id')
+            ->where(['p.type' => Post::TYPE_MOMENT, 'p.status' => Post::STATUS_PUBLISHED])
+            ->groupBy(['c.id', 'c.name', 'c.slug'])
+            ->orderBy(['postCount' => SORT_DESC, 'c.name' => SORT_ASC]);
+        $this->applyVisibilityFilter($query);
+
+        return $query->all();
+    }
+
+    /** Tags used by published moments, ordered by usage. @return Tag[] */
+    private function momentTags(int $limit = 10): array
+    {
+        $query = Tag::find()
+            ->alias('t')
+            ->select(['t.id', 't.name', 't.slug', 'postCount' => 'COUNT([[pt]].[[post_id]])'])
+            ->innerJoin(['pt' => '{{%post_tag}}'], 'pt.tag_id = t.id')
+            ->innerJoin(['p' => '{{%post}}'], 'p.id = pt.post_id')
+            ->where(['p.type' => Post::TYPE_MOMENT, 'p.status' => Post::STATUS_PUBLISHED])
+            ->groupBy(['t.id', 't.name', 't.slug'])
+            ->orderBy(['postCount' => SORT_DESC, 't.name' => SORT_ASC])
+            ->limit($limit);
+        $this->applyVisibilityFilter($query);
+
+        return $query->all();
+    }
+
     public function actionCreate(?string $type = null): string|Response
     {
         $model = new Moment();
         $post = new Post();
+        $contentError = null;
         $selectedCateId = $this->defaultMomentCateId();
         $cateError = null;
-        $selectedTagNames = [];
-        $tagError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
             $editorImages = UploadedFile::getInstancesByName('editor_images');
             $post->user_id = (int) Yii::$app->user->id;
             $post->type = Post::TYPE_MOMENT;
             $post->status = Post::STATUS_PUBLISHED;
-            $post->title = $this->momentTitle($model);
+            $post->title = $this->contentTitle($model, 8);
             $model->post_id = 0;
 
-            $parsedTagNames = $this->submittedTagNames();
-            $tagInputValid = $parsedTagNames !== null;
-            $selectedTagNames = $parsedTagNames ?? [];
+            $tagNames = Tag::extractHashtags((string) $model->getAttribute('content'));
+            $tagInputValid = count($tagNames) <= 10;
             if (!$tagInputValid) {
-                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+                $contentError = '正文中最多包含 10 个 #话题#。';
             }
             $submittedCateId = $this->submittedCateId();
             $cateInputValid = $submittedCateId !== null;
@@ -106,6 +227,7 @@ class MomentController extends Controller
 
             $modelIsValid = $model->validate();
             $this->validateRichEditorImages($model, $editorImages);
+            $this->validateEditorImageTokens($model, $editorImages);
 
             if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid && $cateInputValid) {
                 $transaction = Yii::$app->db->beginTransaction();
@@ -117,10 +239,11 @@ class MomentController extends Controller
                             throw new \RuntimeException('Rich-text image upload failed.');
                         }
                         $this->replaceRichEditorImageTokens($model, $richImagePaths);
-                        if (!$model->validate()) {
+                        if (!$model->validate() || $this->hasUnresolvedImageTokens($model)) {
                             $transaction->rollBack();
                             $this->deleteRichEditorImages($richImagePaths);
-                            return $this->renderForm($model, $post, $selectedCateId, $cateError, $selectedTagNames, $tagError, false);
+                            $this->validateEditorImageTokens($model, []);
+                            return $this->renderForm($model, $post, $contentError, false, $selectedCateId, $cateError);
                         }
                     }
 
@@ -132,11 +255,11 @@ class MomentController extends Controller
                     $model->thumb = $this->resolveMomentThumbnail($richImagePaths, (string) $model->getAttribute('content'));
                     if (!$model->save()) {
                         $transaction->rollBack();
-                        return $this->renderForm($model, $post, $selectedCateId, $cateError, $selectedTagNames, $tagError, false);
+                        return $this->renderForm($model, $post, $contentError, false, $selectedCateId, $cateError);
                     }
 
                     $this->syncPostCategories($post, $selectedCateId);
-                    $this->syncPostTags($post, $selectedTagNames);
+                    $this->syncPostTags($post, $tagNames);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
@@ -151,7 +274,7 @@ class MomentController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, $selectedCateId, $cateError, $selectedTagNames, $tagError, false);
+        return $this->renderForm($model, $post, $contentError, false, $selectedCateId, $cateError);
     }
 
     public function actionUpdate(int $id): string|Response
@@ -163,34 +286,30 @@ class MomentController extends Controller
         if ($model === null) {
             throw new NotFoundHttpException('找不到该内容。');
         }
-        $selectedCateId = (int) ($post->categories[0]->id ?? 0);
-        if ($selectedCateId < 1) {
-            $selectedCateId = $this->defaultMomentCateId();
-        }
+        $contentError = null;
+        $selectedCateId = $this->existingMomentCateId($post);
         $cateError = null;
-        $selectedTagNames = array_map(static fn (Tag $tag): string => $tag->name, $post->tags);
-        $tagError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
             $editorImages = UploadedFile::getInstancesByName('editor_images');
             $model->post_id = (int) $post->id;
-            $post->title = $this->momentTitle($model);
+            $post->title = $this->contentTitle($model, 8);
 
-            $parsedTagNames = $this->submittedTagNames();
-            $tagInputValid = $parsedTagNames !== null;
-            $selectedTagNames = $parsedTagNames ?? [];
+            $tagNames = Tag::extractHashtags((string) $model->getAttribute('content'));
+            $tagInputValid = count($tagNames) <= 10;
             if (!$tagInputValid) {
-                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+                $contentError = '正文中最多包含 10 个 #话题#。';
             }
             $submittedCateId = $this->submittedCateId();
             $cateInputValid = $submittedCateId !== null;
-            $selectedCateId = $submittedCateId ?? $this->defaultMomentCateId();
+            $selectedCateId = $submittedCateId ?? $this->existingMomentCateId($post);
             if (!$cateInputValid) {
                 $cateError = '请选择分类。';
             }
 
             $modelIsValid = $model->validate();
             $this->validateRichEditorImages($model, $editorImages);
+            $this->validateEditorImageTokens($model, $editorImages);
 
             if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid && $cateInputValid) {
                 $transaction = Yii::$app->db->beginTransaction();
@@ -202,10 +321,11 @@ class MomentController extends Controller
                             throw new \RuntimeException('Rich-text image upload failed.');
                         }
                         $this->replaceRichEditorImageTokens($model, $richImagePaths);
-                        if (!$model->validate()) {
+                        if (!$model->validate() || $this->hasUnresolvedImageTokens($model)) {
                             $transaction->rollBack();
                             $this->deleteRichEditorImages($richImagePaths);
-                            return $this->renderForm($model, $post, $selectedCateId, $cateError, $selectedTagNames, $tagError, true);
+                            $this->validateEditorImageTokens($model, []);
+                            return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
                         }
                     }
 
@@ -213,15 +333,15 @@ class MomentController extends Controller
                     $model->thumb = $this->resolveMomentThumbnail($richImagePaths, (string) $model->getAttribute('content'));
                     if (!$post->save(false)) {
                         $transaction->rollBack();
-                        return $this->renderForm($model, $post, $selectedCateId, $cateError, $selectedTagNames, $tagError, true);
+                        return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
                     }
                     if (!$model->save()) {
                         $transaction->rollBack();
-                        return $this->renderForm($model, $post, $selectedCateId, $cateError, $selectedTagNames, $tagError, true);
+                        return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
                     }
 
                     $this->syncPostCategories($post, $selectedCateId);
-                    $this->syncPostTags($post, $selectedTagNames);
+                    $this->syncPostTags($post, $tagNames);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已更新。');
 
@@ -236,7 +356,7 @@ class MomentController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, $selectedCateId, $cateError, $selectedTagNames, $tagError, true);
+        return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
     }
 
     public function actionDelete(int $id): Response
@@ -254,20 +374,17 @@ class MomentController extends Controller
     private function renderForm(
         Moment $model,
         Post $post,
+        ?string $contentError,
+        bool $isUpdate,
         int $selectedCateId,
         ?string $cateError,
-        array $selectedTagNames,
-        ?string $tagError,
-        bool $isUpdate,
     ): string {
-        return $this->render('create', [
+        return $this->render($isUpdate ? 'update' : 'create', [
             'model' => $model,
             'post' => $post,
-            'isUpdate' => $isUpdate,
+            'contentError' => $contentError,
             'selectedCateId' => $selectedCateId,
             'cateError' => $cateError,
-            'selectedTagNames' => $selectedTagNames,
-            'tagError' => $tagError,
         ]);
     }
 
@@ -317,58 +434,21 @@ class MomentController extends Controller
         return true;
     }
 
+    /** 由正文前几个字生成标题。 */
     private function contentTitle(ActiveRecord $model, int $maxLength): string
     {
         $text = html_entity_decode(strip_tags((string) $model->getAttribute('content')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/\[\[EDITOR_IMAGE_\d+\]\]/', '', $text) ?? $text;
-        $title = mb_substr(trim($text), 0, $maxLength);
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+        $title = trim(mb_substr($text, 0, $maxLength));
+
+        // 标题截断时不要留下半个 #话题#。
+        $lastHash = mb_strrpos($title, '#');
+        if ($lastHash !== false && mb_substr_count($title, '#') % 2 === 1) {
+            $title = trim(mb_substr($title, 0, $lastHash));
+        }
 
         return $title !== '' ? $title : '动态';
-    }
-
-    /** Use the submitted title, falling back to the content excerpt. */
-    private function momentTitle(Moment $model): string
-    {
-        $title = trim((string) $model->getAttribute('title'));
-
-        return $title !== '' ? $title : $this->contentTitle($model, 8);
-    }
-
-    /** @return string[]|null Null means malformed or over-limit input. */
-    private function submittedTagNames(): ?array
-    {
-        $submittedNames = Yii::$app->request->post('tags', []);
-        if (!is_array($submittedNames)) {
-            return null;
-        }
-
-        $names = [];
-        $normalizedNames = [];
-        foreach ($submittedNames as $submittedName) {
-            if (!is_string($submittedName)) {
-                return null;
-            }
-            $name = preg_replace('/\s+/u', ' ', trim($submittedName)) ?? trim($submittedName);
-            $name = trim($name, "# \t\n\r\0\x0B");
-            if ($name === '') {
-                continue;
-            }
-            if (mb_strlen($name) > 50 || preg_match('/[\x00-\x1F\x7F]/u', $name)) {
-                return null;
-            }
-
-            $normalizedName = mb_strtolower($name);
-            if (isset($normalizedNames[$normalizedName])) {
-                continue;
-            }
-            $normalizedNames[$normalizedName] = true;
-            $names[] = $name;
-            if (count($names) > 10) {
-                return null;
-            }
-        }
-
-        return $names;
     }
 
     /** Replace a post's tags inside the caller's current transaction. */
@@ -398,6 +478,14 @@ class MomentController extends Controller
         }
 
         return $cateId === false || $cateId === null ? 0 : (int) $cateId;
+    }
+
+    /** Keep the category already assigned when editing, otherwise use the default. */
+    private function existingMomentCateId(Post $post): int
+    {
+        $cateId = (int) ($post->categories[0]->id ?? 0);
+
+        return $cateId > 0 ? $cateId : $this->defaultMomentCateId();
     }
 
     /** @return int|null Null means the submitted category is missing or invalid. */
@@ -433,7 +521,7 @@ class MomentController extends Controller
             return $this->momentThumbnailPath($newImagePaths[0]) ?? '/images/default-cover.png';
         }
 
-        preg_match_all('#/uploads/blog/\d{4}/[A-Za-z0-9_-]+\.[A-Za-z0-9]+#', $content, $matches);
+        preg_match_all('#/uploads/(?:moment/\d{4}/\d{2}|blog/\d{4})/[A-Za-z0-9_-]+\.[A-Za-z0-9]+#', $content, $matches);
         foreach (array_unique($matches[0]) as $candidate) {
             $thumbnail = $this->momentThumbnailPath($candidate);
             if ($thumbnail !== null) {
@@ -446,17 +534,34 @@ class MomentController extends Controller
 
     private function momentThumbnailPath(string $imagePath): ?string
     {
-        if (!preg_match('#^/uploads/blog/\d{4}/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
+        $webRoot = Yii::getAlias('@frontend/web');
+
+        if (preg_match('#^/uploads/moment/(\d{4})/(\d{2})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
+            $thumbnail = '/uploads/thumb/moment/' . $match[1] . '/' . $match[2] . '/' . $match[3];
+        } elseif (preg_match('#^/uploads/blog/\d{4}/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
+            $thumbnail = '/uploads/thumb/blog/' . $match[1];
+        } else {
             return null;
         }
 
-        $webRoot = Yii::getAlias('@frontend/web');
-        $thumbnail = '/uploads/thumb/blog/' . $match[1];
         if (is_file($webRoot . $thumbnail)) {
             return $thumbnail;
         }
 
         return is_file($webRoot . $imagePath) ? $imagePath : null;
+    }
+
+    /** 没有实际收到图片时阻止保存残缺的 [[EDITOR_IMAGE_n]] 占位符。 */
+    private function validateEditorImageTokens(ActiveRecord $model, array $files): void
+    {
+        if ($files === [] && $this->hasUnresolvedImageTokens($model)) {
+            $model->addError('content', '图片上传失败，请重新选择图片后再发布。');
+        }
+    }
+
+    private function hasUnresolvedImageTokens(ActiveRecord $model): bool
+    {
+        return (bool) preg_match('/\[\[EDITOR_IMAGE_\d+\]\]/', (string) $model->getAttribute('content'));
     }
 
     /** @param UploadedFile[] $files */
@@ -479,9 +584,10 @@ class MomentController extends Controller
     private function storeRichEditorImages(array $files): array
     {
         $webRoot = Yii::getAlias('@frontend/web');
-        $year = date('Y');
-        $directory = $webRoot . '/uploads/blog/' . $year;
-        $thumbDirectory = $webRoot . '/uploads/thumb/blog';
+        $relativeDirectory = '/uploads/moment/' . date('Y') . '/' . date('m');
+        $relativeThumbDirectory = '/uploads/thumb/moment/' . date('Y') . '/' . date('m');
+        $directory = $webRoot . $relativeDirectory;
+        $thumbDirectory = $webRoot . $relativeThumbDirectory;
 
         foreach ([$directory, $thumbDirectory] as $targetDirectory) {
             if (!is_dir($targetDirectory) && !mkdir($targetDirectory, 0775, true) && !is_dir($targetDirectory)) {
@@ -498,7 +604,7 @@ class MomentController extends Controller
                 return [];
             }
 
-            $paths[] = '/uploads/blog/' . $year . '/' . $name;
+            $paths[] = $relativeDirectory . '/' . $name;
 
             $thumbnail = $thumbDirectory . DIRECTORY_SEPARATOR . $name;
             try {
@@ -535,13 +641,19 @@ class MomentController extends Controller
     {
         $webRoot = Yii::getAlias('@frontend/web');
         foreach ($paths as $path) {
-            if (!preg_match('#^/uploads/blog/(\d{4})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
+            if (preg_match('#^/uploads/moment/(\d{4})/(\d{2})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
+                $files = [
+                    $webRoot . $path,
+                    $webRoot . '/uploads/thumb/moment/' . $matches[1] . '/' . $matches[2] . '/' . $matches[3],
+                ];
+            } elseif (preg_match('#^/uploads/blog/(\d{4})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
+                $files = [
+                    $webRoot . '/uploads/blog/' . $matches[1] . '/' . $matches[2],
+                    $webRoot . '/uploads/thumb/blog/' . $matches[2],
+                ];
+            } else {
                 continue;
             }
-            $files = [
-                $webRoot . '/uploads/blog/' . $matches[1] . '/' . $matches[2],
-                $webRoot . '/uploads/thumb/blog/' . $matches[2],
-            ];
             foreach ($files as $file) {
                 if (is_file($file)) {
                     @unlink($file);

@@ -91,7 +91,37 @@ class BlogController extends Controller
         return $this->render('index', [
             'dataProvider' => $dataProvider,
             'tagCounts' => $this->tagPostCounts($dataProvider->getModels()),
+            'blogCategories' => $this->blogCategories(),
         ]);
+    }
+
+    /** Categories used by published blog posts. @return Cate[] */
+    private function blogCategories(int $limit = 10): array
+    {
+        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
+
+        $query = Cate::find()
+            ->alias('c')
+            ->select(['c.id', 'c.name', 'c.slug', 'postCount' => 'COUNT([[p]].[[id]])'])
+            ->innerJoin(['pc' => '{{%post_cate}}'], 'pc.cate_id = c.id')
+            ->innerJoin(['p' => '{{%post}}'], 'p.id = pc.post_id')
+            ->where(['p.type' => Post::TYPE_BLOG, 'p.status' => Post::STATUS_PUBLISHED])
+            ->groupBy(['c.id', 'c.name', 'c.slug'])
+            ->orderBy(['postCount' => SORT_DESC, 'c.name' => SORT_ASC])
+            ->limit($limit);
+
+        if ($userId === null) {
+            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
+        } else {
+            $query->andWhere([
+                'or',
+                ['p.visibility' => Post::VISIBILITY_PUBLIC],
+                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
+                ['and', ['p.visibility' => Post::VISIBILITY_PRIVATE], ['p.user_id' => $userId]],
+            ]);
+        }
+
+        return $query->all();
     }
 
     /** @param Post[] $posts @return array<int,int> */
