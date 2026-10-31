@@ -55,7 +55,7 @@ $typeController = $typeControllers[$post->type] ?? null;
             </div>
         <?php elseif ($post->type === Post::TYPE_SHORT_VIDEO): ?>
             <?php if ($contentModel->description): ?>
-                <div class="text-break mb-3" style="white-space: pre-wrap"><?= Html::encode($contentModel->description) ?></div>
+                <div class="text-break mb-3" style="white-space: pre-wrap"><?= Tag::linkifyHashtags(Html::encode($contentModel->description)) ?></div>
             <?php endif; ?>
             <video class="w-100 rounded shadow-sm mb-3" controls playsinline preload="metadata"
                    src="<?= Html::encode($contentModel->video_path) ?>"

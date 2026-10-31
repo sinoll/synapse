@@ -24,7 +24,7 @@ class AppAsset extends AssetBundle
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     public $css = [
-        'css/site.css?v=20261031e',
+        'css/site.css?v=20261031f',
     ];
     public $depends = [
         YiiAsset::class,

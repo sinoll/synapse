@@ -10,6 +10,7 @@ declare(strict_types=1);
 /** @var common\models\Post|null $nextVideo */
 
 use common\models\Post;
+use common\models\Tag;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -79,7 +80,7 @@ $durationOf = static function (?Post $item): ?string {
                         </div>
                         <div class="video-shorts-title"><?= Html::encode($displayTitle) ?></div>
                         <?php if ($description !== ''): ?>
-                            <p class="video-shorts-desc"><?= Html::encode($description) ?></p>
+                            <p class="video-shorts-desc"><?= Tag::linkifyHashtags(Html::encode($description)) ?></p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -182,7 +183,7 @@ $durationOf = static function (?Post $item): ?string {
                 </div>
 
                 <div class="video-watch-description">
-                    <p class="video-watch-description-text mb-0"><?= Html::encode($description !== '' ? $description : '这个视频还没有简介。') ?></p>
+                    <p class="video-watch-description-text mb-0"><?= Tag::linkifyHashtags(Html::encode($description !== '' ? $description : '这个视频还没有简介。')) ?></p>
                     <?php if (!empty($post->tags)): ?>
                         <div class="video-tag-list mt-3">
                             <?php foreach ($post->tags as $tag): ?>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace common\models;
 
+use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveQuery;
 
@@ -33,4 +34,21 @@ class Image extends \common\models\base\Image
 
     public function getUser(): ActiveQuery { return $this->hasOne(User::class, ['id' => 'user_id'])->via('post'); }
     public function getPost(): ActiveQuery { return $this->hasOne(Post::class, ['id' => 'post_id']); }
+
+    /** Gallery thumbnail when one was generated on upload, otherwise the original file. */
+    public function getThumbnailPath(): string
+    {
+        return self::thumbnailForPath((string) $this->file_path) ?? (string) $this->file_path;
+    }
+
+    public static function thumbnailForPath(string $imagePath): ?string
+    {
+        if (!preg_match('#^/uploads/images/([A-Za-z0-9_-]+)\.[A-Za-z0-9]+$#', $imagePath, $match)) {
+            return null;
+        }
+
+        $thumbnail = '/uploads/thumb/images/' . $match[1] . '.jpg';
+
+        return is_file(Yii::getAlias('@frontend/web') . $thumbnail) ? $thumbnail : null;
+    }
 }

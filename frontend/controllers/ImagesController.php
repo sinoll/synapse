@@ -8,6 +8,7 @@ use common\models\Image;
 use common\models\Post;
 use common\models\Tag;
 use Yii;
+use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
@@ -22,6 +23,7 @@ class ImagesController extends Controller
     use ContentVisibilityTrait;
 
     private const FIELDS = ['title', 'file_path', 'alt_text'];
+    private const PAGE_SIZE = 12;
 
     public function getViewPath(): string
     {
@@ -56,6 +58,36 @@ class ImagesController extends Controller
                 'actions' => ['delete' => ['POST']],
             ],
         ];
+    }
+
+    public function actionIndex(?string $tag = null, int $page = 1): string
+    {
+        $activeTag = $this->findTagBySlug($tag);
+        $page = max(1, $page);
+        [$posts, $hasMore, $total] = $this->imageFeed($activeTag?->id, $page);
+
+        return $this->render('index', [
+            'posts' => $posts,
+            'hasMore' => $hasMore,
+            'nextPage' => $page + 1,
+            'total' => $total,
+            'activeTag' => $activeTag,
+            'galleryTags' => $this->imageTags(),
+        ]);
+    }
+
+    /** Return the next page of the gallery feed. */
+    public function actionFeed(?string $tag = null, int $page = 1): Response
+    {
+        $activeTag = $this->findTagBySlug($tag);
+        [$posts, $hasMore] = $this->imageFeed($activeTag?->id, max(1, $page));
+
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        return $this->asJson([
+            'html' => $this->renderPartial('_items', ['posts' => $posts]),
+            'hasMore' => $hasMore,
+        ]);
     }
 
     public function actionView(int $id): string
@@ -343,6 +375,81 @@ class ImagesController extends Controller
         return $post;
     }
 
+    private function findTagBySlug(?string $slug): ?Tag
+    {
+        if ($slug === null || $slug === '') {
+            return null;
+        }
+
+        $tag = Tag::find()->where(['slug' => $slug])->one();
+        if ($tag === null) {
+            throw new NotFoundHttpException('找不到该标签。');
+        }
+
+        return $tag;
+    }
+
+    /** @return array{0: Post[], 1: bool, 2: int} Posts, whether more pages exist, total collections. */
+    private function imageFeed(?int $tagId, int $page): array
+    {
+        $query = $this->imageQuery($tagId);
+        $total = (int) (clone $query)->count();
+        $posts = $query->offset(($page - 1) * self::PAGE_SIZE)->limit(self::PAGE_SIZE)->all();
+
+        return [$posts, $page * self::PAGE_SIZE < $total, $total];
+    }
+
+    private function imageQuery(?int $tagId): ActiveQuery
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->with(['user', 'images', 'tags'])
+            ->where(['p.type' => Post::TYPE_IMAGES, 'p.status' => Post::STATUS_PUBLISHED])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+
+        if ($tagId !== null) {
+            $query->innerJoin(['pt' => '{{%post_tag}}'], 'pt.post_id = p.id')
+                ->andWhere(['pt.tag_id' => $tagId]);
+        }
+
+        $this->applyVisibilityFilter($query);
+
+        return $query;
+    }
+
+    /** Tags used by published galleries, ordered by usage. @return Tag[] */
+    private function imageTags(int $limit = 12): array
+    {
+        $query = Tag::find()
+            ->alias('t')
+            ->select(['t.id', 't.name', 't.slug', 'postCount' => 'COUNT([[pt]].[[post_id]])'])
+            ->innerJoin(['pt' => '{{%post_tag}}'], 'pt.tag_id = t.id')
+            ->innerJoin(['p' => '{{%post}}'], 'p.id = pt.post_id')
+            ->where(['p.type' => Post::TYPE_IMAGES, 'p.status' => Post::STATUS_PUBLISHED])
+            ->groupBy(['t.id', 't.name', 't.slug'])
+            ->orderBy(['postCount' => SORT_DESC, 't.name' => SORT_ASC])
+            ->limit($limit);
+        $this->applyVisibilityFilter($query);
+
+        return $query->all();
+    }
+
+    private function applyVisibilityFilter(ActiveQuery $query, string $alias = 'p'): void
+    {
+        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
+        if ($userId === null) {
+            $query->andWhere([$alias . '.visibility' => Post::VISIBILITY_PUBLIC]);
+            return;
+        }
+
+        $query->andWhere([
+            'or',
+            [$alias . '.visibility' => Post::VISIBILITY_PUBLIC],
+            [$alias . '.visibility' => Post::VISIBILITY_REGISTERED_USERS],
+            ['and', [$alias . '.visibility' => Post::VISIBILITY_PRIVATE], [$alias . '.user_id' => $userId]],
+        ]);
+    }
+
     private function ensureOwner(Post $post): void
     {
         if (Yii::$app->user->isGuest || (int) $post->user_id !== (int) Yii::$app->user->id) {
@@ -457,16 +564,38 @@ class ImagesController extends Controller
         $paths = [];
         foreach ($files as $file) {
             $name = Yii::$app->security->generateRandomString(32) . '.' . strtolower($file->extension);
-            if (!$file->saveAs($directory . DIRECTORY_SEPARATOR . $name)) {
+            $storedFile = $directory . DIRECTORY_SEPARATOR . $name;
+            if (!$file->saveAs($storedFile)) {
                 foreach ($paths as $path) {
-                    @unlink(Yii::getAlias('@frontend/web') . str_replace('/', DIRECTORY_SEPARATOR, $path));
+                    $this->deleteStoredImage($path);
                 }
                 return [];
             }
+            $this->createGalleryThumbnail($storedFile, $name);
             $paths[] = '/uploads/images/' . $name;
         }
 
         return $paths;
+    }
+
+    /** Best-effort gallery thumbnail; listing views fall back to the original when it is missing. */
+    private function createGalleryThumbnail(string $sourceFile, string $fileName): void
+    {
+        $directory = Yii::getAlias('@frontend/web/uploads/thumb/images');
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return;
+        }
+
+        $thumbnail = $directory . DIRECTORY_SEPARATOR . pathinfo($fileName, PATHINFO_FILENAME) . '.jpg';
+        $generated = false;
+        try {
+            $generated = Yii::$app->get('ffmpegService')->createThumbnail($sourceFile, $thumbnail, 640, 640);
+        } catch (\Throwable $exception) {
+            Yii::warning('Gallery thumbnail generation failed: ' . $exception->getMessage(), __METHOD__);
+        }
+        if (!$generated && is_file($thumbnail)) {
+            @unlink($thumbnail);
+        }
     }
 
     private function deleteStoredImage(string $filePath): void
@@ -479,6 +608,12 @@ class ImagesController extends Controller
         $fileName = substr($filePath, strlen($prefix));
         if ($fileName === '' || basename($fileName) !== $fileName) {
             return;
+        }
+
+        $thumbnail = Yii::getAlias('@frontend/web/uploads/thumb/images') . DIRECTORY_SEPARATOR
+            . pathinfo($fileName, PATHINFO_FILENAME) . '.jpg';
+        if (is_file($thumbnail)) {
+            @unlink($thumbnail);
         }
 
         $directory = realpath(Yii::getAlias('@frontend/web/uploads/images'));

@@ -168,7 +168,6 @@ class VideoController extends Controller
         $model = new ShortVideo();
         $model->video_type = (int) array_key_first(ShortVideo::videoTypeOptions());
         $post = new Post();
-        $selectedTagNames = [];
         $tagError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
@@ -182,11 +181,10 @@ class VideoController extends Controller
             $model->video_path = 'pending-upload';
             $model->duration_seconds = max(0, (int) $model->duration_seconds);
 
-            $parsedTagNames = $this->submittedTagNames();
-            $tagInputValid = $parsedTagNames !== null;
-            $selectedTagNames = $parsedTagNames ?? [];
+            $tagNames = $this->extractTagNames($model);
+            $tagInputValid = count($tagNames) <= 10;
             if (!$tagInputValid) {
-                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+                $tagError = '标题和简介中最多包含 10 个 #话题#。';
             }
 
             $modelIsValid = $model->validate();
@@ -232,7 +230,7 @@ class VideoController extends Controller
                             : '无法自动生成视频第 5 帧封面，请检查 FFmpeg 配置后重试。');
                         $transaction->rollBack();
                         $this->deleteStoredMedia([$videoPath, $coverPath]);
-                        return $this->renderForm($model, $post, $selectedTagNames, $tagError, false);
+                        return $this->renderForm($model, $post, $tagError, false);
                     }
 
                     $model->post_id = $post->id;
@@ -241,10 +239,10 @@ class VideoController extends Controller
                     if (!$model->save()) {
                         $transaction->rollBack();
                         $this->deleteStoredMedia([$videoPath, $coverPath]);
-                        return $this->renderForm($model, $post, $selectedTagNames, $tagError, false);
+                        return $this->renderForm($model, $post, $tagError, false);
                     }
 
-                    $this->syncPostTags($post, $selectedTagNames);
+                    $this->syncPostTags($post, $tagNames);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
@@ -266,7 +264,7 @@ class VideoController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, $selectedTagNames, $tagError, false);
+        return $this->renderForm($model, $post, $tagError, false);
     }
 
     public function actionUpdate(int $id): string|Response
@@ -278,7 +276,6 @@ class VideoController extends Controller
         if ($model === null) {
             throw new NotFoundHttpException('找不到该内容。');
         }
-        $selectedTagNames = array_map(static fn (Tag $tag): string => $tag->name, $post->tags);
         $tagError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
@@ -290,12 +287,10 @@ class VideoController extends Controller
             $post->title = $this->contentTitle($model);
             $model->duration_seconds = max(0, (int) $model->duration_seconds);
 
-            $parsedTagNames = $this->submittedTagNames();
-            $tagInputValid = $parsedTagNames !== null;
-            // Keep the stored tags on screen when the submitted list is rejected.
-            $selectedTagNames = $parsedTagNames ?? $selectedTagNames;
+            $tagNames = $this->extractTagNames($model);
+            $tagInputValid = count($tagNames) <= 10;
             if (!$tagInputValid) {
-                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+                $tagError = '标题和简介中最多包含 10 个 #话题#。';
             }
 
             // validate() clears errors first, so upload errors must be added after it.
@@ -360,17 +355,17 @@ class VideoController extends Controller
                         $this->deleteStoredMedia([$videoPath, $coverPath]);
                         $model->video_path = $oldVideoPath;
                         $model->cover_path = $oldCoverPath;
-                        return $this->renderForm($model, $post, $selectedTagNames, $tagError, true);
+                        return $this->renderForm($model, $post, $tagError, true);
                     }
                     if (!$model->save()) {
                         $transaction->rollBack();
                         $this->deleteStoredMedia([$videoPath, $coverPath]);
                         $model->video_path = $oldVideoPath;
                         $model->cover_path = $oldCoverPath;
-                        return $this->renderForm($model, $post, $selectedTagNames, $tagError, true);
+                        return $this->renderForm($model, $post, $tagError, true);
                     }
 
-                    $this->syncPostTags($post, $selectedTagNames);
+                    $this->syncPostTags($post, $tagNames);
                     $transaction->commit();
                     if ($videoPath !== null) {
                         $this->deleteStoredMedia([$oldVideoPath], [$videoPath]);
@@ -391,7 +386,7 @@ class VideoController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, $selectedTagNames, $tagError, true);
+        return $this->renderForm($model, $post, $tagError, true);
     }
 
     public function actionDelete(int $id): Response
@@ -414,7 +409,6 @@ class VideoController extends Controller
     private function renderForm(
         ShortVideo $model,
         Post $post,
-        array $selectedTagNames,
         ?string $tagError,
         bool $isUpdate,
     ): string {
@@ -422,7 +416,6 @@ class VideoController extends Controller
             'model' => $model,
             'post' => $post,
             'isUpdate' => $isUpdate,
-            'selectedTagNames' => $selectedTagNames,
             'tagError' => $tagError,
         ]);
     }
@@ -518,41 +511,10 @@ class VideoController extends Controller
         return $title !== '' ? $title : '短视频';
     }
 
-    /** @return string[]|null Null means malformed or over-limit input. */
-    private function submittedTagNames(): ?array
+    /** @return string[] #话题# names found in the title and description. */
+    private function extractTagNames(ShortVideo $model): array
     {
-        $submittedNames = Yii::$app->request->post('tags', []);
-        if (!is_array($submittedNames)) {
-            return null;
-        }
-
-        $names = [];
-        $normalizedNames = [];
-        foreach ($submittedNames as $submittedName) {
-            if (!is_string($submittedName)) {
-                return null;
-            }
-            $name = preg_replace('/\s+/u', ' ', trim($submittedName)) ?? trim($submittedName);
-            $name = trim($name, "# \t\n\r\0\x0B");
-            if ($name === '') {
-                continue;
-            }
-            if (mb_strlen($name) > 50 || preg_match('/[\x00-\x1F\x7F]/u', $name)) {
-                return null;
-            }
-
-            $normalizedName = mb_strtolower($name);
-            if (isset($normalizedNames[$normalizedName])) {
-                continue;
-            }
-            $normalizedNames[$normalizedName] = true;
-            $names[] = $name;
-            if (count($names) > 10) {
-                return null;
-            }
-        }
-
-        return $names;
+        return Tag::extractHashtags(trim((string) $model->title) . "\n" . (string) $model->description);
     }
 
     /** Replace a post's tags inside the caller's current transaction. */
