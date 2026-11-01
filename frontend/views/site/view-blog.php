@@ -27,6 +27,8 @@ CSS);
             <div class="rich-content text-break border-top pt-4 mt-4">
                 <?= HtmlPurifier::process((string) $blog->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title],pre,code']) ?>
             </div>
+
+            <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
         </article>
     </div>
 </div>

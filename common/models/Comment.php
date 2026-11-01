@@ -18,6 +18,9 @@ class Comment extends ActiveRecord
     public const STATUS_HIDDEN = 0;
     public const STATUS_VISIBLE = 1;
 
+    /** 正文长度上限，防止单条粘贴刷屏。 */
+    public const MAX_LENGTH = 500;
+
     public static function tableName(): string { return '{{%comment}}'; }
 
     public function behaviors(): array { return [TimestampBehavior::class]; }
@@ -31,10 +34,11 @@ class Comment extends ActiveRecord
     public function rules(): array
     {
         return [
+            // trim 先跑，required 与长度上限都按去空格后的正文判断。
+            [['content'], 'trim'],
             [['user_id', 'content'], 'required'],
             [['user_id', 'status'], 'integer'],
-            [['content'], 'string'],
-            [['content'], 'trim'],
+            [['content'], 'string', 'max' => self::MAX_LENGTH, 'tooLong' => '评论内容不能超过 {max} 个字符。'],
             [['status'], 'in', 'range' => [self::STATUS_HIDDEN, self::STATUS_VISIBLE]],
             [['user_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['user_id' => 'id']],
         ];

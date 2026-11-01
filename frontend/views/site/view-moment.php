@@ -29,6 +29,8 @@ CSS);
                     <?= Tag::linkifyHashtags(HtmlPurifier::process((string) $moment->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]'])) ?>
                 </div>
             </div>
+
+            <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
         </article>
     </div>
 </div>

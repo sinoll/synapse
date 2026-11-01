@@ -192,6 +192,8 @@ $durationOf = static function (?Post $item): ?string {
                         </div>
                     <?php endif; ?>
                 </div>
+
+                <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
             </div>
 
             <aside class="col-12 col-xl-4">

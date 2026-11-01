@@ -20,6 +20,12 @@ class PostComment extends ActiveRecord
     /** 会话树允许的最大层级，0 为顶级评论。 */
     public const MAX_DEPTH = 3;
 
+    /** 详情页一次取出的楼层（顶级评论）数。 */
+    public const FLOORS_PAGE_SIZE = 20;
+
+    /** 一个楼层默认展开的回复数，其余走 /comment/replies 翻页。 */
+    public const INLINE_REPLIES = 3;
+
     public static function tableName(): string { return '{{%post_comment}}'; }
 
     public function behaviors(): array
@@ -76,6 +82,20 @@ class PostComment extends ActiveRecord
     public function isRoot(): bool { return (int) $this->depth === 0; }
 
     public function isVisible(): bool { return $this->comment !== null && $this->comment->isVisible(); }
+
+    /** 评论作者、被评论内容的所有者、站点管理员可以删除该节点及其回复。 */
+    public function canManage(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        $userId = (int) $user->id;
+
+        return $userId === (int) $this->comment?->user_id
+            || $userId === (int) $this->post?->user_id
+            || (bool) (int) $user->is_admin;
+    }
 
     /**
      * 按会话树位置绑定到被回复的节点，写入 parent/root/depth；顶级评论传 null。
@@ -135,16 +155,39 @@ class PostComment extends ActiveRecord
         return $node;
     }
 
-    /** 某条内容下的顶级评论，按时间正序。 */
-    public static function rootsOf(int $postId): ActiveQuery
+    /**
+     * 某条内容下的楼层分页，正文与作者一并预加载，返回 [节点数组, 是否还有下一页]。
+     * @return array{0: self[], 1: bool}
+     */
+    public static function floorPage(int $postId, int $page = 1): array
     {
-        return static::find()->where(['post_id' => $postId, 'depth' => 0])->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC]);
+        $roots = static::find()
+            ->where(['post_id' => $postId, 'depth' => 0])
+            ->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC])
+            ->offset((max(1, $page) - 1) * self::FLOORS_PAGE_SIZE)
+            ->limit(self::FLOORS_PAGE_SIZE + 1)
+            ->with(['comment.user', 'floorReplies.comment.user', 'floorReplies.parent.comment.user'])
+            ->all();
+
+        return [array_slice($roots, 0, self::FLOORS_PAGE_SIZE), count($roots) > self::FLOORS_PAGE_SIZE];
     }
 
-    /** 连同正文与作者一起取出，避免会话渲染时的 N+1 查询。 */
-    public static function withContent(): ActiveQuery
+    /**
+     * 该楼层（顶级评论）下回复的分页，按时间正序，返回 [回复节点数组, 是否还有下一页]。
+     * 折叠展示与 /comment/replies 翻页共用同一个页宽，页码连续不跳号。
+     * @return array{0: self[], 1: bool}
+     */
+    public function replyPage(int $page = 1): array
     {
-        return static::find()->with(['comment.user']);
+        $rows = static::find()
+            ->where(['root_comment_id' => $this->id])
+            ->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC])
+            ->offset((max(1, $page) - 1) * self::INLINE_REPLIES)
+            ->limit(self::INLINE_REPLIES + 1)
+            ->with(['comment.user', 'parent.comment.user'])
+            ->all();
+
+        return [array_slice($rows, 0, self::INLINE_REPLIES), count($rows) > self::INLINE_REPLIES];
     }
 
     /**

@@ -72,6 +72,8 @@ $formatFileSize = static function (int $bytes): string {
             </div>
 
             <p class="text-center text-body-secondary small mt-4 mb-0">共 <?= count($images) ?> 张图片</p>
+
+            <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
         </article>
     </div>
 </div>
