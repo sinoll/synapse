@@ -68,19 +68,7 @@ $feedUrl = Url::to($feedRoute);
                 <?php endif; ?>
             </div>
         </div>
-        <?php if ($galleryTags !== []): ?>
-            <div class="card moment-side-card border-0 shadow-sm mb-3">
-                <div class="list-group list-group-flush moment-nav">
-                    <?php foreach ($galleryTags as $tag): ?>
-                        <?= Html::a(
-                            '<i class="bi bi-hash me-1" aria-hidden="true"></i><span class="text-truncate">' . Html::encode($tag->name) . '</span><span class="moment-nav-count">' . (int) $tag->postCount . '</span>',
-                            ['/site/tag', 'slug' => $tag->slug],
-                            ['class' => 'list-group-item list-group-item-action', 'encode' => false],
-                        ) ?>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        <?php endif; ?>
+        
     </aside>
 
     <div class="col-12 col-lg-9">
@@ -95,9 +83,6 @@ $feedUrl = Url::to($feedRoute);
                     <?php endif; ?>
                 </p>
             </div>
-            <?php if ($identity !== null): ?>
-                <?= Html::a('<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>上传图片', ['/images/create'], ['class' => 'btn btn-primary btn-sm', 'encode' => false]) ?>
-            <?php endif; ?>
         </div>
 
         <div class="card moment-composer border-0 shadow-sm mb-3">

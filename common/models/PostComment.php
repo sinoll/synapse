@@ -10,6 +10,7 @@ use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\db\Expression;
 
 /**
  * 评论与内容的挂载关系，同时是该内容会话树里的一个节点。
@@ -83,7 +84,7 @@ class PostComment extends ActiveRecord
 
     public function isVisible(): bool { return $this->comment !== null && $this->comment->isVisible(); }
 
-    /** 评论作者、被评论内容的所有者、站点管理员可以删除该节点及其回复。 */
+    /** 评论作者可删自己那条；内容所有者和管理员可以清理该节点及其回复子树。 */
     public function canManage(?User $user): bool
     {
         if ($user === null) {
@@ -191,6 +192,56 @@ class PostComment extends ActiveRecord
     }
 
     /**
+     * 按发起人身份删除一条评论。
+     * 作者删自己的发言只摘本节点，别人的回复平移到楼层里保留下来（{@see retire()}）；
+     * 内容所有者和管理员的删除是版务清理，连同整棵回复子树一起移除（{@see purge()}）。
+     */
+    public function removeBy(?User $actor): int
+    {
+        $isAuthor = $actor !== null && (int) $actor->id === (int) $this->comment?->user_id;
+
+        return $isAuthor ? $this->retire() : $this->purge();
+    }
+
+    /**
+     * 摘除本节点，保留它下面的回复：直接回复改挂到所属顶级评论下，删的是顶级评论时
+     * 由它的第一层回复各自升为新的楼层。
+     * 子节点指针必须先于本行改完——parent_comment_id 上的数据库级联会在本行删除时把整棵
+     * 子树悄悄带走，那些行没走过模型，正文就回收不了。
+     */
+    public function retire(): int
+    {
+        if (!$this->isSavedNode()) {
+            return 0;
+        }
+
+        $nodeId = (int) $this->id;
+        // 楼层根为空表示本节点就是顶级评论，回复升为楼层后各自成为新的楼层根。
+        $floorId = $this->isRoot() ? null : (int) $this->root_comment_id;
+
+        $transaction = Yii::$app->db->beginTransaction();
+        try {
+            $children = static::find()
+                ->where(['post_id' => $this->post_id, 'parent_comment_id' => $nodeId])
+                ->orderBy(['id' => SORT_ASC])
+                ->all();
+
+            foreach ($children as $child) {
+                static::reparentSubtree($child, $floorId, $floorId ?? (int) $child->id);
+            }
+
+            $deleted = $this->delete() === false ? 0 : 1;
+
+            $transaction->commit();
+        } catch (Throwable $exception) {
+            $transaction->rollBack();
+            throw $exception;
+        }
+
+        return $deleted;
+    }
+
+    /**
      * 删除该节点及其整棵回复子树，逐行走模型以便回收正文。
      * 只删本节点会让数据库级联悄悄带走子树，子节点的正文就成了无人引用的孤儿行。
      */
@@ -218,6 +269,45 @@ class PostComment extends ActiveRecord
         }
 
         return $deleted;
+    }
+
+    /**
+     * 把 $child 及其整棵子树改挂到 $newParentId 下，$floorId 是它们新的所属顶级评论。
+     * $newParentId 为空表示 $child 升为顶级评论，此时它自己的楼层指针留空、后代指向它。
+     * 指针改写只动结构字段，走 updateAll 逐层下推，避开逐行校验和 save 引发的时间戳刷新。
+     */
+    private static function reparentSubtree(self $child, ?int $newParentId, int $floorId): void
+    {
+        $newDepth = $newParentId === null ? 0 : 1;
+        $delta = $newDepth - (int) $child->depth;
+        $postId = (int) $child->post_id;
+
+        static::updateAll(
+            ['parent_comment_id' => $newParentId, 'root_comment_id' => $newParentId === null ? null : $floorId, 'depth' => $newDepth],
+            ['id' => $child->id],
+        );
+
+        // 直接改挂在楼层根下、层级不变时，后代本来就属于同一楼层，不需要再动。
+        if ($delta === 0 && $newParentId !== null) {
+            return;
+        }
+
+        $levelIds = [(int) $child->id];
+        while ($levelIds !== []) {
+            $levelIds = array_map('intval', static::find()
+                ->select('id')
+                ->where(['post_id' => $postId, 'parent_comment_id' => $levelIds])
+                ->column());
+
+            if ($levelIds === []) {
+                break;
+            }
+
+            static::updateAll(
+                ['root_comment_id' => $floorId, 'depth' => new Expression('[[depth]] + ' . $delta)],
+                ['id' => $levelIds],
+            );
+        }
     }
 
     /**

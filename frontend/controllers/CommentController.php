@@ -87,12 +87,15 @@ class CommentController extends Controller
             throw new NotFoundHttpException('评论不存在。');
         }
 
-        if (!$node->canManage(Yii::$app->user->identity)) {
+        $identity = Yii::$app->user->identity;
+        if (!$node->canManage($identity)) {
             throw new ForbiddenHttpException('没有权限删除这条评论。');
         }
 
-        // 走模型删除，正文才会随最后一条挂载记录一起回收。
-        $node->purge();
+        // 作者删自己的评论只摘本条，别人在它下面的回复留在楼层里；版务删除才清空整棵子树。
+        if ($node->removeBy($identity) === 0) {
+            return $this->feedback('error', '评论删除失败，请重试。', $node->post);
+        }
 
         return $this->feedback('success', '评论已删除。', $node->post);
     }

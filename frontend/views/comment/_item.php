@@ -45,7 +45,7 @@ $canManage = $node->canManage($identity);
                         data-node="<?= (int) $node->id ?>" data-name="<?= Html::encode($authorName) ?>">回复</button>
             <?php endif; ?>
             <?php if ($canManage): ?>
-                <?= Html::beginForm(['/comment/delete'], 'post', ['class' => 'comment-delete-form']) ?>
+                <?= Html::beginForm(['/comment/delete'], 'post', ['class' => 'comment-delete-form', 'onsubmit' => 'return confirm("确定删除这条评论？删除后无法恢复。")']) ?>
                 <?= Html::hiddenInput('id', (int) $node->id) ?>
                 <?= Html::submitButton('删除', ['class' => 'comment-action comment-action-danger']) ?>
                 <?= Html::endForm() ?>

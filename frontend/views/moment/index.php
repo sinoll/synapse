@@ -93,9 +93,6 @@ $feedUrl = Url::to($feedRoute);
                 <h1 class="h3 mb-1">动态</h1>
                 <p class="text-body-secondary small mb-0">记录此刻，分享生活的碎片。</p>
             </div>
-            <?php if ($identity !== null): ?>
-                <?= Html::a('<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>发动态', ['/moment/create'], ['class' => 'btn btn-primary btn-sm', 'encode' => false]) ?>
-            <?php endif; ?>
         </div>
 
         <nav class="moment-tabs mb-3" aria-label="动态分类">

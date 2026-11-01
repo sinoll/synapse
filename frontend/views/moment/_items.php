@@ -115,9 +115,6 @@ foreach ($posts as $post):
                     <?php endif; ?>
                 </div>
                 <div class="d-flex align-items-center gap-3">
-                    <button type="button" class="btn btn-link moment-action p-0 text-decoration-none" data-moment-copy="<?= Html::encode(Url::to($detailUrl, true)) ?>">
-                        <i class="bi bi-link-45deg" aria-hidden="true"></i><span>复制链接</span>
-                    </button>
                     <a class="moment-action" href="<?= Html::encode(Url::to($detailUrl)) ?>">
                         查看详情<i class="bi bi-chevron-right" aria-hidden="true"></i>
                     </a>
