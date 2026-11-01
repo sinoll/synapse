@@ -97,6 +97,18 @@ class Post extends \common\models\base\Post
         return $definitions;
     }
 
+    public function beforeDelete(): bool
+    {
+        if (!parent::beforeDelete()) {
+            return false;
+        }
+
+        // 评论正文要靠挂载记录回收，而数据库级联删除不触发模型事件，所以删除内容前先走模型摘除评论。
+        PostComment::detachFromPost((int) $this->id);
+
+        return true;
+    }
+
     public function getUser(): ActiveQuery { return $this->hasOne(User::class, ['id' => 'user_id']); }
     public function getTags(): ActiveQuery { return $this->hasMany(Tag::class, ['id' => 'tag_id'])->viaTable('{{%post_tag}}', ['post_id' => 'id']); }
     public function getCategories(): ActiveQuery { return $this->hasMany(Cate::class, ['id' => 'cate_id'])->viaTable('{{%post_cate}}', ['post_id' => 'id']); }
@@ -105,6 +117,8 @@ class Post extends \common\models\base\Post
     public function getMoment(): ActiveQuery { return $this->hasOne(Moment::class, ['post_id' => 'id']); }
     public function getShortVideo(): ActiveQuery { return $this->hasOne(ShortVideo::class, ['post_id' => 'id']); }
     public function getComments(): ActiveQuery { return $this->hasMany(PostComment::class, ['post_id' => 'id'])->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC]); }
+    public function getCommentRoots(): ActiveQuery { return $this->hasMany(PostComment::class, ['post_id' => 'id'])->onCondition(['depth' => 0])->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC]); }
+    public function getCommentContents(): ActiveQuery { return $this->hasMany(Comment::class, ['id' => 'comment_id'])->viaTable('{{%post_comment}}', ['post_id' => 'id']); }
     public function getLikes(): ActiveQuery { return $this->hasMany(PostLike::class, ['post_id' => 'id']); }
     public function getLikedUsers(): ActiveQuery { return $this->hasMany(User::class, ['id' => 'user_id'])->viaTable('{{%post_like}}', ['post_id' => 'id']); }
 

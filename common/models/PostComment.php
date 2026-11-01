@@ -4,34 +4,43 @@ declare(strict_types=1);
 
 namespace common\models;
 
+use InvalidArgumentException;
+use Throwable;
+use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 
-/** A comment or reply on any post-backed content type. */
+/**
+ * 评论与内容的挂载关系，同时是该内容会话树里的一个节点。
+ * 正文、作者、审核状态在 {@see Comment} 上；本表只描述「挂在哪条内容下、回复了谁、处在第几层」。
+ */
 class PostComment extends ActiveRecord
 {
-    public const STATUS_HIDDEN = 0;
-    public const STATUS_VISIBLE = 1;
+    /** 会话树允许的最大层级，0 为顶级评论。 */
+    public const MAX_DEPTH = 3;
 
     public static function tableName(): string { return '{{%post_comment}}'; }
 
-    public function behaviors(): array { return [TimestampBehavior::class]; }
-
-    public function init(): void
+    public function behaviors(): array
     {
-        parent::init();
-        $this->status = self::STATUS_VISIBLE;
+        return [[
+            'class' => TimestampBehavior::class,
+            'attributes' => [self::EVENT_BEFORE_INSERT => ['created_at']],
+        ]];
     }
 
     public function rules(): array
     {
         return [
-            [['post_id', 'user_id', 'content'], 'required'],
-            [['post_id', 'user_id', 'parent_id', 'status'], 'integer'],
-            [['content'], 'string'],
-            [['status'], 'in', 'range' => [self::STATUS_HIDDEN, self::STATUS_VISIBLE]],
-            [['parent_id'], 'exist', 'skipOnError' => true, 'targetClass' => self::class, 'targetAttribute' => ['parent_id' => 'id']],
+            [['post_id', 'comment_id'], 'required'],
+            [['post_id', 'comment_id', 'parent_comment_id', 'root_comment_id'], 'integer'],
+            [['depth'], 'integer', 'min' => 0, 'max' => self::MAX_DEPTH],
+            [['post_id'], 'exist', 'skipOnError' => true, 'targetClass' => Post::class, 'targetAttribute' => ['post_id' => 'id']],
+            [['comment_id'], 'exist', 'skipOnError' => true, 'targetClass' => Comment::class, 'targetAttribute' => ['comment_id' => 'id']],
+            [['comment_id'], 'unique', 'targetAttribute' => ['post_id', 'comment_id'], 'message' => '这条内容下已经存在该评论。'],
+            // 父子关系只在同一条内容的会话树内成立，数据库无法跨列校验，由模型保证。
+            [['parent_comment_id', 'root_comment_id'], 'validateNodeInSamePost', 'skipOnEmpty' => true],
         ];
     }
 
@@ -40,17 +49,180 @@ class PostComment extends ActiveRecord
         return [
             'id' => 'ID',
             'post_id' => '内容',
-            'user_id' => '用户',
-            'parent_id' => '回复的评论',
-            'content' => '评论内容',
-            'status' => '状态',
-            'created_at' => '创建时间',
-            'updated_at' => '更新时间',
+            'comment_id' => '评论内容',
+            'parent_comment_id' => '回复的评论',
+            'root_comment_id' => '所属顶级评论',
+            'depth' => '层级',
+            'created_at' => '评论时间',
         ];
     }
 
     public function getPost(): ActiveQuery { return $this->hasOne(Post::class, ['id' => 'post_id']); }
-    public function getUser(): ActiveQuery { return $this->hasOne(User::class, ['id' => 'user_id']); }
-    public function getParent(): ActiveQuery { return $this->hasOne(self::class, ['id' => 'parent_id']); }
-    public function getReplies(): ActiveQuery { return $this->hasMany(self::class, ['parent_id' => 'id'])->orderBy(['created_at' => SORT_ASC]); }
+    public function getComment(): ActiveQuery { return $this->hasOne(Comment::class, ['id' => 'comment_id']); }
+
+    /** 评论作者——正文自带的属性，这里提供快捷访问。 */
+    public function getUser(): ActiveQuery
+    {
+        return $this->hasOne(User::class, ['id' => 'user_id'])->viaTable('{{%comment}}', ['id' => 'comment_id']);
+    }
+
+    public function getParent(): ActiveQuery { return $this->hasOne(self::class, ['id' => 'parent_comment_id']); }
+    public function getRoot(): ActiveQuery { return $this->hasOne(self::class, ['id' => 'root_comment_id']); }
+    public function getReplies(): ActiveQuery { return $this->hasMany(self::class, ['parent_comment_id' => 'id'])->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC]); }
+
+    /** 同一楼层（顶级评论）下的全部回复。 */
+    public function getFloorReplies(): ActiveQuery { return $this->hasMany(self::class, ['root_comment_id' => 'id'])->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC]); }
+
+    public function isRoot(): bool { return (int) $this->depth === 0; }
+
+    public function isVisible(): bool { return $this->comment !== null && $this->comment->isVisible(); }
+
+    /**
+     * 按会话树位置绑定到被回复的节点，写入 parent/root/depth；顶级评论传 null。
+     * 必须在被回复节点已入库后调用，否则没有可用于指向的 id。
+     */
+    public function bindTo(?self $parent): void
+    {
+        if ($parent === null) {
+            $this->parent_comment_id = null;
+            $this->root_comment_id = null;
+            $this->depth = 0;
+
+            return;
+        }
+
+        if (!$parent->isSavedNode()) {
+            throw new InvalidArgumentException('被回复的评论尚未保存，无法建立回复关系。');
+        }
+
+        if ($parent === $this || (int) $parent->id === (int) $this->id) {
+            throw new InvalidArgumentException('评论不能回复自己。');
+        }
+
+        if ((int) $parent->post_id !== (int) $this->post_id) {
+            throw new InvalidArgumentException('不能回复其它内容下的评论。');
+        }
+
+        $this->parent_comment_id = $parent->id;
+        $this->root_comment_id = $parent->isRoot() ? $parent->id : $parent->root_comment_id;
+        $this->depth = (int) $parent->depth + 1;
+    }
+
+    /** 写入正文与挂载记录，返回会话节点；两步在同一个事务里完成。 */
+    public static function publish(Post $post, int $userId, string $content, ?self $parent = null): self
+    {
+        $node = new self(['post_id' => $post->id]);
+        $node->bindTo($parent);
+        $comment = new Comment(['user_id' => $userId, 'content' => $content]);
+
+        $transaction = Yii::$app->db->beginTransaction();
+        try {
+            if (!$comment->save()) {
+                throw new InvalidArgumentException('评论内容保存失败：' . implode('；', $comment->getFirstErrors()));
+            }
+
+            $node->comment_id = $comment->id;
+            if (!$node->save()) {
+                throw new InvalidArgumentException('评论关系保存失败：' . implode('；', $node->getFirstErrors()));
+            }
+
+            $transaction->commit();
+        } catch (Throwable $exception) {
+            $transaction->rollBack();
+            throw $exception;
+        }
+
+        return $node;
+    }
+
+    /** 某条内容下的顶级评论，按时间正序。 */
+    public static function rootsOf(int $postId): ActiveQuery
+    {
+        return static::find()->where(['post_id' => $postId, 'depth' => 0])->orderBy(['created_at' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /** 连同正文与作者一起取出，避免会话渲染时的 N+1 查询。 */
+    public static function withContent(): ActiveQuery
+    {
+        return static::find()->with(['comment.user']);
+    }
+
+    /**
+     * 删除该节点及其整棵回复子树，逐行走模型以便回收正文。
+     * 只删本节点会让数据库级联悄悄带走子树，子节点的正文就成了无人引用的孤儿行。
+     */
+    public function purge(): int
+    {
+        if (!$this->isSavedNode()) {
+            return 0;
+        }
+
+        $descendants = static::find()
+            ->where(['post_id' => $this->post_id])
+            ->andWhere(['or', ['parent_comment_id' => $this->id], ['root_comment_id' => $this->id]])
+            ->orderBy(['depth' => SORT_DESC, 'id' => SORT_DESC])
+            ->all();
+
+        $deleted = 0;
+        foreach ($descendants as $descendant) {
+            if ($descendant->delete() !== false) {
+                $deleted++;
+            }
+        }
+
+        if ($this->delete() !== false) {
+            $deleted++;
+        }
+
+        return $deleted;
+    }
+
+    /**
+     * 摘除某条内容下的全部评论，深层节点先删，保证每条评论的正文都能被回收。
+     * 由 {@see Post::beforeDelete()} 在内容删除时调用。
+     */
+    public static function detachFromPost(int $postId): int
+    {
+        $deleted = 0;
+        foreach (static::find()->where(['post_id' => $postId])->orderBy(['depth' => SORT_DESC, 'id' => SORT_DESC])->all() as $node) {
+            if ($node->delete() !== false) {
+                $deleted++;
+            }
+        }
+
+        return $deleted;
+    }
+
+    public function afterDelete(): void
+    {
+        parent::afterDelete();
+
+        // 这是正文的最后一条挂载记录时一并删除正文；仍被其它内容挂着的正文保留。
+        $commentId = (int) $this->comment_id;
+        if ($commentId > 0 && !static::find()->where(['comment_id' => $commentId])->exists()) {
+            Comment::deleteAll(['id' => $commentId]);
+        }
+    }
+
+    private function isSavedNode(): bool { return !$this->isNewRecord && $this->id !== null; }
+
+    /** 父子指针必须属于同一条内容的会话树。 */
+    public function validateNodeInSamePost(string $attribute): void
+    {
+        $nodeId = $this->{$attribute};
+        if ($nodeId === null || $nodeId === '') {
+            return;
+        }
+
+        $node = self::find()->select('post_id')->where(['id' => $nodeId])->one();
+        if ($node === null) {
+            $this->addError($attribute, '被回复的评论不存在。');
+
+            return;
+        }
+
+        if ((int) $node->post_id !== (int) $this->post_id) {
+            $this->addError($attribute, '不能回复其它内容下的评论。');
+        }
+    }
 }
