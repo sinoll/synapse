@@ -1,0 +1,43 @@
+在 PHP 中，影响 Web 上传视频（或其他大文件）大小和成功率的核心参数主要有以下几个：
+
+1. 核心大小限制参数
+
+• upload_max_filesize
+	• 作用：限制单个上传文件的最大允许大小（默认通常为 2M）。上传视频必须调大这个值。
+• post_max_size
+	• 作用：限制通过 POST 方法提交的整个请求数据包（Body）的最大大小。
+	• 避坑要点：post_max_size 必须大于 upload_max_filesize。因为表单中除了文件本身，还可能包含其他文本字段或多文件数据，如果整体 POST 大小小于单个文件大小，上传会失败。
+• memory_limit
+	• 作用：脚本所能够分配的最大内存。
+	• 避坑要点：应该大于 post_max_size，确保 PHP 脚本有足够内存来处理整个 POST 请求。
+
+2. 时间与超时限制参数（传大视频极易卡在这里）
+
+• max_execution_time
+	• 作用：每个 PHP 脚本被允许执行的最大时间（单位：秒，默认通常为 30 秒）。上传大视频耗时较长，如果超过此时间脚本会被强行终止。
+• max_input_time
+	• 作用：脚本接收输入数据（包括 POST 数据和文件上传）所允许的最大时间（单位：秒，默认通常为 60 秒）。网速慢或视频很大时，光是“接收文件”就会花很久，需要调大。
+
+3. 其他辅助参数
+
+• file_uploads
+	• 作用：是否允许通过 HTTP 方式上传文件，必须设置为 On（默认即为 On）。
+• max_file_uploads
+	• 作用：单个请求中允许同时上传的最大文件数量（默认通常为 20）。如果单次只传一个视频则无影响。
+
+4. ⚠️ 极其重要：Web 服务器层的限制（常被忽略）
+
+PHP 的参数改大了，但如果前端还卡住，通常是因为 Web 服务器（Nginx / Apache）本身也有请求体大小限制：
+• Nginx：需检查 nginx.conf 中的 client_max_body_size（默认通常只有 1M 或 10M），如果不调大，Nginx 会直接返回 413 Request Entity Too Large 错误。
+• Apache：需检查 LimitRequestBody 指令。
+💡 修改建议总结（以允许上传 50M 视频为例，在 php.ini 中调整）：
+ini
+file_uploads = On
+upload_max_filesize = 50M
+post_max_size = 64M
+memory_limit = 128M
+max_execution_time = 300
+max_input_time = 300
+请谨慎使用此类代码。
+修改完成后，别忘了重启 PHP-FPM / Apache / Web 服务使配置生效。
+如果你上传视频时遇到了具体报错（例如报错代码或空白页），可以告诉我，我们可以进一步排查是 PHP 内存、超时 还是 Nginx 限制 引起的。

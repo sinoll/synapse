@@ -58,8 +58,10 @@ $profileInitial = $profileName !== '' ? mb_strtoupper(mb_substr($profileName, 0,
             <div class="card-header moment-side-heading">浏览</div>
             <div class="list-group list-group-flush moment-nav">
                 <?= Html::a('<i class="bi bi-house-door me-2" aria-hidden="true"></i>首页', ['/site/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
-                <?= Html::a('<i class="bi bi-journal-text me-2" aria-hidden="true"></i>Blog', ['/blog/index'], ['class' => 'list-group-item list-group-item-action active', 'encode' => false, 'aria-current' => 'page']) ?>
+                <?= Html::a('<i class="bi bi-journal-text me-2" aria-hidden="true"></i>Blog', ['/blog/index'], ['class' => 'list-group-item list-group-item-action active', 'encode' => false]) ?>
                 <?= Html::a('<i class="bi bi-chat-square-text me-2" aria-hidden="true"></i>动态', ['/moment/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
+                <?= Html::a('<i class="bi bi-images me-2" aria-hidden="true"></i>图集', ['/images/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false, 'aria-current' => 'page']) ?>
+                <?= Html::a('<i class="bi bi-camera-reels me-2" aria-hidden="true"></i>短视频', ['/video/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
                 <?php if ($identity !== null): ?>
                     <?= Html::a('<i class="bi bi-collection me-2" aria-hidden="true"></i>我的内容', ['/content/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
                 <?php endif; ?>

@@ -75,6 +75,18 @@ class Tag extends \yii\db\ActiveRecord
         return $names;
     }
 
+    /** 从文本中移除 #话题# 片段，用于把标签词从标题、说明里剥离出来。 */
+    public static function stripHashtags(string $text): string
+    {
+        $stripped = preg_replace_callback(
+            '/#([^#\r\n<>]{1,50})#/u',
+            static fn (array $match): string => self::normalizeHashtagName($match[1]) === '' ? $match[0] : '',
+            $text
+        ) ?? $text;
+
+        return trim((string) preg_replace('/[ \t]{2,}/u', ' ', $stripped) ?? '');
+    }
+
     /** 把正文中的 #话题# 文本转换为标签页链接，跳过 HTML 标签本身。 */
     public static function linkifyHashtags(string $html): string
     {

@@ -22,8 +22,11 @@ class ImagesController extends Controller
 {
     use ContentVisibilityTrait;
 
-    private const FIELDS = ['title', 'file_path', 'alt_text'];
+    private const FIELDS = ['caption', 'file_path'];
     private const PAGE_SIZE = 12;
+    private const MAX_TAGS = 10;
+    private const EMPTY_CAPTION_ERROR = '请填写图片标题或说明。';
+    private const TOO_MANY_TAGS_ERROR = '标题和说明中最多包含 10 个 #话题#。';
 
     public function getViewPath(): string
     {
@@ -108,7 +111,6 @@ class ImagesController extends Controller
     {
         $model = new Image();
         $post = new Post();
-        $selectedTagNames = [];
         $tagError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
@@ -116,16 +118,15 @@ class ImagesController extends Controller
             $post->user_id = (int) Yii::$app->user->id;
             $post->type = Post::TYPE_IMAGES;
             $post->status = Post::STATUS_PUBLISHED;
-            $post->title = $this->contentTitle($model);
             $model->post_id = 0;
             // The real path is generated after validation and upload.
             $model->file_path = 'pending-upload';
+            $model->applyCaption();
+            $post->title = $this->contentTitle($model);
 
-            $parsedTagNames = $this->submittedTagNames();
-            $tagInputValid = $parsedTagNames !== null;
-            $selectedTagNames = $parsedTagNames ?? [];
-            if (!$tagInputValid) {
-                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+            $selectedTagNames = Tag::extractHashtags((string) $model->caption);
+            if (count($selectedTagNames) > self::MAX_TAGS) {
+                $tagError = self::TOO_MANY_TAGS_ERROR;
             }
 
             if ($uploadedImages === []) {
@@ -143,9 +144,13 @@ class ImagesController extends Controller
                 }
             }
 
+            // validate() clears errors first, so the caption error must be added after it.
             $modelIsValid = $model->validate();
+            if (trim((string) $model->caption) === '') {
+                $model->addError('caption', self::EMPTY_CAPTION_ERROR);
+            }
 
-            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid && $uploadedImages !== []) {
+            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagError === null && $uploadedImages !== []) {
                 $transaction = Yii::$app->db->beginTransaction();
                 $imagePaths = [];
                 try {
@@ -187,7 +192,7 @@ class ImagesController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, [], $selectedTagNames, $tagError, false);
+        return $this->renderForm($model, $post, [], $tagError, false);
     }
 
     public function actionUpdate(int $id): string|Response
@@ -200,19 +205,17 @@ class ImagesController extends Controller
             throw new NotFoundHttpException('找不到该内容。');
         }
         $selectedImageIds = [];
-        $selectedTagNames = array_map(static fn (Tag $tag): string => $tag->name, $post->tags);
         $tagError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
             $uploadedImages = UploadedFile::getInstances($model, 'file_path');
             $model->post_id = (int) $post->id;
+            $model->applyCaption();
             $post->title = $this->contentTitle($model);
 
-            $parsedTagNames = $this->submittedTagNames();
-            $tagInputValid = $parsedTagNames !== null;
-            $selectedTagNames = $parsedTagNames ?? [];
-            if (!$tagInputValid) {
-                $tagError = '最多添加 10 个标签，每个标签不超过 50 个字符。';
+            $selectedTagNames = Tag::extractHashtags((string) $model->caption);
+            if (count($selectedTagNames) > self::MAX_TAGS) {
+                $tagError = self::TOO_MANY_TAGS_ERROR;
             }
 
             $requestedImageIds = Yii::$app->request->post('remove_image_ids', []);
@@ -258,9 +261,13 @@ class ImagesController extends Controller
                 }
             }
 
+            // validate() clears errors first, so the caption error must be added after it.
             $modelIsValid = $model->validate();
+            if (trim((string) $model->caption) === '') {
+                $model->addError('caption', self::EMPTY_CAPTION_ERROR);
+            }
 
-            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid && $imageSelectionIsValid) {
+            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagError === null && $imageSelectionIsValid) {
                 $transaction = Yii::$app->db->beginTransaction();
                 $imagePaths = [];
                 $removedImagePaths = [];
@@ -273,7 +280,7 @@ class ImagesController extends Controller
                     }
                     if (!$post->save(false)) {
                         $transaction->rollBack();
-                        return $this->renderForm($model, $post, $selectedImageIds, $selectedTagNames, $tagError, true);
+                        return $this->renderForm($model, $post, $selectedImageIds, $tagError, true);
                     }
 
                     $images = Image::find()->where(['post_id' => $post->id])->orderBy(['sort_order' => SORT_ASC])->all();
@@ -332,7 +339,7 @@ class ImagesController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, $selectedImageIds, $selectedTagNames, $tagError, true);
+        return $this->renderForm($model, $post, $selectedImageIds, $tagError, true);
     }
 
     public function actionDelete(int $id): Response
@@ -351,16 +358,19 @@ class ImagesController extends Controller
         Image $model,
         Post $post,
         array $selectedImageIds,
-        array $selectedTagNames,
         ?string $tagError,
         bool $isUpdate,
     ): string {
+        if ($model->caption === null) {
+            $hashtags = array_map(static fn (Tag $tag): string => '#' . $tag->name . '#', $post->tags);
+            $model->caption = trim($model->buildCaption() . "\n" . implode(' ', $hashtags));
+        }
+
         return $this->render('create', [
             'model' => $model,
             'post' => $post,
             'isUpdate' => $isUpdate,
             'selectedImageIds' => $selectedImageIds,
-            'selectedTagNames' => $selectedTagNames,
             'tagError' => $tagError,
         ]);
     }
@@ -471,7 +481,8 @@ class ImagesController extends Controller
                 continue;
             }
             if (array_key_exists($field, $attributes)) {
-                $model->setAttribute($field, $attributes[$field]);
+                // caption is a form-only property, so it cannot go through setAttribute().
+                $model->$field = is_scalar($attributes[$field]) ? (string) $attributes[$field] : '';
             }
         }
 
@@ -496,43 +507,6 @@ class ImagesController extends Controller
         $title = trim((string) $model->getAttribute('title'));
 
         return $title !== '' ? $title : '图片';
-    }
-
-    /** @return string[]|null Null means malformed or over-limit input. */
-    private function submittedTagNames(): ?array
-    {
-        $submittedNames = Yii::$app->request->post('tags', []);
-        if (!is_array($submittedNames)) {
-            return null;
-        }
-
-        $names = [];
-        $normalizedNames = [];
-        foreach ($submittedNames as $submittedName) {
-            if (!is_string($submittedName)) {
-                return null;
-            }
-            $name = preg_replace('/\s+/u', ' ', trim($submittedName)) ?? trim($submittedName);
-            $name = trim($name, "# \t\n\r\0\x0B");
-            if ($name === '') {
-                continue;
-            }
-            if (mb_strlen($name) > 50 || preg_match('/[\x00-\x1F\x7F]/u', $name)) {
-                return null;
-            }
-
-            $normalizedName = mb_strtolower($name);
-            if (isset($normalizedNames[$normalizedName])) {
-                continue;
-            }
-            $normalizedNames[$normalizedName] = true;
-            $names[] = $name;
-            if (count($names) > 10) {
-                return null;
-            }
-        }
-
-        return $names;
     }
 
     /** Replace a post's tags inside the caller's current transaction. */

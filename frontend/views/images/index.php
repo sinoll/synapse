@@ -68,6 +68,19 @@ $feedUrl = Url::to($feedRoute);
                 <?php endif; ?>
             </div>
         </div>
+        <?php if ($galleryTags !== []): ?>
+            <div class="card moment-side-card border-0 shadow-sm mb-3">
+                <div class="list-group list-group-flush moment-nav">
+                    <?php foreach ($galleryTags as $tag): ?>
+                        <?= Html::a(
+                            '<i class="bi bi-hash me-1" aria-hidden="true"></i><span class="text-truncate">' . Html::encode($tag->name) . '</span><span class="moment-nav-count">' . (int) $tag->postCount . '</span>',
+                            ['/site/tag', 'slug' => $tag->slug],
+                            ['class' => 'list-group-item list-group-item-action', 'encode' => false],
+                        ) ?>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </aside>
 
     <div class="col-12 col-lg-9">
@@ -106,22 +119,6 @@ $feedUrl = Url::to($feedRoute);
                 </div>
             </div>
         </div>
-
-        <?php if ($galleryTags !== []): ?>
-            <nav class="moment-tabs mb-3" aria-label="图集标签">
-                <?= Html::a('全部', ['/images/index'], ['class' => 'moment-tab' . ($activeTag === null ? ' active' : '')]) ?>
-                <?php foreach ($galleryTags as $tag): ?>
-                    <?= Html::a(
-                        Html::encode($tag->name) . '<span class="moment-tab-count">' . (int) $tag->postCount . '</span>',
-                        ['/images/index', 'tag' => $tag->slug],
-                        [
-                            'class' => 'moment-tab' . ($activeTag !== null && (int) $activeTag->id === (int) $tag->id ? ' active' : ''),
-                            'encode' => false,
-                        ],
-                    ) ?>
-                <?php endforeach; ?>
-            </nav>
-        <?php endif; ?>
 
         <div class="row row-cols-2 row-cols-sm-3 g-3" id="gallery-grid"
              data-next-page="<?= (int) $nextPage ?>" data-has-more="<?= $hasMore ? '1' : '0' ?>">
