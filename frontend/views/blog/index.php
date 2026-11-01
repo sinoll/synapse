@@ -12,7 +12,6 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 
 $this->title = 'Blog';
-$this->params['breadcrumbs'] = ['Blog'];
 
 $posts = $dataProvider->getModels();
 $webRoot = Yii::getAlias('@webroot');

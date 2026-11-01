@@ -15,9 +15,7 @@ $profileName = $identity !== null ? ($identity->nickname ?: $identity->username)
 $profileInitial = $profileName !== '' ? mb_strtoupper(mb_substr($profileName, 0, 1)) : '拾';
 
 $this->title = $activeTag !== null ? '短视频 · ' . $activeTag->name : '短视频';
-$this->params['breadcrumbs'] = $activeTag === null
-    ? ['短视频']
-    : [['label' => '短视频', 'url' => ['/video/index']], $activeTag->name];
+
 ?>
 <div class="row g-3 g-xl-4">
     <aside class="col-12 col-lg-3 d-none d-lg-block">
@@ -61,21 +59,7 @@ $this->params['breadcrumbs'] = $activeTag === null
                     <?= Html::a('<i class="bi bi-collection me-2" aria-hidden="true"></i>我的内容', ['/content/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
                 <?php endif; ?>
             </div>
-        </div>
-
-        <?php if ($videoTags !== []): ?>
-            <div class="card moment-side-card border-0 shadow-sm mb-3">
-                <div class="list-group list-group-flush moment-nav">
-                    <?php foreach ($videoTags as $tag): ?>
-                        <?= Html::a(
-                            '<i class="bi bi-hash me-1" aria-hidden="true"></i><span class="text-truncate">' . Html::encode($tag->name) . '</span><span class="moment-nav-count">' . (int) $tag->postCount . '</span>',
-                            ['/site/tag', 'slug' => $tag->slug],
-                            ['class' => 'list-group-item list-group-item-action', 'encode' => false],
-                        ) ?>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        <?php endif; ?>
+        </div>        
     </aside>
 
     <div class="col-12 col-lg-9">
