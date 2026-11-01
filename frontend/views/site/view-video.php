@@ -60,7 +60,7 @@ $durationOf = static function (?Post $item): ?string {
         <div class="video-shorts">
             <div class="video-shorts-stage">
                 <div class="video-shorts-player" data-short-player>
-                    <video autoplay muted loop playsinline preload="metadata"
+                    <video autoplay loop playsinline preload="metadata"
                            poster="<?= Html::encode($coverUrl) ?>" data-short-video
                            aria-label="<?= Html::encode($displayTitle) ?>">
                         <source src="<?= Html::encode($video->video_path) ?>">
@@ -107,8 +107,8 @@ $durationOf = static function (?Post $item): ?string {
                     <button type="button" class="video-shorts-action" data-short-toggle aria-label="暂停">
                         <i class="bi bi-pause-fill" aria-hidden="true"></i><span>暂停</span>
                     </button>
-                    <button type="button" class="video-shorts-action" data-short-mute aria-label="开启声音">
-                        <i class="bi bi-volume-mute-fill" aria-hidden="true"></i><span>静音</span>
+                    <button type="button" class="video-shorts-action" data-short-mute aria-label="静音">
+                        <i class="bi bi-volume-up-fill" aria-hidden="true"></i><span>有声</span>
                     </button>
                     <button type="button" class="video-shorts-action" data-video-share>
                         <i class="bi bi-share-fill" aria-hidden="true"></i><span data-share-label>分享</span>
@@ -140,6 +140,8 @@ $durationOf = static function (?Post $item): ?string {
                     </div>
                 <?php endif; ?>
             </div>
+
+            <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
         </div>
     <?php else: ?>
         <div class="row g-4">
@@ -296,9 +298,12 @@ document.querySelectorAll('[data-video-share]').forEach(function (button) {
         }
     };
 
+    let disarmSoundUnlock = function () {};
     video.addEventListener('click', togglePlay);
     if (toggle) toggle.addEventListener('click', togglePlay);
     if (mute) mute.addEventListener('click', function () {
+        // 用户自己控制声音，取消「首次手势恢复声音」的兜底，避免被抢先解除静音。
+        disarmSoundUnlock();
         video.muted = !video.muted;
         if (!video.muted) video.volume = 1;
         syncMute();
@@ -306,7 +311,32 @@ document.querySelectorAll('[data-video-share]').forEach(function (button) {
     video.addEventListener('play', syncPlay);
     video.addEventListener('pause', syncPlay);
     video.addEventListener('ended', syncPlay);
+
+    const unlockSound = function () {
+        disarmSoundUnlock();
+        video.volume = 1;
+        video.muted = false;
+        syncMute();
+    };
+
+    const startPlayback = function () {
+        video.play().catch(function () {
+            // 浏览器可能拦截有声自动播放：降级为静音循环播放，首次手势再恢复声音。
+            video.muted = true;
+            video.play().catch(function () {});
+            syncMute();
+            document.addEventListener('pointerdown', unlockSound, { once: true });
+            document.addEventListener('keydown', unlockSound, { once: true });
+            disarmSoundUnlock = function () {
+                document.removeEventListener('pointerdown', unlockSound);
+                document.removeEventListener('keydown', unlockSound);
+                disarmSoundUnlock = function () {};
+            };
+        });
+    };
+
     syncPlay();
     syncMute();
+    if (video.paused) startPlayback();
 })();
 JS);

@@ -385,20 +385,6 @@ class ImagesController extends Controller
         return $post;
     }
 
-    private function findTagBySlug(?string $slug): ?Tag
-    {
-        if ($slug === null || $slug === '') {
-            return null;
-        }
-
-        $tag = Tag::find()->where(['slug' => $slug])->one();
-        if ($tag === null) {
-            throw new NotFoundHttpException('找不到该标签。');
-        }
-
-        return $tag;
-    }
-
     /** @return array{0: Post[], 1: bool, 2: int} Posts, whether more pages exist, total collections. */
     private function imageFeed(?int $tagId, int $page): array
     {

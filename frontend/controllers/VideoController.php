@@ -59,13 +59,21 @@ class VideoController extends Controller
         ];
     }
 
-    public function actionIndex(): string
+    public function actionIndex(?string $tag = null): string
     {
+        $activeTag = $this->findTagBySlug($tag);
+
         $query = Post::find()
             ->alias('p')
             ->with(['user', 'shortVideo'])
             ->where(['p.type' => Post::TYPE_SHORT_VIDEO, 'p.status' => Post::STATUS_PUBLISHED])
             ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+
+        if ($activeTag !== null) {
+            $query->innerJoin(['pt' => '{{%post_tag}}'], 'pt.post_id = p.id')
+                ->andWhere(['pt.tag_id' => $activeTag->id]);
+        }
+
         $this->applyVisibilityFilter($query);
 
         $horizontalVideos = [];
@@ -86,6 +94,7 @@ class VideoController extends Controller
             'horizontalVideos' => $horizontalVideos,
             'verticalVideos' => $verticalVideos,
             'videoTags' => $this->videoTags(),
+            'activeTag' => $activeTag,
         ]);
     }
 
