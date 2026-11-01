@@ -70,7 +70,11 @@ class m261031_000001_create_post_comment_table extends Migration
     public function safeDown(): void
     {
         // {{%post_comment}} 引用 {{%comment}}，必须先删关系表再删正文表。
-        $this->dropTable('{{%post_comment}}');
-        $this->dropTable('{{%comment}}');
+        if ($this->db->schema->getTableSchema('{{%post_comment}}', true) !== null) {
+            $this->dropTable('{{%post_comment}}');
+        }
+        if ($this->db->schema->getTableSchema('{{%comment}}', true) !== null) {
+            $this->dropTable('{{%comment}}');
+        }
     }
 }
