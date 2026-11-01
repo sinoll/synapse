@@ -18,8 +18,8 @@ class Post extends \common\models\base\Post
     /** 内容类型的中文名称。 */
     public const TYPE_LABELS = [
         self::TYPE_BLOG => '博客',
-        self::TYPE_IMAGES => '图片',
         self::TYPE_MOMENT => '动态',
+        self::TYPE_IMAGES => '图集',        
         self::TYPE_SHORT_VIDEO => '短视频',
     ];
 

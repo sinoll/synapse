@@ -85,6 +85,22 @@ $feedUrl = Url::to($feedRoute);
             </div>
         </div>
 
+        <?php if ($galleryTags !== []): ?>
+            <nav class="moment-tabs mb-3" aria-label="图集标签">
+                <?= Html::a('全部', ['/images/index'], ['class' => 'moment-tab' . ($activeTag === null ? ' active' : '')]) ?>
+                <?php foreach ($galleryTags as $tab): ?>
+                    <?= Html::a(
+                        '<i class="bi bi-hash me-1" aria-hidden="true"></i>' . Html::encode($tab->name) . '<span class="moment-tab-count">' . (int) $tab->postCount . '</span>',
+                        ['/images/index', 'tag' => $tab->slug],
+                        [
+                            'class' => 'moment-tab' . ($activeTag !== null && (int) $activeTag->id === (int) $tab->id ? ' active' : ''),
+                            'encode' => false,
+                        ],
+                    ) ?>
+                <?php endforeach; ?>
+            </nav>
+        <?php endif; ?>
+
         <div class="card moment-composer border-0 shadow-sm mb-3">
             <div class="card-body p-3">
                 <div class="d-flex align-items-center gap-3">
