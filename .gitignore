@@ -50,3 +50,6 @@ phpunit.phar
 /backend/web/index.php
 /backend/web/index-test.php
 /backend/web/robots.txt
+/common/config/main-local.php
+/common/config/params-local.php
+
