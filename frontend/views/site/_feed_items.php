@@ -12,6 +12,19 @@ use yii\helpers\Html;
 $typeLabels = Post::TYPE_LABELS;
 $detailRoutes = Post::TYPE_DETAIL_ROUTES;
 $featured = $featured ?? true;
+$keyword = $keyword ?? '';
+
+/** 返回已转义的 HTML，关键词用 <mark> 包裹，可直接输出或交给 Html::a()。 */
+$highlight = static function (string $text) use ($keyword): string {
+    $encoded = Html::encode($text);
+    if ($keyword === '') {
+        return $encoded;
+    }
+
+    $pattern = '/(' . preg_quote(Html::encode($keyword), '/') . ')/iu';
+
+    return preg_replace($pattern, '<mark>$1</mark>', $encoded) ?? $encoded;
+};
 
 $momentFeedImages = static function (string $html): array {
     if (!preg_match_all('#<img\b[^>]*\bsrc=["\']([^"\']+)["\']#i', $html, $matches)) {
@@ -58,6 +71,13 @@ foreach ($posts as $index => $post):
         $preview = (string) $post->shortVideo->description;
     }
     $preview = trim(preg_replace('/\s+/u', ' ', strip_tags($preview)) ?? '');
+    if ($keyword !== '') {
+        // 命中位置太靠后时，把窗口挪到关键词前，否则摘要里看不到匹配的内容。
+        $position = mb_stripos($preview, $keyword);
+        if ($position !== false && $position > 40) {
+            $preview = '…' . mb_substr($preview, $position - 40);
+        }
+    }
     if (mb_strlen($preview) > 150) {
         $preview = mb_substr($preview, 0, 150) . '…';
     }
@@ -97,12 +117,12 @@ foreach ($posts as $index => $post):
             </div>
             <h2 class="home-feed-card-title h4 mb-2">
                 <?php if ($post->type === Post::TYPE_MOMENT): ?>
-                    <?= Html::encode($post->title ?: '动态') ?>
+                    <?= $highlight($post->title ?: '动态') ?>
                 <?php else: ?>
-                    <?= Html::a(Html::encode($post->title), [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-title']) ?>
+                    <?= Html::a($highlight((string) $post->title), [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-title']) ?>
                 <?php endif; ?>
             </h2>
-            <?php if ($preview !== ''): ?><p class="home-feed-preview text-body-secondary mb-3"><?= Html::encode($preview) ?></p><?php endif; ?>
+            <?php if ($preview !== ''): ?><p class="home-feed-preview text-body-secondary mb-3"><?= $highlight($preview) ?></p><?php endif; ?>
             <?php if ($hasMedia): ?>
                 <div class="home-feed-media mb-3">
                     <?php if ($blogCover !== null): ?>

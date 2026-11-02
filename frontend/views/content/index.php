@@ -11,6 +11,7 @@ use common\models\Post;
 use yii\bootstrap5\LinkPager;
 use yii\helpers\Html;
 
+
 $this->title = '内容管理';
 $typeLabels = [];
 $typeControllers = [];

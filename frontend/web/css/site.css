@@ -1,40 +1,53 @@
 /* ---------- Apple-inspired frontend palette ---------- */
 :root {
     color-scheme: light;
-    --bs-primary: #0066cc;
-    --bs-primary-rgb: 0, 102, 204;
-    --bs-primary-text-emphasis: #0056b3;
-    --bs-primary-bg-subtle: #e8f2ff;
-    --bs-primary-border-subtle: #b8d7ff;
-    --bs-link-color: #0066cc;
-    --bs-link-color-rgb: 0, 102, 204;
-    --bs-link-hover-color: #004c99;
-    --bs-link-hover-color-rgb: 0, 76, 153;
-    --bs-body-bg: #f5f5f7;
-    --bs-body-bg-rgb: 245, 245, 247;
-    --bs-body-color: #1d1d1f;
-    --bs-body-color-rgb: 29, 29, 31;
-    --bs-emphasis-color: #1d1d1f;
-    --bs-secondary-color: #6e6e73;
-    --bs-secondary-bg: #ebebed;
-    --bs-secondary-bg-rgb: 235, 235, 237;
-    --bs-tertiary-bg: #e8e8ed;
-    --bs-tertiary-bg-rgb: 232, 232, 237;
-    --bs-border-color: #d2d2d7;
-    --bs-border-color-translucent: rgba(29, 29, 31, .12);
+
+    /* 主色:Bootstrap success 绿 */
+    --bs-primary: #198754;
+    --bs-primary-rgb: 25, 135, 84;
+    --bs-primary-text-emphasis: #146c43;
+    --bs-primary-bg-subtle: #d1e7dd;
+    --bs-primary-border-subtle: #a3cfbb;
+
+    /* 超链接 */
+    --bs-link-color: #198754;
+    --bs-link-color-rgb: 25, 135, 84;
+    --bs-link-hover-color: #146c43;
+    --bs-link-hover-color-rgb: 20, 108, 67;
+
+    /* 页面与文字(带一点绿调的中性灰,和主色更协调) */
+    --bs-body-bg: #f4f7f5;
+    --bs-body-bg-rgb: 244, 247, 245;
+    --bs-body-color: #1b1f1d;
+    --bs-body-color-rgb: 27, 31, 29;
+    --bs-emphasis-color: #1b1f1d;
+    --bs-emphasis-color-rgb: 27, 31, 29;
+    --bs-secondary-color: #5f6b65;
+    --bs-secondary-color-rgb: 95, 107, 101;
+    --bs-secondary-bg: #e9eeeb;
+    --bs-secondary-bg-rgb: 233, 238, 235;
+    --bs-tertiary-bg: #e3e9e5;
+    --bs-tertiary-bg-rgb: 227, 233, 229;
+    --bs-border-color: #d3dbd6;
+    --bs-border-color-translucent: rgba(27, 31, 29, .12);
+
+    /* 站点自定义 */
     --site-surface: #fff;
     --site-nav-bg: rgba(255, 255, 255, .92);
-    --site-nav-color: #424245;
-    --site-nav-hover-color: #0066cc;
-    --site-nav-border-color: rgba(29, 29, 31, .12);
-    --site-primary-gradient: linear-gradient(135deg, #0056b3, #0066cc);
-    --site-primary-active: #0056b3;
+    --site-nav-color: #3d4541;
+    --site-nav-hover-color: #198754;
+    --site-nav-hover-bg: rgba(25, 135, 84, .08);
+    --site-nav-border-color: rgba(27, 31, 29, .12);
+    --site-primary-gradient: linear-gradient(135deg, #146c43, #198754);
+    --site-primary-active: #146c43;
     --site-on-primary: #fff;
+
+    /* 组件联动(深色模式直接继承) */
     --bs-list-group-active-bg: var(--bs-primary);
     --bs-list-group-active-border-color: var(--bs-primary);
     --bs-nav-pills-link-active-bg: var(--bs-primary);
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);
     --shadow-md: 0 2px 8px rgba(0, 0, 0, .06), 0 12px 32px rgba(0, 0, 0, .04);
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, .08), 0 20px 48px rgba(0, 0, 0, .05);
     --shadow-xl: 0 16px 40px rgba(0, 0, 0, .12);
@@ -46,44 +59,47 @@
 
 [data-bs-theme="dark"] {
     color-scheme: dark;
-    --bs-primary: #0066cc;
-    --bs-primary-rgb: 0, 102, 204;
-    --bs-primary-text-emphasis: #64b5ff;
-    --bs-primary-bg-subtle: #102a45;
-    --bs-primary-border-subtle: #174875;
-    --bs-link-color: #64b5ff;
-    --bs-link-color-rgb: 100, 181, 255;
-    --bs-link-hover-color: #9acfff;
-    --bs-link-hover-color-rgb: 154, 207, 255;
-    --bs-body-bg: #000;
-    --bs-body-bg-rgb: 0, 0, 0;
-    --bs-body-color: #f5f5f7;
-    --bs-body-color-rgb: 245, 245, 247;
+
+    --bs-primary: #198754;
+    --bs-primary-rgb: 25, 135, 84;
+    --bs-primary-text-emphasis: #75b798;
+    --bs-primary-bg-subtle: #0f2a1d;
+    --bs-primary-border-subtle: #0f5132;
+
+    --bs-link-color: #75b798;
+    --bs-link-color-rgb: 117, 183, 152;
+    --bs-link-hover-color: #a3cfbb;
+    --bs-link-hover-color-rgb: 163, 207, 187;
+
+    --bs-body-bg: #0b0f0d;
+    --bs-body-bg-rgb: 11, 15, 13;
+    --bs-body-color: #f2f5f3;
+    --bs-body-color-rgb: 242, 245, 243;
     --bs-emphasis-color: #fff;
-    --bs-secondary-color: #98989d;
-    --bs-secondary-bg: #1c1c1e;
-    --bs-secondary-bg-rgb: 28, 28, 30;
-    --bs-tertiary-bg: #2c2c2e;
-    --bs-tertiary-bg-rgb: 44, 44, 46;
-    --bs-border-color: #38383a;
-    --bs-border-color-translucent: rgba(235, 235, 245, .16);
-    --site-surface: #1c1c1e;
-    --site-nav-bg: rgba(22, 22, 23, .92);
-    --site-nav-color: #f5f5f7;
-    --site-nav-hover-color: #64b5ff;
-    --site-nav-border-color: rgba(235, 235, 245, .16);
-    --site-primary-gradient: linear-gradient(135deg, #0056b3, #0066cc);
-    --site-primary-active: #0066cc;
-    --site-on-primary: #fff;
-    --bs-list-group-active-bg: var(--bs-primary);
-    --bs-list-group-active-border-color: var(--bs-primary);
-    --bs-nav-pills-link-active-bg: var(--bs-primary);
+    --bs-emphasis-color-rgb: 255, 255, 255;
+    --bs-secondary-color: #9aa59f;
+    --bs-secondary-color-rgb: 154, 165, 159;
+    --bs-secondary-bg: #151a17;
+    --bs-secondary-bg-rgb: 21, 26, 23;
+    --bs-tertiary-bg: #1f2622;
+    --bs-tertiary-bg-rgb: 31, 38, 34;
+    --bs-border-color: #2f3833;
+    --bs-border-color-translucent: rgba(242, 245, 243, .16);
+
+    --site-surface: #151a17;
+    /* 深色模式:导航栏使用 bg-success */
+    --site-nav-bg: rgba(25, 135, 84, .96);
+    --site-nav-color: #fff;
+    --site-nav-hover-color: #fff;
+    --site-nav-hover-bg: rgba(255, 255, 255, .14);
+    --site-nav-border-color: rgba(0, 0, 0, .25);
+    --site-primary-active: #157347;
+
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, .28);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, .28);
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, .36);
     --shadow-xl: 0 20px 48px rgba(0, 0, 0, .48);
 }
-
 /* ---------- Global Layout ---------- */
 .min-width-0 {
     min-width: 0;
@@ -1455,6 +1471,16 @@ body {
     background-color: var(--bs-tertiary-bg);
 }
 
+/* 下拉里的「当前项」（如语言菜单的简体中文）走 Bootstrap 默认的 #0d6efd，和绿色主题以及同一导航里其它菜单都不搭；
+   按 .list-group-item.active 的同一套配色接管，并压过 hover / 触屏按下态。 */
+.dropdown-item.active,
+.dropdown-item.active:hover,
+.dropdown-item.active:focus,
+.dropdown-item:active {
+    color: var(--site-on-primary);
+    background-color: var(--bs-primary);
+}
+
 .text-bg-light {
     color: var(--bs-secondary-color) !important;
     background-color: var(--bs-tertiary-bg) !important;
@@ -1568,4 +1594,49 @@ body {
     body {
         transition: none;
     }
+}
+
+/* ---------- Navbar search ---------- */
+.navbar .nav-search {
+    width: 15rem;
+    max-width: 100%;
+}
+
+.navbar .nav-search .form-control {
+    background-color: var(--site-surface);
+    border-color: var(--site-nav-border-color);
+}
+
+/* 导航项变多后，md 断点宽度不够时让导航换行，而不是挤压文字。 */
+.navbar-warm .navbar-collapse {
+    flex-wrap: wrap;
+    row-gap: .25rem;
+}
+
+.navbar-warm .navbar-nav .nav-link {
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .navbar .nav-search {
+        width: 100%;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .navbar .nav-search {
+        width: 11rem;
+    }
+}
+
+/* ---------- Site search ---------- */
+.search-form {
+    max-width: 34rem;
+}
+
+mark {
+    background-color: rgba(var(--bs-primary-rgb), .18);
+    border-radius: .25rem;
+    color: inherit;
+    padding: 0 .15rem;
 }

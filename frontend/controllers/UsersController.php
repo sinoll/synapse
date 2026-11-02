@@ -8,10 +8,13 @@ use common\models\LoginForm;
 use common\models\ChangePasswordForm;
 use common\models\VerifyPhoneForm;
 use frontend\models\ProfileForm;
+use common\models\Post;
 use Yii;
 use yii\captcha\CaptchaAction;
+use yii\data\ActiveDataProvider;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
+use yii\db\ActiveQuery;
 use yii\web\Controller;
 use yii\web\ErrorAction;
 use yii\web\Response;
@@ -50,10 +53,10 @@ class UsersController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['logout'],
+                'only' => ['logout', 'favorite', 'like'],
                 'rules' => [
                     [
-                        'actions' => ['logout'],
+                        'actions' => ['logout', 'favorite', 'like'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -89,10 +92,153 @@ class UsersController extends Controller
      *
      * @return string
      */
-    public function actionIndex(): string
+    public function actionIndex(?string $type = null): string
     {
-        return $this->render('index');
+        $definitions = $this->definitions();
+        if ($type !== null && !isset($definitions[$type])) {
+            throw new \yii\web\BadRequestHttpException('未知的内容类型。');
+        }
+
+        $query = Post::find()
+            ->alias('p')
+            ->with(['user', 'blog', 'images', 'moment', 'shortVideo'])
+            ->where(['p.user_id' => (int) Yii::$app->user->id])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+        if ($type !== null) {
+            $query->andWhere(['p.type' => $definitions[$type]['postType']]);
+        }
+
+        $dataProvider = new ActiveDataProvider([
+            'query' => $query,
+            'pagination' => ['pageSize' => 20],
+        ]);
+
+        return $this->render('index', [
+            'dataProvider' => $dataProvider,
+            'definitions' => $definitions,
+            'selectedType' => $type,
+        ]);        
     }
+
+    /**
+     * 我的收藏：按收藏时间倒序展示，可按内容类型筛选。
+     *
+     * @return string
+     */
+    public function actionFavorite(?string $type = null): string
+    {
+        $definitions = $this->definitions();
+        if ($type !== null && !isset($definitions[$type])) {
+            throw new \yii\web\BadRequestHttpException('未知的内容类型。');
+        }
+
+        $dataProvider = new ActiveDataProvider([
+            'query' => $this->interactionQuery('{{%post_favorite}}', 'pf', 'favoriteAt', $type),
+            'pagination' => ['pageSize' => 12],
+        ]);
+
+        return $this->render('favorite', [
+            'dataProvider' => $dataProvider,
+            'definitions' => $definitions,
+            'selectedType' => $type,
+        ]);
+    }
+
+    /**
+     * 我的点赞：按点赞时间倒序展示，可按内容类型筛选。
+     *
+     * @return string
+     */
+    public function actionLike(?string $type = null): string
+    {
+        $definitions = $this->definitions();
+        if ($type !== null && !isset($definitions[$type])) {
+            throw new \yii\web\BadRequestHttpException('未知的内容类型。');
+        }
+
+        $dataProvider = new ActiveDataProvider([
+            'query' => $this->interactionQuery('{{%post_like}}', 'pl', 'likedAt', $type),
+            'pagination' => ['pageSize' => 12],
+        ]);
+
+        return $this->render('like', [
+            'dataProvider' => $dataProvider,
+            'definitions' => $definitions,
+            'selectedType' => $type,
+        ]);
+    }
+
+    /**
+     * 收藏/点赞列表的共用查询：关联表决定别名与时间列，其余筛选条件一致。
+     * 收藏或点赞后作者收紧了内容可见范围，列表要跟着消失，判定和 /favorite/toggle 用的是同一套 SQL 条件。
+     */
+    private function interactionQuery(string $table, string $alias, string $timeKey, ?string $type): ActiveQuery
+    {
+        $userId = (int) Yii::$app->user->id;
+        $query = Post::find()
+            ->alias('p')
+            ->innerJoin([$alias => $table], $alias . '.post_id = p.id')
+            // select() 必须显式带上 p.*：addSelect() 在 select 仍为空时会把它当成整个选择列表。
+            ->select(['p.*', $timeKey => $alias . '.created_at'])
+            ->with(['user', 'blog', 'images', 'moment', 'shortVideo'])
+            ->where([$alias . '.user_id' => $userId])
+            ->andWhere(['p.status' => Post::STATUS_PUBLISHED])
+            ->andWhere([
+                'or',
+                ['p.visibility' => Post::VISIBILITY_PUBLIC],
+                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
+                ['and', ['p.visibility' => Post::VISIBILITY_PRIVATE], ['p.user_id' => $userId]],
+            ])
+            ->orderBy([$alias . '.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+        if ($type !== null) {
+            $query->andWhere(['p.type' => $this->definitions()[$type]['postType']]);
+        }
+
+        return $query;
+    }
+
+    private function definitions(): array
+    {
+        return Post::typeDefinitions();
+    }
+
+    private function findPost(int $id): Post
+    {
+        $post = Post::findOne($id);
+        if ($post === null) {
+            throw new NotFoundHttpException('找不到该内容。');
+        }
+
+        return $post;
+    }
+
+    private function contentModel(Post $post): ?ActiveRecord
+    {
+        return match ($post->type) {
+            Post::TYPE_BLOG => $post->blog,
+            Post::TYPE_IMAGES => $post->images[0] ?? null,
+            Post::TYPE_MOMENT => $post->moment,
+            Post::TYPE_SHORT_VIDEO => $post->shortVideo,
+            default => null,
+        };
+    }
+
+    private function canView(Post $post): bool
+    {
+        if (!Yii::$app->user->isGuest && (int) $post->user_id === (int) Yii::$app->user->id) {
+            return true;
+        }
+        if ($post->status !== Post::STATUS_PUBLISHED) {
+            return false;
+        }
+
+        return match ($post->visibility) {
+            Post::VISIBILITY_PUBLIC => true,
+            Post::VISIBILITY_REGISTERED_USERS => !Yii::$app->user->isGuest,
+            default => false,
+        };
+    }
+    
 
     /**
      * Logs in a user.

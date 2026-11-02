@@ -128,3 +128,16 @@ git commit -m "init"
 :: 4. 关联远程并强制推送
 git remote add origin https://github.com/sinoll/synapse.git
 git push -u origin main --force
+
+
+
+如果把本地的搞砸了 要重新同步远程代码
+
+1. 抓取远程仓库的最新内容（不自动合并）：bash
+git fetch origin
+请谨慎使用此类代码。
+2. 强制将本地分支重置为与远程分支完全一致（这会清除所有未提交的修改、暂存区内容以及本地未推送的提交）：bash
+git reset --hard origin/main
+请谨慎使用此类代码。
+3. 清理未被跟踪的新增文件或文件夹（可选，如果需要彻底干净）：bash
+git clean -df

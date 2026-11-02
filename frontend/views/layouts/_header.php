@@ -10,11 +10,12 @@ use yii\helpers\Html;
 
 // 定义下拉子菜单
 $identity = Yii::$app->user->identity;
+$searchKeyword = Yii::$app->request->get('q');
+$searchKeyword = is_string($searchKeyword) ? $searchKeyword : '';
 $accountItems = [
-    ['label' => '用户中心', 'url' => ['/users/index']],
-    ['label' => '内容管理', 'url' => ['/content/index']],
-    ['label' => '我的收藏', 'url' => ['/favorite/index']],
-    ['label' => '我的点赞', 'url' => ['/like/index']],
+    ['label' => '内容管理', 'url' => ['/users/index']],
+    ['label' => '我的收藏', 'url' => ['/users/favorite']],
+    ['label' => '我的点赞', 'url' => ['/users/like']],
 ];
 if ($identity !== null && $identity->isAdministrator()) {
     $accountItems[] = ['label' => '系统管理', 'url' => ['/manage/index']];
@@ -110,6 +111,12 @@ $languageMenu = [
     ) ?>
 
     <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+        <?= Html::beginForm(['/search/index'], 'get', ['class' => 'nav-search input-group input-group-sm', 'role' => 'search']) ?>
+            <input class="form-control" type="search" name="q" maxlength="60" autocomplete="off"
+                value="<?= Html::encode($searchKeyword) ?>"
+                placeholder="搜索..." aria-label="站内搜索关键词">
+            <button class="btn btn-primary" type="submit" aria-label="搜索"><i class="bi bi-search" aria-hidden="true"></i></button>
+        <?= Html::endForm() ?>
         <?= Nav::widget(
             [
                 'options' => ['class' => 'navbar-nav'],
