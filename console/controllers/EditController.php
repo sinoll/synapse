@@ -14,7 +14,7 @@ class EditController extends Controller
     }
 
     /***
-     *  修复新表中文章缩略图的所有相对路径为: uploads/thumb/blog/    文件名 *.png 不修改
+     *  修复新表中文章 缩略图 的所有相对路径为: uploads/thumb/blog/    文件名 *.png 不修改
      *  命令：php yii edit/thumb
     ***/
 
@@ -67,7 +67,7 @@ class EditController extends Controller
 
 
     /***
-     *  检查 路径的图片是否存在，如果不存在，请 打印blog的 id 和具体路径，一行一个，
+     *  检查 封面图 路径的图片是否存在，如果不存在，请 打印blog的 id 和具体路径，一行一个，
      *  命令：php yii edit/check-path
     ***/
     public function actionCheckPath()
@@ -239,6 +239,7 @@ class EditController extends Controller
     /***
      *  修改 blog文章content字段 正文中的图片路径，/uploads/blog/按年保存  
      *  注意： content 是text数据类型，里面有大量富文本标签等 不要修改出错
+     *  这个函数 是必须在 web 下 有 upload/image/按年份存放的 原图 才能修复
      *  命令：php yii edit/content-img
     ***/
 

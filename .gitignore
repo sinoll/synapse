@@ -52,4 +52,5 @@ phpunit.phar
 /backend/web/robots.txt
 /common/config/main-local.php
 /common/config/params-local.php
+/console/config/main-local.php
 
