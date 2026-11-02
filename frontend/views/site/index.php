@@ -45,11 +45,6 @@ $displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity
         <?php endif; ?>
     </header>
 
-    <div class="exhibition-section-heading">
-        <h2 class="h6 mb-0">正在展出 <span>ON VIEW</span></h2>
-        <span class="exhibition-rule" aria-hidden="true"></span>
-        <span class="exhibition-section-note">最新收藏</span>
-    </div>
 
     <div id="home-feed-list" class="home-feed-list" data-next-page="2" data-has-more="<?= $hasMore ? '1' : '0' ?>">
         <?= $this->render('_feed_items', ['posts' => $posts]) ?>

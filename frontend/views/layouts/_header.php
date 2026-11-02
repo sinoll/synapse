@@ -89,6 +89,7 @@ $languageMenu = [
 ];
 
 ?>
+
 <header id="header">
     <?php NavBar::begin(
         [
