@@ -17,7 +17,7 @@ $total = $dataProvider === null ? 0 : $dataProvider->getTotalCount();
 ?>
 <div class="search-page py-3 py-md-4">
     <header class="search-masthead mb-4">
-        <h1 class="search-heading mb-3">站内搜索</h1>
+        <h4 class="search-heading mb-3">站内搜索</h4>
         <form class="search-form input-group" action="<?= Url::to(['/search/index']) ?>" method="get" role="search">
             <input class="form-control" type="search" name="q" value="<?= Html::encode($keyword) ?>"
                 placeholder="输入关键词，搜索标题与正文…" aria-label="站内搜索关键词" maxlength="60" autofocus>
