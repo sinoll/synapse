@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 use common\models\Post;
 use common\models\Tag;
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\HtmlPurifier;
 
@@ -31,6 +33,7 @@ $typeController = $typeControllers[$post->type] ?? null;
         · <?= Yii::$app->formatter->asDatetime($post->created_at) ?>
         <?php if ($post->status === Post::STATUS_DRAFT): ?> · 草稿<?php endif; ?>
     </p>
+    <p class="d-flex align-items-center gap-2"><?= LikeButton::widget(['post' => $post]) ?><?= FavoriteButton::widget(['postId' => (int) $post->id]) ?></p>
 
     <div class="border-top border-bottom py-4 my-4">
         <?php if ($contentModel === null): ?>

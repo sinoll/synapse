@@ -30,7 +30,7 @@ $displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity
             </span>
             <div class="exhibition-aside-copy">                
                 <p>这里记录文字、影像与生活片段，</p>
-                <p>每一次记录，都是一件值得回忆的瞬间。</p>
+                <p>每一次记录，都是一个值得回忆的瞬间。</p>
             </div>
         </div>
         <?php if (!Yii::$app->user->isGuest): ?>

@@ -13,6 +13,8 @@ $identity = Yii::$app->user->identity;
 $accountItems = [
     ['label' => '用户中心', 'url' => ['/users/index']],
     ['label' => '内容管理', 'url' => ['/content/index']],
+    ['label' => '我的收藏', 'url' => ['/favorite/index']],
+    ['label' => '我的点赞', 'url' => ['/like/index']],
 ];
 if ($identity !== null && $identity->isAdministrator()) {
     $accountItems[] = ['label' => '系统管理', 'url' => ['/manage/index']];

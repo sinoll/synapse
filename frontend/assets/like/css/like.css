@@ -1,0 +1,109 @@
+/* ---------- Like button (点赞) ---------- */
+.like-button {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .2rem .6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: var(--bs-body-bg);
+    color: var(--bs-secondary-color);
+    font-size: .78rem; font-weight: 600; line-height: 1.5;
+    white-space: nowrap; text-decoration: none;
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+.like-button:hover,
+.like-button:focus-visible {
+    color: var(--bs-danger-text-emphasis);
+    border-color: var(--bs-danger-border-subtle);
+    background: var(--bs-danger-bg-subtle);
+    text-decoration: none;
+}
+.like-button .bi { font-size: .95rem; line-height: 1; }
+
+.like-button.is-liked {
+    color: var(--bs-danger-text-emphasis);
+    border-color: var(--bs-danger-border-subtle);
+    background: var(--bs-danger-bg-subtle);
+}
+.like-button.is-liked .bi { color: var(--bs-danger); }
+
+.like-button-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+.like-button-count:empty { display: none; }
+
+.like-button--icon { padding: .2rem .45rem; }
+
+/* 叠在封面或图片上：反色半透明底，明暗主题下都清晰。 */
+.like-button--overlay {
+    position: absolute; top: .5rem; left: .5rem; z-index: 2;
+    border-color: transparent;
+    background: rgba(0, 0, 0, .55);
+    color: #fff;
+}
+.like-button--overlay:hover,
+.like-button--overlay:focus-visible {
+    border-color: transparent;
+    background: rgba(0, 0, 0, .74);
+    color: #fff;
+}
+.like-button--overlay.is-liked {
+    border-color: transparent;
+    background: rgba(0, 0, 0, .74);
+    color: #fff;
+}
+.like-button--overlay.is-liked .bi { color: var(--bs-danger); }
+
+/* 点赞成功时心跳一下，让「数字 +1」这件事更容易被看见。 */
+.like-button.is-liked .bi { animation: like-pop .32s ease; }
+@keyframes like-pop {
+    0% { transform: scale(.6); }
+    55% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}
+
+/* 请求进行中禁用，避免连点把计数翻乱。 */
+.like-button.is-busy { opacity: .55; pointer-events: none; }
+
+/* 失败提示：抖动一下后由脚本移除该类，状态与计数本身没有变化。 */
+.like-button.has-error {
+    color: var(--bs-danger-text-emphasis);
+    border-color: var(--bs-danger-border-subtle);
+    animation: like-shake .3s ease;
+}
+@keyframes like-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
+/* 图集与视频卡片的元信息行原本只放一个按钮，加上点赞后窄屏放不下，允许换行避免横向溢出。 */
+.gallery-meta,
+.video-lib-body { flex-wrap: wrap; }
+
+/* 竖屏短视频右侧操作栏：沿用该栏自己的方块外观，覆盖默认胶囊样式（本表在 site.css 之后加载）。 */
+.video-shorts-rail .like-button {
+    flex-direction: column; gap: .2rem;
+    width: 3.6rem; padding: .5rem 0;
+    border: 0; border-radius: .85rem;
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+    font-size: .68rem; line-height: 1.2;
+}
+.video-shorts-rail .like-button .bi { font-size: 1.2rem; }
+.video-shorts-rail .like-button:hover,
+.video-shorts-rail .like-button:focus-visible {
+    border-color: transparent;
+    background: rgba(255, 255, 255, .2);
+    color: #fff;
+}
+.video-shorts-rail .like-button.is-liked {
+    border-color: transparent;
+    background: rgba(255, 255, 255, .2);
+    color: #fff;
+}
+.video-shorts-rail .like-button.is-liked .bi { color: var(--bs-danger); }
+@media (max-width: 767.98px) {
+    .video-shorts-rail .like-button { width: 3.4rem; }
+}

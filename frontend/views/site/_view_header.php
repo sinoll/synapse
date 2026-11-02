@@ -7,6 +7,8 @@ declare(strict_types=1);
 /** @var string $displayTitle */
 
 use common\models\Post;
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 
 $typeLabels = Post::TYPE_LABELS;
@@ -37,8 +39,10 @@ CSS);
     <span class="home-feed-type"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
     <span><?= Html::encode($post->user?->nickname ?: $post->user?->username ?: '用户') ?></span>
     <span>·</span>
-    <time datetime="<?= Html::encode(date(DATE_ATOM, (int) $post->created_at)) ?>"><?= Yii::$app->formatter->asDatetime($post->created_at) ?></time>
+    <time datetime="<?= Html::encode(date('Y-m-d H:i:s', (int) $post->created_at)) ?>"><?= date('Y-m-d H:i:s', $post->created_at) ?></time>
     <?php if ((int) $post->status === Post::STATUS_DRAFT): ?><span>· 草稿</span><?php endif; ?>
+    <?= LikeButton::widget(['post' => $post]) ?>
+    <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
 </div>
 
 <?php if (!empty($post->categories) || !empty($post->tags)): ?>

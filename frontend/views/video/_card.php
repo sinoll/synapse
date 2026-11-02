@@ -6,6 +6,8 @@ declare(strict_types=1);
 /** @var common\models\Post $post */
 /** @var bool $vertical */
 
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -47,5 +49,7 @@ $publishedLabel = Yii::$app->formatter->asRelativeTime((int) $post->created_at);
             <a class="video-lib-title" href="<?= Html::encode(Url::to($detailUrl)) ?>"><?= Html::encode($post->title) ?></a>
             <div class="video-lib-meta text-truncate"><?= Html::encode($authorName) ?> · <?= Html::encode($publishedLabel) ?></div>
         </div>
+        <?= LikeButton::widget(['post' => $post, 'iconOnly' => true, 'buttonClass' => 'ms-auto align-self-start']) ?>
+        <?= FavoriteButton::widget(['postId' => (int) $post->id, 'iconOnly' => true, 'buttonClass' => 'align-self-start']) ?>
     </div>
 </article>

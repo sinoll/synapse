@@ -5,6 +5,8 @@ declare(strict_types=1);
 /** @var yii\web\View $this */
 /** @var common\models\Post[] $posts */
 
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -43,6 +45,8 @@ foreach ($posts as $post):
                     <span class="gallery-meta-author"><?= Html::encode($author) ?></span>
                     <span class="gallery-meta-sep" aria-hidden="true">·</span>
                     <time datetime="<?= Html::encode(date(DATE_ATOM, (int) $post->created_at)) ?>"><?= Yii::$app->formatter->asRelativeTime((int) $post->created_at) ?></time>
+                    <?= LikeButton::widget(['post' => $post, 'iconOnly' => true, 'buttonClass' => 'ms-auto']) ?>
+                    <?= FavoriteButton::widget(['postId' => (int) $post->id, 'iconOnly' => true]) ?>
                 </div>
             </div>
         </article>

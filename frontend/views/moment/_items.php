@@ -6,6 +6,8 @@ declare(strict_types=1);
 
 use common\models\Post;
 use common\models\Tag;
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\HtmlPurifier;
 use yii\helpers\Url;
@@ -115,6 +117,8 @@ foreach ($posts as $post):
                     <?php endif; ?>
                 </div>
                 <div class="d-flex align-items-center gap-3">
+                    <?= LikeButton::widget(['post' => $post]) ?>
+                    <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
                     <a class="moment-action" href="<?= Html::encode(Url::to($detailUrl)) ?>">
                         查看详情<i class="bi bi-chevron-right" aria-hidden="true"></i>
                     </a>

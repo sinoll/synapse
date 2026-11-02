@@ -239,4 +239,8 @@ class User extends ActiveRecord implements IdentityInterface
     public function getFollowerRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['following_id' => 'id']); }
     public function getFollowing(): ActiveQuery { return $this->hasMany(self::class, ['id' => 'following_id'])->viaTable('{{%user_follow}}', ['follower_id' => 'id']); }
     public function getFollowers(): ActiveQuery { return $this->hasMany(self::class, ['id' => 'follower_id'])->viaTable('{{%user_follow}}', ['following_id' => 'id']); }
+    public function getLikeRelations(): ActiveQuery { return $this->hasMany(PostLike::class, ['user_id' => 'id']); }
+    public function getLikedPosts(): ActiveQuery { return $this->hasMany(Post::class, ['id' => 'post_id'])->viaTable('{{%post_like}}', ['user_id' => 'id']); }
+    public function getFavoriteRelations(): ActiveQuery { return $this->hasMany(PostFavorite::class, ['user_id' => 'id']); }
+    public function getFavoritePosts(): ActiveQuery { return $this->hasMany(Post::class, ['id' => 'post_id'])->viaTable('{{%post_favorite}}', ['user_id' => 'id']); }
 }

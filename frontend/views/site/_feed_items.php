@@ -5,6 +5,8 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 
 $typeLabels = Post::TYPE_LABELS;
@@ -139,7 +141,11 @@ foreach ($posts as $index => $post):
             <?php endif; ?>
             <div class="home-feed-card-footer d-flex justify-content-between align-items-center gap-2 flex-wrap mt-3">
                 <?php if ($post->type === Post::TYPE_IMAGES): ?><span class="small text-body-secondary"><?= count($post->images) ?> 张图片</span><?php else: ?><span></span><?php endif; ?>
-                <?= Html::a('查看详情 →', [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-more']) ?>
+                <div class="d-flex align-items-center gap-2">
+                    <?= LikeButton::widget(['post' => $post]) ?>
+                    <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
+                    <?= Html::a('查看详情 →', [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-more']) ?>
+                </div>
             </div>
         </div>
     </article>

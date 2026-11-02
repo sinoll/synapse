@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 use common\models\Post;
 use common\models\Tag;
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -113,6 +115,8 @@ $durationOf = static function (?Post $item): ?string {
                     <button type="button" class="video-shorts-action" data-video-share>
                         <i class="bi bi-share-fill" aria-hidden="true"></i><span data-share-label>分享</span>
                     </button>
+                    <?= LikeButton::widget(['post' => $post]) ?>
+                    <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
                     <?= Html::a(
                         '<i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i><span>频道</span>',
                         ['/video/index'],
@@ -174,6 +178,8 @@ $durationOf = static function (?Post $item): ?string {
                         </div>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
+                        <?= LikeButton::widget(['post' => $post]) ?>
+                        <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-video-share>
                             <i class="bi bi-share me-1" aria-hidden="true"></i><span data-share-label>分享</span>
                         </button>

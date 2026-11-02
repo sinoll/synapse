@@ -45,6 +45,11 @@ class Post extends \common\models\base\Post
     public const STATUS_DRAFT = 0;
     public const STATUS_PUBLISHED = 1;
 
+    /** @var int|null 列表查询附加的收藏时间，不是 post 表字段（见 FavoriteController）。 */
+    public $favoriteAt;
+    /** @var int|null 列表查询附加的点赞时间，不是 post 表字段（见 LikeController）。 */
+    public $likedAt;
+
     public static function tableName(): string { return '{{%post}}'; }
 
     public function behaviors(): array { return [TimestampBehavior::class]; }
@@ -121,6 +126,8 @@ class Post extends \common\models\base\Post
     public function getCommentContents(): ActiveQuery { return $this->hasMany(Comment::class, ['id' => 'comment_id'])->viaTable('{{%post_comment}}', ['post_id' => 'id']); }
     public function getLikes(): ActiveQuery { return $this->hasMany(PostLike::class, ['post_id' => 'id']); }
     public function getLikedUsers(): ActiveQuery { return $this->hasMany(User::class, ['id' => 'user_id'])->viaTable('{{%post_like}}', ['post_id' => 'id']); }
+    public function getFavorites(): ActiveQuery { return $this->hasMany(PostFavorite::class, ['post_id' => 'id']); }
+    public function getFavoritedUsers(): ActiveQuery { return $this->hasMany(User::class, ['id' => 'user_id'])->viaTable('{{%post_favorite}}', ['post_id' => 'id']); }
 
     /** 关注该内容作者的用户。 */
     public function getAuthorFollowers(): ActiveQuery

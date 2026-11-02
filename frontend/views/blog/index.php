@@ -7,6 +7,8 @@ declare(strict_types=1);
 /** @var array<int,int> $tagCounts */
 /** @var common\models\Cate[] $blogCategories */
 
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\bootstrap5\LinkPager;
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -142,7 +144,9 @@ $profileInitial = $profileName !== '' ? mb_strtoupper(mb_substr($profileName, 0,
                                 <p class="card-text text-body-secondary mb-3"><?= Html::encode($excerpt) ?></p>
                             <?php endif; ?>
 
-                            <div class="d-flex justify-content-end">
+                            <div class="d-flex justify-content-end align-items-center gap-2">
+                                <?= LikeButton::widget(['post' => $post]) ?>
+                                <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
                                 <?= Html::a('阅读全文', $detailUrl, ['class' => 'btn btn-sm btn-outline-success']) ?>
                             </div>
                         </div>

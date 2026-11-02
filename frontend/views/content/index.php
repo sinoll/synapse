@@ -76,7 +76,7 @@ foreach ($definitions as $key => $definition) {
                         </td>
                         <td><?= Html::encode($post->user?->nickname ?: $post->user?->username ?: '用户') ?></td>
                         <td><?= Html::encode($visibilityLabels[$post->visibility] ?? '未知') ?></td>
-                        <td class="text-body-secondary"><?= Yii::$app->formatter->asDatetime($post->created_at) ?></td>
+                        <td class="text-body-secondary"><?= date('Y-m-d', $post->created_at) ?></td>
                         <td class="text-end text-nowrap">
                             <?= Html::a('查看', ['/content/view', 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
                             <?php if ($isOwner && $controller !== null): ?>

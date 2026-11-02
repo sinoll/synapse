@@ -5,6 +5,8 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
+use frontend\widgets\FavoriteButton;
+use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -38,7 +40,17 @@ foreach ($posts as $post):
         $cover = '/images/default-cover.png';
     }
     ?>
-    <div class="col">
+    <div class="col cover-list-cell">
+        <?= LikeButton::widget([
+            'post' => $post,
+            'iconOnly' => true,
+            'overlay' => true,
+        ]) ?>
+        <?= FavoriteButton::widget([
+            'postId' => (int) $post->id,
+            'iconOnly' => true,
+            'overlay' => true,
+        ]) ?>
         <a class="cover-list-item" href="<?= Html::encode(Url::to([$detailRoutes[$post->type] ?? '/site/view', 'id' => $post->id])) ?>">
             <img class="cover-list-cover" src="<?= Html::encode($cover) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy" width="460" height="260">
             <div class="cover-list-body">
