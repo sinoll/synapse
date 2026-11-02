@@ -23,7 +23,7 @@ $typeLabels = Post::TYPE_LABELS;
 $typeControllers = Post::TYPE_CONTROLLERS;
 $typeController = $typeControllers[$post->type] ?? null;
 ?>
-<article class="content-view mx-auto py-4" style="max-width: 900px">
+<article class="content-view col-12 col-xl-10 mx-auto py-4">
     <p class="mb-2"><span class="badge text-bg-light"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span></p>
     <?php if ($displayTitle !== ''): ?><h1><?= Html::encode($displayTitle) ?></h1><?php endif; ?>
     <p class="text-body-secondary">
@@ -55,7 +55,7 @@ $typeController = $typeControllers[$post->type] ?? null;
             </div>
         <?php elseif ($post->type === Post::TYPE_SHORT_VIDEO): ?>
             <?php if ($contentModel->description): ?>
-                <div class="text-break mb-3" style="white-space: pre-wrap"><?= Tag::linkifyHashtags(Html::encode($contentModel->description)) ?></div>
+                <div class="text-break text-pre-wrap mb-3"><?= Tag::linkifyHashtags(Html::encode($contentModel->description)) ?></div>
             <?php endif; ?>
             <video class="w-100 rounded shadow-sm mb-3" controls playsinline preload="metadata"
                    src="<?= Html::encode($contentModel->video_path) ?>"

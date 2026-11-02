@@ -14,7 +14,10 @@ use yii\web\View;
  */
 class ColorModeAsset extends AssetBundle
 {
-    public $sourcePath = '@common/assets/colormode';
+    public $sourcePath = '@common/assets/theme';
+    public $css = [
+        'css/color-theme.css',
+    ];
     public $js = [
         'js/color-mode.js',
     ];

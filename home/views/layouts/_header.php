@@ -44,7 +44,7 @@ $items = [
         [
             'brandLabel' => Yii::$app->name,
             'brandUrl' => Yii::$app->homeUrl,
-            'options' => ['class' => 'navbar-expand-md navbar-dark bg-dark fixed-top']
+            'options' => ['class' => 'navbar-expand-md navbar-light navbar-warm fixed-top shadow-sm']
         ],
     ) ?>
     <?= Nav::widget(

@@ -10,15 +10,31 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 
 $this->title = '拾光';
+$displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity?->username;
 ?>
 
 <div class="home-feed py-3 py-md-4">
-    <div class="home-feed-header mb-4">
-        <div>
-            <p class="home-feed-eyebrow mb-2">欢迎回来，<?= Yii::$app->user->identity->nickname ?? '访客' ?> ！</p>           
+    <header class="exhibition-masthead mb-4 mb-md-5">
+        <div class="exhibition-heading">            
+            <h2 class="exhibition-title mb-3"><b>拾</b>取,<br>生活的时<b>光</b>。</h2>            
+        </div>
+        <div class="exhibition-aside">
+            <span class="exhibition-index" aria-hidden="true">
+                <?php                
+                if ($displayName === null){
+                    echo("游客");
+                }else{
+                    echo(Html::encode($displayName));
+                }
+                ?>                    
+            </span>
+            <div class="exhibition-aside-copy">                
+                <p>这里记录文字、影像与生活片段，</p>
+                <p>每一次记录，都是一件值得回忆的瞬间。</p>
+            </div>
         </div>
         <?php if (!Yii::$app->user->isGuest): ?>
-            <div class="dropdown">
+            <div class="dropdown exhibition-action">
                 <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">发布内容</button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <?php foreach ($definitions as $key => $definition): ?>
@@ -27,6 +43,12 @@ $this->title = '拾光';
                 </ul>
             </div>
         <?php endif; ?>
+    </header>
+
+    <div class="exhibition-section-heading">
+        <h2 class="h6 mb-0">正在展出 <span>ON VIEW</span></h2>
+        <span class="exhibition-rule" aria-hidden="true"></span>
+        <span class="exhibition-section-note">最新收藏</span>
     </div>
 
     <div id="home-feed-list" class="home-feed-list" data-next-page="2" data-has-more="<?= $hasMore ? '1' : '0' ?>">

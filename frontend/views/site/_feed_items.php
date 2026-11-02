@@ -9,6 +9,7 @@ use yii\helpers\Html;
 
 $typeLabels = Post::TYPE_LABELS;
 $detailRoutes = Post::TYPE_DETAIL_ROUTES;
+$featured = $featured ?? true;
 
 $momentFeedImages = static function (string $html): array {
     if (!preg_match_all('#<img\b[^>]*\bsrc=["\']([^"\']+)["\']#i', $html, $matches)) {
@@ -34,11 +35,20 @@ $momentFeedImages = static function (string $html): array {
     return $images;
 };
 
-foreach ($posts as $post):
+foreach ($posts as $index => $post):
     $preview = '';
     $momentImages = [];
+    $blogCover = null;
     if ($post->type === Post::TYPE_BLOG && $post->blog !== null) {
         $preview = (string) ($post->blog->summary ?: $post->blog->content);
+        $blogCover = '/images/default-cover.png';
+        $thumb = trim((string) $post->blog->thumb);
+        if ($thumb !== '') {
+            $thumbPath = '/' . ltrim($thumb, '/');
+            if (is_file(Yii::getAlias('@frontend/web') . $thumbPath)) {
+                $blogCover = $thumbPath;
+            }
+        }
     } elseif ($post->type === Post::TYPE_MOMENT && $post->moment !== null) {
         $preview = (string) $post->moment->content;
         $momentImages = $momentFeedImages($preview);
@@ -53,10 +63,14 @@ foreach ($posts as $post):
     $author = $post->user?->nickname ?: $post->user?->username ?: '用户';
     $avatar = $post->user?->avatar;
     $avatarInitial = mb_strtoupper(mb_substr($author, 0, 1));
+    $hasMedia = $momentImages !== []
+        || $blogCover !== null
+        || ($post->type === Post::TYPE_IMAGES && $post->images !== [])
+        || ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null);
     ?>
-    <article class="home-feed-card card mb-3">
+    <article class="home-feed-card card<?= $featured && $index === 0 ? ' is-featured' : '' ?>">
         <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div class="home-feed-card-header d-flex justify-content-between align-items-start gap-3 mb-3">
                 <div class="d-flex align-items-center gap-3 min-width-0">
                     <?php if ($avatar): ?>
                         <img class="home-feed-avatar" src="<?= Html::encode($avatar) ?>" alt="<?= Html::encode($author) ?>" loading="lazy">
@@ -79,7 +93,7 @@ foreach ($posts as $post):
                     </div>
                 <?php endif; ?>
             </div>
-            <h2 class="h4 mb-2">
+            <h2 class="home-feed-card-title h4 mb-2">
                 <?php if ($post->type === Post::TYPE_MOMENT): ?>
                     <?= Html::encode($post->title ?: '动态') ?>
                 <?php else: ?>
@@ -87,25 +101,34 @@ foreach ($posts as $post):
                 <?php endif; ?>
             </h2>
             <?php if ($preview !== ''): ?><p class="home-feed-preview text-body-secondary mb-3"><?= Html::encode($preview) ?></p><?php endif; ?>
-            <?php if ($momentImages !== []): ?>
-                <div class="home-feed-images mb-3">
-                    <?php foreach ($momentImages as $momentImage): ?>
-                        <img src="<?= Html::encode($momentImage) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
-                    <?php endforeach; ?>
+            <?php if ($hasMedia): ?>
+                <div class="home-feed-media mb-3">
+                    <?php if ($blogCover !== null): ?>
+                        <div class="home-feed-blog-cover">
+                            <img src="<?= Html::encode($blogCover) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($momentImages !== []): ?>
+                        <div class="home-feed-images">
+                            <?php foreach ($momentImages as $momentImage): ?>
+                                <img src="<?= Html::encode($momentImage) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($post->type === Post::TYPE_IMAGES && $post->images !== []): ?>
+                        <div class="home-feed-images">
+                            <?php foreach (array_slice($post->images, 0, 9) as $image): ?>
+                                <img src="<?= Html::encode($image->file_path) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null): ?>
+                        <video class="home-feed-video" controls preload="metadata" playsinline<?php if ($post->shortVideo->cover_path): ?> poster="<?= Html::encode($post->shortVideo->cover_path) ?>"<?php endif; ?>>
+                            <source src="<?= Html::encode($post->shortVideo->video_path) ?>">
+                            您的浏览器不支持视频播放。
+                        </video>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
-            <?php if ($post->type === Post::TYPE_IMAGES && $post->images !== []): ?>
-                <div class="home-feed-images mb-3">
-                    <?php foreach (array_slice($post->images, 0, 9) as $image): ?>
-                        <img src="<?= Html::encode($image->file_path) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-            <?php if ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null): ?>
-                <video class="home-feed-video mb-3" controls preload="metadata" playsinline<?php if ($post->shortVideo->cover_path): ?> poster="<?= Html::encode($post->shortVideo->cover_path) ?>"<?php endif; ?>>
-                    <source src="<?= Html::encode($post->shortVideo->video_path) ?>">
-                    您的浏览器不支持视频播放。
-                </video>
             <?php endif; ?>
             <?php if (!empty($post->tags)): ?>
                 <div class="home-feed-tags mt-2">
@@ -114,7 +137,7 @@ foreach ($posts as $post):
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mt-3">
+            <div class="home-feed-card-footer d-flex justify-content-between align-items-center gap-2 flex-wrap mt-3">
                 <?php if ($post->type === Post::TYPE_IMAGES): ?><span class="small text-body-secondary"><?= count($post->images) ?> 张图片</span><?php else: ?><span></span><?php endif; ?>
                 <?= Html::a('查看详情 →', [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-more']) ?>
             </div>

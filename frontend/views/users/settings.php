@@ -49,7 +49,7 @@ $currentAvatar = Yii::$app->user->identity->avatar;
     <div class="card border-0 shadow-sm"><div class="card-body p-3 p-md-4">
         <?php $form = ActiveForm::begin(['id' => 'profile-form', 'options' => ['enctype' => 'multipart/form-data']]); ?>
         <div class="mb-3">
-            <img id="avatar-preview" src="<?= $currentAvatar ? Html::encode(Url::to($currentAvatar)) : '' ?>" alt="头像预览" class="rounded-circle<?= $currentAvatar ? '' : ' d-none' ?>" style="width: 96px; height: 96px; object-fit: cover">
+            <img id="avatar-preview" src="<?= $currentAvatar ? Html::encode(Url::to($currentAvatar)) : '' ?>" alt="头像预览" width="96" height="96" class="rounded-circle object-fit-cover<?= $currentAvatar ? '' : ' d-none' ?>">
             <p id="avatar-preview-caption" class="small text-body-secondary mt-2 mb-0"><?= $currentAvatar ? '当前头像' : '尚未设置头像' ?></p>
         </div>
         <?= $form->field($profile, 'nickname')->textInput(['maxlength' => true, 'autocomplete' => 'nickname'])->label('昵称') ?>

@@ -85,7 +85,7 @@ a.desc:after {
 
 /* Yii brand button */
 .btn-yii {
-    background: linear-gradient(135deg, #40B3D8, #3a9cbd);
+    background: var(--site-primary-gradient);
     border: none;
     font-weight: 600;
     letter-spacing: .02em;
@@ -236,7 +236,7 @@ a.desc:after {
 .login-split-card {
     border-radius: 1rem;
     box-shadow: 0 4px 24px rgba(0, 0, 0, .10);
-    background-color: var(--bs-gray-100);
+    background-color: var(--site-surface);
     width: 100%;
     max-width: 900px;
 }
@@ -255,7 +255,7 @@ a.desc:after {
 }
 
 .login-brand-panel {
-    background: linear-gradient(135deg, #40B3D8 0%, #3a9cbd 40%, #83C933 100%);
+    background: var(--site-primary-gradient);
     position: relative;
     min-height: 480px;
 }
@@ -271,7 +271,7 @@ a.desc:after {
 }
 
 .login-btn {
-    background: linear-gradient(135deg, #40B3D8, #3a9cbd);
+    background: var(--site-primary-gradient);
     border: none;
     font-weight: 600;
     letter-spacing: .02em;
@@ -289,7 +289,7 @@ a.desc:after {
 
 /* dark mode login card */
 [data-bs-theme="dark"] .login-split-card {
-    background-color: var(--bs-body-bg);
+    background-color: var(--site-surface);
     box-shadow: 0 0 0 1px var(--bs-border-color), 0 4px 24px rgba(0, 0, 0, .4);
 }
 
@@ -367,7 +367,7 @@ a.desc:after {
 
 /* hero banner */
 .hero-banner {
-    background: linear-gradient(135deg, #83C933 0%, #3a9cbd 40%, #40B3D8 100%);
+    background: var(--site-primary-gradient);
     position: relative;
 }
 
