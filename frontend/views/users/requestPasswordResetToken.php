@@ -9,10 +9,10 @@ declare(strict_types=1);
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 
-$this->title = 'Reset your password';
+$this->title = '找回密码';
 $this->params['breadcrumbs'][] = $this->title;
-$this->params['meta_description'] = 'Request a password reset link to recover access to your account.';
-$this->params['meta_keywords'] = 'yii, yii2, password reset, forgot password, recovery';
+$this->params['meta_description'] = '通过注册邮箱接收找回密码链接，重新进入拾光账户。';
+$this->params['meta_keywords'] = '找回密码, 重置密码, 拾光';
 $htmlIcon = <<<HTML
 {label}<div class="input-group"><span class="input-group-text" aria-hidden="true">%s</span>{input}</div>{error}{hint}
 HTML;
@@ -29,7 +29,7 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                         <?= Html::img(
                             Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
                             [
-                                'alt' => 'Yii Framework',
+                                'alt' => Yii::$app->name,
                                 'class' => 'mb-4',
                                 'height' => 40,
                             ],
@@ -37,10 +37,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     </div>
                     <div>
                         <h2 class="fw-bold mb-3 login-brand-title">
-                            Forgot Your<br>Password?
+                            忘记密码了？<br>没关系
                         </h2>
                         <p class="opacity-75 mb-0 login-brand-text">
-                            No worries. Enter your email and we will send you a reset link.
+                            填写注册邮箱，我们会发送一条一次性重置链接，1 小时内有效且只能使用一次。
                         </p>
                     </div>
                 </div>
@@ -54,17 +54,23 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             <?= Html::img(
                                 Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
                                 [
-                                    'alt' => 'Yii Framework',
+                                    'alt' => Yii::$app->name,
                                     'class' => 'login-mobile-logo',
                                     'height' => 36,
                                 ],
                             ) ?>
                         </div>
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
-                        <p class="text-body-secondary small">A link to reset your password will be sent to your email</p>
+                        <p class="text-body-secondary small">重置链接会发送到你的注册邮箱</p>
                     </div>
 
-                    <?php $form = ActiveForm::begin(['id' => 'request-password-reset-form']); ?>
+                    <?= $this->render('_flash') ?>
+
+                    <?php $form = ActiveForm::begin([
+                        'id' => 'request-password-reset-form',
+                        'action' => ['/users/request-password-reset'],
+                        'method' => 'post',
+                    ]); ?>
 
                     <div class="mb-4">
                         <?= $form->field($model, 'email', [
@@ -73,14 +79,16 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             'inputOptions' => [
                                 'autofocus' => true,
                                 'class' => 'form-control',
-                                'placeholder' => 'email@example.com',
+                                'placeholder' => 'name@example.com',
+                                'maxlength' => true,
+                                'autocomplete' => 'email',
                             ],
-                        ])->textInput()->label('Your Email', $labelOptions) ?>
+                        ])->textInput()->label('注册邮箱', $labelOptions) ?>
                     </div>
 
                     <div class="d-grid">
                         <?= Html::submitButton(
-                            'Send',
+                            '发送重置链接',
                             [
                                 'class' => 'btn login-btn btn-lg rounded-3 text-white',
                             ],
@@ -89,8 +97,14 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
 
                     <?php ActiveForm::end(); ?>
 
-                    <div class="text-body-secondary text-center mt-3 small">
-                        Remember your password? <?= Html::a('Login', ['site/login']) ?>
+                    <p class="text-body-secondary text-center small mt-3 mb-0">
+                        为保护账户，无论该邮箱是否注册过，这里的提示都完全一样。
+                    </p>
+
+                    <div class="text-body-secondary text-center mt-2 small">
+                        想起来了？<?= Html::a('去登录', ['/users/login']) ?>
+                        ·
+                        <?= Html::a('注册新账户', ['/users/signup']) ?>
                     </div>
 
                 </div>

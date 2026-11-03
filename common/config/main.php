@@ -15,6 +15,9 @@ return [
         'smsSender' => [
             'class' => \common\services\UnconfiguredSmsSender::class,
         ],
+        'mailSender' => [
+            'class' => \common\services\PhpMailSender::class,
+        ],
         'ffmpegService' => [
             'class' => \services\FfmpegService::class,
         ],

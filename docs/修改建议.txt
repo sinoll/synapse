@@ -1,7 +1,15 @@
 修改建议
 
 内容结构评审（按影响排序）
-1. 数据层统一，展示层却按类型裂开。 post 一张表 + type 判别，这是对的；但博客/动态/图集/短视频各自有 index、各自实现 tag/cate 过滤、各自一份侧边栏、各自一套 create 表单。新增一个类型要动 8 个地方。建议：把首页的 _feed_items 抽成唯一的内容流渲染器，频道页退化成"流 + type 参数"，四个 index 收敛成一个。
+1. 数据层统一，展示层却按类型裂开。 
+
+post 一张表 + type 判别，这是对的；但博客/动态/图集/短视频各自有 index、各自实现 tag/cate 过滤、各自一份侧边栏、各自一套 create 表单。
+
+新增一个类型要动 8 个地方。
+
+建议：把首页的 _feed_items 抽成唯一的内容流渲染器，频道页退化成"流 + type 参数"，四个 index 收敛成一个。
+
+
 
 
 3. URL 无语义、不利于分享和收录。 
@@ -9,14 +17,17 @@ main.php:51
  的 rules 是空的，全靠默认路由，产出 /blog/view?id=12、/images/index?tag=slug&page=2。建议给四类详情 + 标签页 + 分类页定语义路由，并对 /site/view?id= 做 301。
 
 
-5. 分页策略三套并存。 无限滚动 6 处、LinkPager 5 处、/video/index 全量 ->all() 无上限（
-VideoController.php:81
-，内容一多必炸）。建议：列表统一分页（可被搜索引擎抓取），无限滚动只留首页。
+6. 导航重复三遍且有空壳。 顶部 nav + 每页 aside 侧边栏是同一组链接，footer 只有版权和 Yii 链接。语言下拉两项都指向 #，博客入口标签是英文 "Blog"。
 
-6. 导航重复三遍且有空壳。 顶部 nav + 每页 aside 侧边栏是同一组链接，footer 只有版权和 Yii 链接。语言下拉两项都指向 #，博客入口标签是英文 "Blog"。建议：删侧边栏，footer 改做站点地图（分类总览 / 标签云 / 归档 / 关于）。
+建议：删侧边栏，footer 改做站点地图（分类总览 / 标签云 / 归档 / 关于）。
 
-7. 个人区建议合并。 我刚做的 内容管理 / 我的收藏 / 我的点赞 现在是三个平行表格页。下一步值得把它们做成 /users/index 下的四个 tab（内容·收藏·点赞·评论），复用同一张表格组件——语义上也要讲清楚：点赞=轻反馈（进热度权重），收藏=私人书签。
 
-8. 结构一致性债（不影响使用，但会持续拖慢改动）：blog/video/images 用 create.php 兼做编辑、images 无 update.php、video 无 view.php、三类详情页放在 site/ 下而图集放自己目录；users/ 有 5 个孤立视图（含 signup，但无对应 action）；home/、backend/ 两套遗留应用；restful/ 五个 API 控制器未挂载；UserFollow 模型前端零使用；分类是"假多选"（syncPostCategories() 先删后插一行，视图取 categories[0]）。
+
+；home/、backend/ 两套遗留应用；
+restful/ 五个 API 控制器未挂载；
+
+UserFollow 模型前端零使用；
+
+分类是"假多选"（syncPostCategories() 先删后插一行，视图取 categories[0]）。
 
 落地顺序建议：P0 搜索 + 视频页分页 + 清死链 → P1 语义 URL → P2 频道收敛为一个流组件 + 详情页相关模块 → P3 作者主页/关注（模型已就位）→ P4 视图目录对称化清理

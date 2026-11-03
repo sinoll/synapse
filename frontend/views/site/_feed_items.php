@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 use common\models\Post;
 use frontend\widgets\FavoriteButton;
+use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 
@@ -162,6 +163,7 @@ foreach ($posts as $index => $post):
             <div class="home-feed-card-footer d-flex justify-content-between align-items-center gap-2 flex-wrap mt-3">
                 <?php if ($post->type === Post::TYPE_IMAGES): ?><span class="small text-body-secondary"><?= count($post->images) ?> 张图片</span><?php else: ?><span></span><?php endif; ?>
                 <div class="d-flex align-items-center gap-2">
+                    <?= $post->user !== null ? FollowButton::widget(['user' => $post->user]) : '' ?>
                     <?= LikeButton::widget(['post' => $post]) ?>
                     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
                     <?= Html::a('阅读更多', [$detailRoute, 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-success']) ?>

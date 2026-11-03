@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 /** @var yii\web\View $this */
 /** @var common\models\User $user */
-
-$resetLink = Yii::$app->urlManager->createAbsoluteUrl(['site/reset-password', 'token' => $user->password_reset_token]);
+/** @var string $resetLink */
 ?>
-Hello <?= $user->username ?>,
+<?= $user->displayName() ?>，你好：
 
-Follow the link below to reset your password:
+我们收到了重置你的密码的请求。打开下面的链接设置新密码（<?= (int) Yii::$app->params['user.passwordResetTokenExpire'] / 60 ?> 分钟内有效，且只能使用一次）：
 
 <?= $resetLink ?>
+
+如果这不是你本人的操作，请忽略这封邮件，你的密码不会被修改。

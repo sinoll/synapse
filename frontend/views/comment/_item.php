@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var common\models\PostComment $node */
 /** @var string|null $replyToName 楼中楼里被回复者的昵称，顶级评论传 null */
 
+use frontend\widgets\FollowButton;
 use yii\helpers\Html;
 
 $identity = Yii::$app->user->identity;
@@ -26,6 +27,7 @@ $canManage = $node->canManage($identity);
     <div class="comment-item-main">
         <div class="comment-item-head">
             <span class="comment-author"><?= Html::encode($authorName) ?></span>
+            <?= $author !== null ? FollowButton::widget(['user' => $author, 'iconOnly' => true]) : '' ?>
             <time class="comment-time" datetime="<?= Html::encode(date(DATE_ATOM, $createdAt)) ?>"><?= Yii::$app->formatter->asRelativeTime($createdAt) ?></time>
         </div>
 

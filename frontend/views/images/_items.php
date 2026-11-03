@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use frontend\widgets\FavoriteButton;
+use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -47,6 +48,7 @@ foreach ($posts as $post):
                     <time datetime="<?= Html::encode(date(DATE_ATOM, (int) $post->created_at)) ?>"><?= Yii::$app->formatter->asRelativeTime((int) $post->created_at) ?></time>
                     <?= LikeButton::widget(['post' => $post, 'iconOnly' => true, 'buttonClass' => 'ms-auto']) ?>
                     <?= FavoriteButton::widget(['postId' => (int) $post->id, 'iconOnly' => true]) ?>
+                    <?= $post->user !== null ? FollowButton::widget(['user' => $post->user, 'iconOnly' => true]) : '' ?>
                 </div>
             </div>
         </article>

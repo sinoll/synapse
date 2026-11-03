@@ -360,10 +360,9 @@ class ImagesController extends Controller
             $model->caption = trim($model->buildCaption() . "\n" . implode(' ', $hashtags));
         }
 
-        return $this->render('create', [
+        return $this->render($isUpdate ? 'update' : 'create', [
             'model' => $model,
             'post' => $post,
-            'isUpdate' => $isUpdate,
             'selectedImageIds' => $selectedImageIds,
             'tagError' => $tagError,
         ]);

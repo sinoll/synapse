@@ -38,6 +38,19 @@ class User extends ActiveRecord implements IdentityInterface
     public const STATUS_DELETED = 0;
     public const STATUS_INACTIVE = 9;
     public const STATUS_ACTIVE = 10;
+
+    /** @var int|null 关注列表查询附加的关系时间，不是 user 表字段（见 UsersController 粉丝/关注列表）。 */
+    public $followedAt;
+
+    /**
+     * @var string 刚签发的一次性凭据明文，只用于拼邮件链接，绝不落库；落库的是它的 sha256。
+     *             不是 user 表字段。
+     */
+    public string $passwordResetSecret = '';
+
+    /** @var string 同 [[passwordResetSecret]]，对应邮箱验证令牌。不是 user 表字段。 */
+    public string $emailVerifySecret = '';
+
     /**
      * {@inheritdoc}
      */
@@ -103,7 +116,7 @@ class User extends ActiveRecord implements IdentityInterface
     /**
      * Finds user by password reset token
      *
-     * @param string $token password reset token
+     * @param string $token 邮件链接里的明文令牌（secret.过期时间）
      * @return static|null
      */
     public static function findByPasswordResetToken(string $token): User|null
@@ -113,7 +126,7 @@ class User extends ActiveRecord implements IdentityInterface
         }
 
         return static::findOne([
-            'password_reset_token' => $token,
+            'password_reset_token' => self::hashOneTimeToken($token),
             'status' => self::STATUS_ACTIVE,
         ]);
     }
@@ -126,12 +139,14 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function findByVerificationToken(string $token): User|null
     {
-        return static::findOne(
-            [
-                'verification_token' => $token,
-                'status' => self::STATUS_INACTIVE,
-            ],
-        );
+        if (self::oneTimeTokenExpiry($token, self::emailVerifyTokenExpire()) === null) {
+            return null;
+        }
+
+        return static::find()
+            ->where(['verification_token' => self::hashOneTimeToken($token)])
+            ->andWhere(['<>', 'status', self::STATUS_DELETED])
+            ->one();
     }
 
     /**
@@ -142,15 +157,7 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function isPasswordResetTokenValid(string|null $token): bool
     {
-        if ($token === null || $token === '') {
-            return false;
-        }
-
-        $timestamp = (int) substr($token, strrpos($token, '_') + 1);
-
-        $expire = Yii::$app->params['user.passwordResetTokenExpire'];
-
-        return $timestamp + $expire >= time();
+        return self::oneTimeTokenExpiry($token, self::passwordResetTokenExpire()) !== null;
     }
 
     /**
@@ -207,19 +214,29 @@ class User extends ActiveRecord implements IdentityInterface
     }
 
     /**
-     * Generates new password reset token
+     * Generates new password reset token.
+     *
+     * @return string 邮件链接里使用的明文令牌，库里只存它的哈希
      */
-    public function generatePasswordResetToken(): void
+    public function generatePasswordResetToken(): string
     {
-        $this->password_reset_token = Yii::$app->security->generateRandomString() . '_' . time();
+        $this->passwordResetSecret = $this->issueOneTimeToken(self::passwordResetTokenExpire());
+        $this->password_reset_token = self::hashOneTimeToken($this->passwordResetSecret);
+
+        return $this->passwordResetSecret;
     }
 
     /**
-     * Generates new token for email verification
+     * Generates new token for email verification.
+     *
+     * @return string 邮件链接里使用的明文令牌，库里只存它的哈希
      */
-    public function generateEmailVerificationToken(): void
+    public function generateEmailVerificationToken(): string
     {
-        $this->verification_token = Yii::$app->security->generateRandomString() . '_' . time();
+        $this->emailVerifySecret = $this->issueOneTimeToken(self::emailVerifyTokenExpire());
+        $this->verification_token = self::hashOneTimeToken($this->emailVerifySecret);
+
+        return $this->emailVerifySecret;
     }
 
     /**
@@ -230,13 +247,65 @@ class User extends ActiveRecord implements IdentityInterface
         $this->password_reset_token = null;
     }
 
+    /** 邮箱验证完成后消费掉令牌。 */
+    public function removeEmailVerificationToken(): void
+    {
+        $this->verification_token = null;
+    }
+
+    private static function passwordResetTokenExpire(): int
+    {
+        return (int) Yii::$app->params['user.passwordResetTokenExpire'];
+    }
+
+    private static function emailVerifyTokenExpire(): int
+    {
+        return (int) Yii::$app->params['user.emailVerifyTokenExpire'];
+    }
+
+    private function issueOneTimeToken(int $lifetime): string
+    {
+        return Yii::$app->security->generateRandomString(32) . '.' . (time() + $lifetime);
+    }
+
+    private static function hashOneTimeToken(string $token): string
+    {
+        return hash('sha256', $token);
+    }
+
+    /**
+     * 校验明文一次性凭据并返回其过期时间戳，非法或过期返回 null。
+     *
+     * 过期时间随链接下发并被哈希绑定，伪造需要密钥；这里仍限制它不得超过配置窗口，
+     * 防止链接被人为改写后长期有效。
+     */
+    private static function oneTimeTokenExpiry(string|null $token, int $lifetime): int|null
+    {
+        if ($token === null || substr_count($token, '.') !== 1) {
+            return null;
+        }
+        [$secret, $expiresAt] = explode('.', $token, 2);
+        if (strlen($secret) < 16 || !ctype_digit($expiresAt)) {
+            return null;
+        }
+        $expiresAt = (int) $expiresAt;
+        $now = time();
+
+        return ($expiresAt > $now && $expiresAt <= $now + $lifetime) ? $expiresAt : null;
+    }
+
     public function isAdministrator(): bool
     {
         return (bool) $this->is_admin;
     }
 
-    public function getFollowingRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['follower_id' => 'id']); }
-    public function getFollowerRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['following_id' => 'id']); }
+    /** 对外展示的名字：优先昵称，回落到用户名。 */
+    public function displayName(): string
+    {
+        return $this->nickname ?: $this->username;
+    }
+
+    public function getFollowingRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['follower_id' => 'id']); }    public function getFollowerRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['following_id' => 'id']); }
     public function getFollowing(): ActiveQuery { return $this->hasMany(self::class, ['id' => 'following_id'])->viaTable('{{%user_follow}}', ['follower_id' => 'id']); }
     public function getFollowers(): ActiveQuery { return $this->hasMany(self::class, ['id' => 'follower_id'])->viaTable('{{%user_follow}}', ['following_id' => 'id']); }
     public function getLikeRelations(): ActiveQuery { return $this->hasMany(PostLike::class, ['user_id' => 'id']); }

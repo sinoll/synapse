@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 use common\models\Post;
 use frontend\widgets\FavoriteButton;
+use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 
@@ -41,6 +42,7 @@ CSS);
     <span class="home-feed-type"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
     <?php if ($post->user !== null): ?>
         <span class="content-view-author-name"><?= Html::a(Html::encode($post->user->nickname ?: $post->user->username ?: '用户'), ['/users/profile', 'id' => (int) $post->user->id]) ?></span>
+        <?= FollowButton::widget(['user' => $post->user]) ?>
     <?php else: ?>
         <span>用户</span>
     <?php endif; ?>

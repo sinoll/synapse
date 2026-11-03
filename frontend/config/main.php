@@ -50,6 +50,9 @@ return [
         'urlManager' => [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
+            // 留空时按当前请求推断；配置后邮件里的重置/验证链接一律走规范域名，
+            // 不受请求 Host 头影响。
+            'hostInfo' => ($params['siteBaseUrl'] ?? '') !== '' ? $params['siteBaseUrl'] : null,
             'rules' => [
                 'search' => 'search/index',
                 'u/<id:\d+>' => 'users/profile',

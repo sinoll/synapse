@@ -9,10 +9,10 @@ declare(strict_types=1);
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 
-$this->title = 'Create a new account';
+$this->title = '注册新账户';
 $this->params['breadcrumbs'][] = $this->title;
-$this->params['meta_description'] = 'Create a new account to start building with Yii2.';
-$this->params['meta_keywords'] = 'yii, yii2, signup, register, create account';
+$this->params['meta_description'] = '注册拾光账户，发布博客、图集、动态和短视频。';
+$this->params['meta_keywords'] = '注册, 创建账户, 拾光';
 $htmlIcon = <<<HTML
 {label}<div class="input-group"><span class="input-group-text" aria-hidden="true">%s</span>{input}</div>{error}{hint}
 HTML;
@@ -29,7 +29,7 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                         <?= Html::img(
                             Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
                             [
-                                'alt' => 'Yii Framework',
+                                'alt' => Yii::$app->name,
                                 'class' => 'mb-4',
                                 'height' => 40,
                             ],
@@ -37,10 +37,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     </div>
                     <div>
                         <h2 class="fw-bold mb-3 login-brand-title">
-                            Create Your<br>Account
+                            开始记录你的<br>拾光
                         </h2>
                         <p class="opacity-75 mb-0 login-brand-text">
-                            Join us and start building amazing applications with Yii2.
+                            注册后即可发布博客、图集、动态和短视频，并按关注内容搭建自己的信息流。
                         </p>
                     </div>
                 </div>
@@ -54,15 +54,17 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             <?= Html::img(
                                 Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
                                 [
-                                    'alt' => 'Yii Framework',
+                                    'alt' => Yii::$app->name,
                                     'class' => 'login-mobile-logo',
                                     'height' => 36,
                                 ],
                             ) ?>
                         </div>
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
-                        <p class="text-body-secondary small">Fill out the fields below to get started</p>
+                        <p class="text-body-secondary small">填写下面的信息即可创建账户</p>
                     </div>
+
+                    <?= $this->render('_flash') ?>
 
                     <?php $form = ActiveForm::begin(['id' => 'form-signup']); ?>
 
@@ -73,9 +75,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             'inputOptions' => [
                                 'autofocus' => true,
                                 'class' => 'form-control',
-                                'placeholder' => 'username',
+                                'placeholder' => '用户名',
+                                'maxlength' => true,
                             ],
-                        ])->textInput()->label('Your Username', $labelOptions) ?>
+                        ])->textInput()->label('用户名', $labelOptions)->hint('2–24 个字符，可用中英文、数字与点、下划线、短横线。') ?>
                     </div>
 
                     <div class="mb-3">
@@ -84,25 +87,40 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             'template' => sprintf($htmlIcon, '&#9993;'),
                             'inputOptions' => [
                                 'class' => 'form-control',
-                                'placeholder' => 'email@example.com',
+                                'placeholder' => 'name@example.com',
+                                'maxlength' => true,
+                                'autocomplete' => 'email',
                             ],
-                        ])->textInput()->label('Your Email', $labelOptions) ?>
+                        ])->textInput()->label('邮箱', $labelOptions)->hint('用于找回密码和接收账号通知，不会公开展示。') ?>
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <?= $form->field($model, 'password', [
                             'options' => ['class' => 'mb-0'],
                             'template' => sprintf($htmlIcon, '&#128274;'),
                             'inputOptions' => [
                                 'class' => 'form-control',
-                                'placeholder' => 'Password',
+                                'placeholder' => '密码',
+                                'autocomplete' => 'new-password',
                             ],
-                        ])->passwordInput()->label('Your Password', $labelOptions) ?>
+                        ])->passwordInput()->label('密码', $labelOptions)->hint('至少 ' . (int) Yii::$app->params['user.passwordMinLength'] . ' 位，需同时包含字母和数字。') ?>
+                    </div>
+
+                    <div class="mb-4">
+                        <?= $form->field($model, 'confirmPassword', [
+                            'options' => ['class' => 'mb-0'],
+                            'template' => sprintf($htmlIcon, '&#128274;'),
+                            'inputOptions' => [
+                                'class' => 'form-control',
+                                'placeholder' => '再次输入密码',
+                                'autocomplete' => 'new-password',
+                            ],
+                        ])->passwordInput()->label('确认密码', $labelOptions) ?>
                     </div>
 
                     <div class="d-grid">
                         <?= Html::submitButton(
-                            'Signup',
+                            '注册',
                             [
                                 'class' => 'btn login-btn btn-lg rounded-3 text-white',
                                 'name' => 'signup-button',
@@ -113,7 +131,9 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     <?php ActiveForm::end(); ?>
 
                     <div class="text-body-secondary text-center mt-3 small">
-                        Already have an account? <?= Html::a('Login', ['site/login']) ?>
+                        已有账户？<?= Html::a('去登录', ['/users/login']) ?>
+                        ·
+                        <?= Html::a('收不到确认邮件？', ['/users/resend-verification-email']) ?>
                     </div>
 
                 </div>

@@ -144,7 +144,7 @@ class VideoController extends Controller
             $viewData['relatedVideos'] = $this->relatedVideos($post);
         }
 
-        return $this->render('@frontend/views/site/view-video', $viewData);
+        return $this->render('view', $viewData);
     }
 
     /** 短视频可见列表的统一查询；tagId/orientation 为可选筛选。 */
@@ -471,10 +471,9 @@ class VideoController extends Controller
         ?string $tagError,
         bool $isUpdate,
     ): string {
-        return $this->render('create', [
+        return $this->render($isUpdate ? 'update' : 'create', [
             'model' => $model,
             'post' => $post,
-            'isUpdate' => $isUpdate,
             'tagError' => $tagError,
         ]);
     }

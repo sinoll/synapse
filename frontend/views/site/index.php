@@ -18,38 +18,7 @@ $hasMore = $currentPage < $pageCount;
 $displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity?->username;
 ?>
 
-<div class="home-feed py-3 py-md-4">
-    <header class="exhibition-masthead mb-4 mb-md-5">
-        <div class="exhibition-heading">            
-            <h2 class="exhibition-title mb-3"><b style="color:#396;">拾</b>取 <br>生活的时<b style="color:#396;">光</b></h2>            
-        </div>
-        <div class="exhibition-aside">
-            <span class="exhibition-index" aria-hidden="true">
-                <?php                
-                if ($displayName === null){
-                    echo("游客");
-                }else{
-                    echo(Html::encode($displayName));
-                }
-                ?>                    
-            </span>
-            <div class="exhibition-aside-copy">                
-                <p>这里记录文字、影像与生活片段，</p>
-                <p>每一次记录，都是一个值得回忆的瞬间。</p>
-            </div>
-        </div>
-        <?php if (!Yii::$app->user->isGuest): ?>
-            <div class="dropdown exhibition-action">
-                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">发布内容</button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <?php foreach ($definitions as $key => $definition): ?>
-                        <li><?= Html::a('发布' . $definition['label'], ['/' . $key . '/create'], ['class' => 'dropdown-item']) ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endif; ?>
-    </header>
-
+<div class="home-feed py-3 py-md-4">    
 
     <div id="home-feed-list" class="home-feed-list" data-next-page="<?= $currentPage + 1 ?>" data-has-more="<?= $hasMore ? '1' : '0' ?>">
         <?= $this->render('_feed_items', ['posts' => $posts]) ?>

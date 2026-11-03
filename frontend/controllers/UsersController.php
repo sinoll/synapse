@@ -8,13 +8,20 @@ use common\models\LoginForm;
 use common\models\ChangePasswordForm;
 use common\models\VerifyPhoneForm;
 use frontend\models\ProfileForm;
+use frontend\models\PasswordResetRequestForm;
+use frontend\models\ResendVerificationEmailForm;
+use frontend\models\ResetPasswordForm;
+use frontend\models\SignupForm;
+use frontend\models\VerifyEmailForm;
 use frontend\components\ListPagination;
 use common\models\Post;
 use common\models\User;
+use common\models\UserFollow;
 use Yii;
 use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
+use yii\base\InvalidArgumentException;
 use yii\db\ActiveQuery;
 use yii\web\BadRequestHttpException;
 use yii\web\Controller;
@@ -27,6 +34,10 @@ use yii\web\Response;
  */
 class UsersController extends Controller
 {
+    /** 注册与发信类接口按来源 IP 的固定窗口配额，配合表单里的单邮箱冷却一起用。 */
+    private const RATE_WINDOW = 3600;
+    private const SIGNUP_PER_IP = 10;
+    private const MAIL_PER_IP = 20;
     public function beforeAction($action): bool
     {
         if (!parent::beforeAction($action)) {
@@ -35,7 +46,9 @@ class UsersController extends Controller
 
         $user = Yii::$app->user->identity;
         $actionId = strtolower(str_replace('-', '', $action->id));
-        if ($user !== null && $user->must_change_password && !in_array($actionId, ['changepassword', 'logout'], true)) {
+        // 找回密码/注册是自助入口，不能被“请先修改密码”的门禁截断，否则锁死。
+        $publicAuthActions = ['signup', 'requestpasswordreset', 'resetpassword', 'verifyemail', 'resendverificationemail'];
+        if ($user !== null && $user->must_change_password && !in_array($actionId, array_merge(['changepassword', 'logout'], $publicAuthActions), true)) {
             $this->redirect(['change-password']);
             return false;
         }
@@ -56,10 +69,10 @@ class UsersController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['index', 'logout', 'favorite', 'like'],
+                'only' => ['index', 'logout', 'favorite', 'like', 'followers', 'following'],
                 'rules' => [
                     [
-                        'actions' => ['index', 'logout', 'favorite', 'like'],
+                        'actions' => ['index', 'logout', 'favorite', 'like', 'followers', 'following'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -150,6 +163,7 @@ class UsersController extends Controller
             'author' => $author,
             'dataProvider' => ListPagination::provider($query, ListPagination::SIZE_GRID),
             'counts' => Post::authorCounts((int) $author->id, $userId),
+            'followerCount' => (int) UserFollow::find()->where(['following_id' => (int) $author->id])->count(),
             'activeType' => $type,
         ]);
     }
@@ -200,6 +214,52 @@ class UsersController extends Controller
             'definitions' => $definitions,
             'selectedType' => $type,
         ]);
+    }
+
+    /**
+     * 我的粉丝：按关注时间倒序展示关注了我的人。
+     *
+     * @return string
+     */
+    public function actionFollowers(): string
+    {
+        $userId = (int) Yii::$app->user->id;
+        $query = $this->relationUserQuery('following_id', 'follower_id', $userId);
+
+        return $this->render('followers', [
+            'dataProvider' => ListPagination::provider($query, ListPagination::SIZE_TABLE),
+        ]);
+    }
+
+    /**
+     * 我的关注：按关注时间倒序展示我关注的人。
+     *
+     * @return string
+     */
+    public function actionFollowing(): string
+    {
+        $userId = (int) Yii::$app->user->id;
+        $query = $this->relationUserQuery('follower_id', 'following_id', $userId);
+
+        return $this->render('following', [
+            'dataProvider' => ListPagination::provider($query, ListPagination::SIZE_TABLE),
+        ]);
+    }
+
+    /**
+     * 粉丝/关注列表共用查询：$ownColumn 是 user_follow 上代表「我」的列，$otherColumn 代表对方。
+     * 只列活跃用户，时间落在虚拟属性 followedAt 上（同 Post::likedAt 的做法）。
+     */
+    private function relationUserQuery(string $ownColumn, string $otherColumn, int $userId): ActiveQuery
+    {
+        return User::find()
+            ->alias('u')
+            ->innerJoin(['uf' => '{{%user_follow}}'], 'uf.' . $otherColumn . ' = u.id')
+            // select() 必须显式带上 u.*：addSelect() 在 select 仍为空时会把它当成整个选择列表。
+            ->select(['u.*', 'followedAt' => 'uf.created_at'])
+            ->where(['uf.' . $ownColumn => $userId])
+            ->andWhere(['u.status' => User::STATUS_ACTIVE])
+            ->orderBy(['uf.created_at' => SORT_DESC, 'u.id' => SORT_DESC]);
     }
 
     /**
@@ -313,6 +373,162 @@ class UsersController extends Controller
         return $this->goHome();
     }
 
+    /**
+     * 自助注册：注册即激活，邮箱只作为找回密码与账号通知的凭证。
+     *
+     * @return string|Response
+     */
+    public function actionSignup(): string|Response
+    {
+        if (!Yii::$app->user->isGuest) {
+            return $this->goHome();
+        }
+
+        $model = new SignupForm();
+        if ($model->load(Yii::$app->request->post())) {
+            // 配额只统计真正的提交：注册页本身允许反复打开，否则用户试错几次就被锁在门外。
+            if ($this->tooManyRequests('signup', self::SIGNUP_PER_IP)) {
+                Yii::warning('注册提交超过来源 IP 配额', 'auth');
+                Yii::$app->session->setFlash('error', '注册过于频繁，请稍后再试。');
+
+                return $this->redirect(['login']);
+            }
+
+            $user = $model->signup();
+            if ($user !== null) {
+                Yii::$app->user->login($user);
+                // 确认信发不出去也不回滚注册：登录页有重发入口。
+                $model->sendVerificationEmail(Yii::$app->mailSender);
+                Yii::$app->session->setFlash('success', '注册完成，确认邮件已发送到 ' . $user->email . '。');
+
+                return $this->redirect(['index']);
+            }
+        }
+
+        return $this->render('signup', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * 忘记密码：受理重置申请。
+     *
+     * 无论邮箱是否注册过都返回同一句提示，避免被用来枚举账号；投递失败只记日志。
+     *
+     * @return string|Response
+     */
+    public function actionRequestPasswordReset(): string|Response
+    {
+        if (!Yii::$app->user->isGuest) {
+            return $this->redirect(['change-password']);
+        }
+
+        $model = new PasswordResetRequestForm();
+        if ($model->load(Yii::$app->request->post())) {
+            if ($this->tooManyRequests('password-reset', self::MAIL_PER_IP)) {
+                Yii::warning('找回密码请求超过来源 IP 配额', 'auth');
+                Yii::$app->session->setFlash('error', '操作过于频繁，请稍后再试。');
+
+                return $this->refresh();
+            }
+            if ($model->validate()) {
+                if (!$model->sendEmail(Yii::$app->mailSender)) {
+                    Yii::error('找回密码邮件投递失败', 'mail');
+                }
+                Yii::$app->session->setFlash('success', '如果该邮箱注册过账户，重置链接已发送，请在 1 小时内查收邮件。');
+
+                return $this->refresh();
+            }
+        }
+
+        return $this->render('requestPasswordResetToken', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * 用邮件链接里的一次性令牌设置新密码。
+     *
+     * @param string $token 明文令牌（secret.过期时间）
+     * @return string|Response
+     */
+    public function actionResetPassword(string $token = ''): string|Response
+    {
+        try {
+            $model = new ResetPasswordForm($token);
+        } catch (InvalidArgumentException $exception) {
+            Yii::$app->session->setFlash('error', '重置链接无效或已过期，请重新申请。');
+
+            return $this->redirect(['request-password-reset']);
+        }
+
+        if ($model->load(Yii::$app->request->post()) && $model->resetPassword()) {
+            Yii::$app->session->setFlash('success', '密码已重置，请用新密码登录。');
+
+            return $this->redirect(['login']);
+        }
+
+        return $this->render('resetPassword', [
+            'model' => $model,
+            'token' => $token,
+        ]);
+    }
+
+    /**
+     * 确认邮箱归属：消费邮件链接里的一次性令牌。
+     *
+     * @param string $token 明文令牌
+     * @return Response
+     */
+    public function actionVerifyEmail(string $token = ''): Response
+    {
+        try {
+            $model = new VerifyEmailForm($token);
+            $user = $model->verifyEmail();
+        } catch (InvalidArgumentException) {
+            $user = null;
+        }
+
+        Yii::$app->session->setFlash(
+            $user === null ? 'error' : 'success',
+            $user === null
+                ? '确认链接无效或已过期，请重新发送确认邮件。'
+                : '邮箱已确认。',
+        );
+
+        return $this->redirect(Yii::$app->user->isGuest ? ['login'] : ['index']);
+    }
+
+    /**
+     * 重新发送邮箱确认信。
+     *
+     * @return string|Response
+     */
+    public function actionResendVerificationEmail(): string|Response
+    {
+        $model = new ResendVerificationEmailForm();
+        if ($model->load(Yii::$app->request->post())) {
+            if ($this->tooManyRequests('email-verify', self::MAIL_PER_IP)) {
+                Yii::warning('重发确认信超过来源 IP 配额', 'auth');
+                Yii::$app->session->setFlash('error', '操作过于频繁，请稍后再试。');
+
+                return $this->refresh();
+            }
+            if ($model->validate()) {
+                if (!$model->sendEmail(Yii::$app->mailSender)) {
+                    Yii::error('邮箱确认信投递失败', 'mail');
+                }
+                Yii::$app->session->setFlash('success', '如果该邮箱还需要确认，新的确认邮件已发送。');
+
+                return $this->refresh();
+            }
+        }
+
+        return $this->render('resendVerificationEmail', [
+            'model' => $model,
+        ]);
+    }
+
 
     /***
      * 
@@ -371,6 +587,20 @@ class UsersController extends Controller
         }
 
         return $this->render('verifyPhone', compact('model'));
+    }
+
+    /**
+     * 固定窗口内按来源 IP 计数。缓存里没有原子自增，超额一次多算一次可接受。
+     */
+    private function tooManyRequests(string $scope, int $limit): bool
+    {
+        $bucket = intdiv(time(), self::RATE_WINDOW);
+        $key = 'auth-rate/' . $scope . '/' . $bucket . '/'
+            . hash('sha256', (string) Yii::$app->request->userIP);
+        $count = (int) Yii::$app->cache->get($key);
+        Yii::$app->cache->set($key, $count + 1, self::RATE_WINDOW);
+
+        return $count >= $limit;
     }
 
 }

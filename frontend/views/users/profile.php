@@ -6,10 +6,12 @@ declare(strict_types=1);
 /** @var common\models\User $author */
 /** @var yii\data\ActiveDataProvider $dataProvider */
 /** @var array{total: int, byType: array<string, int>} $counts */
+/** @var int $followerCount */
 /** @var string|null $activeType */
 
 use common\models\Post;
 use frontend\widgets\ContentPager;
+use frontend\widgets\FollowButton;
 use yii\helpers\Html;
 
 $displayName = trim((string) ($author->nickname ?: $author->username)) ?: '用户';
@@ -40,9 +42,10 @@ $joinedAt = $author->created_at > 0 ? date('Y 年 n 月', (int) $author->created
                         <p class="author-profile-bio mb-1"><?= Html::encode($bio) ?></p>
                     <?php endif; ?>
                     <p class="text-body-secondary small mb-0">
-                        共发布 <?= (int) $counts['total'] ?> 篇内容<?php if ($joinedAt !== null): ?> · <?= Html::encode($joinedAt) ?> 加入<?php endif; ?>
+                        共发布 <?= (int) $counts['total'] ?> 篇内容 · <span title="粉丝数"><?= (int) $followerCount ?></span> 粉丝<?php if ($joinedAt !== null): ?> · <?= Html::encode($joinedAt) ?> 加入<?php endif; ?>
                     </p>
                 </div>
+                <?= FollowButton::widget(['user' => $author, 'showCount' => true]) ?>
             </div>
 
             <nav class="author-profile-chips mt-3" aria-label="内容类型筛选">

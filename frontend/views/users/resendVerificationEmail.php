@@ -9,10 +9,10 @@ declare(strict_types=1);
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 
-$this->title = 'Resend verification email';
+$this->title = '重发确认邮件';
 $this->params['breadcrumbs'][] = $this->title;
-$this->params['meta_description'] = 'Resend the verification email to confirm your account.';
-$this->params['meta_keywords'] = 'yii, yii2, verification, email, resend, confirm account';
+$this->params['meta_description'] = '重新发送拾光账户的邮箱确认邮件。';
+$this->params['meta_keywords'] = '邮箱验证, 重发确认邮件, 拾光';
 $htmlIcon = <<<HTML
 {label}<div class="input-group"><span class="input-group-text" aria-hidden="true">%s</span>{input}</div>{error}{hint}
 HTML;
@@ -29,7 +29,7 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                         <?= Html::img(
                             Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
                             [
-                                'alt' => 'Yii Framework',
+                                'alt' => Yii::$app->name,
                                 'height' => 40,
                                 'class' => 'mb-4',
                             ],
@@ -37,10 +37,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     </div>
                     <div>
                         <h2 class="fw-bold mb-3 login-brand-title">
-                            Verify Your<br>Email
+                            确认你的<br>邮箱
                         </h2>
                         <p class="opacity-75 mb-0 login-brand-text">
-                            We will send a new verification email to confirm your account.
+                            我们会重新发送一封确认邮件。确认邮箱不影响登录，只是找回密码的前提。
                         </p>
                     </div>
                 </div>
@@ -54,17 +54,23 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             <?= Html::img(
                                 Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
                                 [
-                                    'alt' => 'Yii Framework',
+                                    'alt' => Yii::$app->name,
                                     'class' => 'login-mobile-logo',
                                     'height' => 36,
                                 ],
                             ) ?>
                         </div>
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
-                        <p class="text-body-secondary small">Enter your email to receive a new verification link</p>
+                        <p class="text-body-secondary small">填写注册邮箱以接收新的确认链接</p>
                     </div>
 
-                    <?php $form = ActiveForm::begin(['id' => 'resend-verification-email-form']); ?>
+                    <?= $this->render('_flash') ?>
+
+                    <?php $form = ActiveForm::begin([
+                        'id' => 'resend-verification-email-form',
+                        'action' => ['/users/resend-verification-email'],
+                        'method' => 'post',
+                    ]); ?>
 
                     <div class="mb-4">
                         <?= $form->field($model, 'email', [
@@ -73,14 +79,16 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             'inputOptions' => [
                                 'autofocus' => true,
                                 'class' => 'form-control',
-                                'placeholder' => 'email@example.com',
+                                'placeholder' => 'name@example.com',
+                                'maxlength' => true,
+                                'autocomplete' => 'email',
                             ],
-                        ])->textInput()->label('Your Email', $labelOptions) ?>
+                        ])->textInput()->label('注册邮箱', $labelOptions) ?>
                     </div>
 
                     <div class="d-grid">
                         <?= Html::submitButton(
-                            'Send',
+                            '重新发送',
                             [
                                 'class' => 'btn login-btn btn-lg rounded-3 text-white',
                             ],
@@ -89,8 +97,14 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
 
                     <?php ActiveForm::end(); ?>
 
-                    <div class="text-body-secondary text-center mt-3 small">
-                        Already verified? <?= Html::a('Login', ['site/login']) ?>
+                    <p class="text-body-secondary text-center small mt-3 mb-0">
+                        为保护账户，无论该邮箱是否需要确认，这里的提示都完全一样。
+                    </p>
+
+                    <div class="text-body-secondary text-center mt-2 small">
+                        <?= Html::a('去登录', ['/users/login']) ?>
+                        ·
+                        <?= Html::a('找回密码', ['/users/request-password-reset']) ?>
                     </div>
 
                 </div>

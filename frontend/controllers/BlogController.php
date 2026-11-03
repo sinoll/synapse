@@ -339,10 +339,9 @@ class BlogController extends Controller
         ?string $tagError,
         bool $isUpdate,
     ): string {
-        return $this->render('create', [
+        return $this->render($isUpdate ? 'update' : 'create', [
             'model' => $model,
             'post' => $post,
-            'isUpdate' => $isUpdate,
             'selectedCateId' => $selectedCateId,
             'cateError' => $cateError,
             'selectedTagNames' => $selectedTagNames,

@@ -15,6 +15,8 @@ $navigation = [
     ['key' => 'index', 'label' => '用户首页', 'description' => '查看账号概览', 'icon' => 'bi-house-door', 'url' => ['/users/index']],
     ['key' => 'favorite', 'label' => '我的收藏', 'description' => '回看收藏的内容', 'icon' => 'bi-star', 'url' => ['/users/favorite']],
     ['key' => 'like', 'label' => '我的点赞', 'description' => '回看点过赞的内容', 'icon' => 'bi-heart', 'url' => ['/users/like']],
+    ['key' => 'followers', 'label' => '我的粉丝', 'description' => '关注你的人', 'icon' => 'bi-people', 'url' => ['/users/followers']],
+    ['key' => 'following', 'label' => '我的关注', 'description' => '你关注的作者', 'icon' => 'bi-person-check', 'url' => ['/users/following']],
     ['key' => 'settings', 'label' => '个人资料设置', 'description' => '修改昵称与头像', 'icon' => 'bi-gear', 'url' => ['/users/settings']],
     ['key' => 'change-password', 'label' => '修改密码', 'description' => '更新登录密码', 'icon' => 'bi-lock', 'url' => ['/users/change-password']],
 ];

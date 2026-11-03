@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var common\models\Post $post */
 /** @var array{total: int, byType: array<string, int>} $authorCounts */
 
+use frontend\widgets\FollowButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -19,6 +20,7 @@ if ($author !== null):
     $joinedAt = $author->created_at > 0 ? date('Y-n', (int) $author->created_at) : null;
 ?>
     <section class="content-detail-author" aria-label="作者">
+        <div class="content-detail-author-row">
         <a class="content-detail-author-head" href="<?= Html::encode($profileUrl) ?>">
             <?php if ($avatar !== ''): ?>
                 <img class="content-detail-avatar" src="<?= Html::encode($avatar) ?>" alt="" width="44" height="44" loading="lazy">
@@ -32,6 +34,8 @@ if ($author !== null):
                 </span>
             </span>
         </a>
+        <?= FollowButton::widget(['user' => $author, 'showCount' => true]) ?>
+        </div>
         <?php if ($bio !== ''): ?>
             <p class="content-detail-author-bio"><?= Html::encode($bio) ?></p>
         <?php endif; ?>

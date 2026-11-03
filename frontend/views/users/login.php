@@ -9,10 +9,10 @@ declare(strict_types=1);
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 
-$this->title = 'Login to your account';
+$this->title = '登录账户';
 $this->params['breadcrumbs'][] = $this->title;
-$this->params['meta_description'] = 'Log in to access your Yii2 application account.';
-$this->params['meta_keywords'] = 'yii, yii2, login, sign in, authentication';
+$this->params['meta_description'] = '登录拾光账户，继续发布和浏览内容。';
+$this->params['meta_keywords'] = '登录, 账户, 拾光';
 $htmlIcon = <<<HTML
 {label}<div class="input-group"><span class="input-group-text" aria-hidden="true">%s</span>{input}</div>{error}{hint}
 HTML;
@@ -31,15 +31,17 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             <?= Html::img(
                                 Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
                                 [
-                                    'alt' => 'Yii Framework',
+                                    'alt' => Yii::$app->name,
                                     'class' => 'login-mobile-logo',
                                     'height' => 36,
                                 ],
                             ) ?>
                         </div>
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
-                        <p class="text-body-secondary small">Enter your credentials to continue</p>
+                        <p class="text-body-secondary small">输入账户信息继续</p>
                     </div>
+
+                    <?= $this->render('_flash') ?>
 
                     <?php $form = ActiveForm::begin(['id' => 'login-form']); ?>
 
@@ -49,10 +51,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             'template' => sprintf($htmlIcon, '&#128100;'),
                             'inputOptions' => [
                                 'class' => 'form-control',
-                                'placeholder' => 'username',
+                                'placeholder' => '用户名',
                                 'autofocus' => true,
                             ],
-                        ])->textInput()->label('Your Username', $labelOptions) ?>
+                        ])->textInput()->label('用户名', $labelOptions) ?>
                     </div>
 
                     <div class="mb-3">
@@ -61,18 +63,19 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             'template' => sprintf($htmlIcon, '&#128274;'),
                             'inputOptions' => [
                                 'class' => 'form-control',
-                                'placeholder' => 'Password',
+                                'placeholder' => '密码',
+                                'autocomplete' => 'current-password',
                             ],
-                        ])->passwordInput()->label('Your Password', $labelOptions) ?>
+                        ])->passwordInput()->label('密码', $labelOptions) ?>
                     </div>
 
                     <div class="mb-4">
-                        <?= $form->field($model, 'rememberMe')->checkbox() ?>
+                        <?= $form->field($model, 'rememberMe')->checkbox(['label' => '记住我']) ?>
                     </div>
 
                     <div class="d-grid">
                         <?= Html::submitButton(
-                            'Login',
+                            '登录',
                             [
                                 'class' => 'btn login-btn btn-lg rounded-3 text-white',
                                 'name' => 'login-button',
@@ -81,6 +84,14 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     </div>
 
                     <?php ActiveForm::end(); ?>
+
+                    <div class="text-body-secondary text-center mt-3 small">
+                        <?= Html::a('注册新账户', ['/users/signup']) ?>
+                        ·
+                        <?= Html::a('忘记密码', ['/users/request-password-reset']) ?>
+                        ·
+                        <?= Html::a('重发确认邮件', ['/users/resend-verification-email']) ?>
+                    </div>
 
                 </div>
             </div>

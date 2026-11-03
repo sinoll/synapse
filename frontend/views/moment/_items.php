@@ -7,6 +7,7 @@ declare(strict_types=1);
 use common\models\Post;
 use common\models\Tag;
 use frontend\widgets\FavoriteButton;
+use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\HtmlPurifier;
@@ -89,6 +90,9 @@ foreach ($posts as $post):
                         <?php endif; ?>
                     </div>
                 </div>
+                <?php if ($post->user !== null): ?>
+                    <?= FollowButton::widget(['user' => $post->user, 'iconOnly' => true]) ?>
+                <?php endif; ?>
                 <a class="moment-more" href="<?= Html::encode(Url::to($detailUrl)) ?>" aria-label="查看动态详情">
                     <i class="bi bi-three-dots" aria-hidden="true"></i>
                 </a>

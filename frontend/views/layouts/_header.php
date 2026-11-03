@@ -61,6 +61,10 @@ if ($identity === null) {
             'label' => '登录',
             'url' => ['/users/login'],
         ],
+        [
+            'label' => '注册',
+            'url' => ['/users/signup'],
+        ],
     ];
 } else {
     $accountMenu = [
