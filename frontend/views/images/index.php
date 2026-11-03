@@ -4,26 +4,19 @@ declare(strict_types=1);
 
 /** @var yii\web\View $this */
 /** @var common\models\Post[] $posts */
-/** @var bool $hasMore */
-/** @var int $nextPage */
+/** @var yii\data\Pagination $pagination */
 /** @var int $total */
 /** @var common\models\Tag|null $activeTag */
 /** @var common\models\Tag[] $galleryTags */
 
+use frontend\widgets\ContentPager;
 use yii\helpers\Html;
-use yii\helpers\Url;
 
 $identity = Yii::$app->user->identity;
 $profileName = $identity !== null ? ($identity->nickname ?: $identity->username) : '';
 $profileInitial = $profileName !== '' ? mb_strtoupper(mb_substr($profileName, 0, 1)) : '拾';
 
 $this->title = $activeTag !== null ? '图集 · ' . $activeTag->name : '图集';
-
-$feedRoute = ['/images/feed', 'page' => '__PAGE__'];
-if ($activeTag !== null) {
-    $feedRoute['tag'] = $activeTag->slug;
-}
-$feedUrl = Url::to($feedRoute);
 ?>
 <div class="row g-3 g-xl-4">
     <aside class="col-12 col-lg-3 d-none d-lg-block">
@@ -121,8 +114,7 @@ $feedUrl = Url::to($feedRoute);
             </div>
         </div>
 
-        <div class="row row-cols-2 row-cols-sm-3 g-3" id="gallery-grid"
-             data-next-page="<?= (int) $nextPage ?>" data-has-more="<?= $hasMore ? '1' : '0' ?>">
+        <div class="row row-cols-2 row-cols-sm-3 g-3">
             <?= $this->render('_items', ['posts' => $posts]) ?>
         </div>
 
@@ -143,69 +135,10 @@ $feedUrl = Url::to($feedRoute);
             </div>
         <?php endif; ?>
 
-        <div id="gallery-status" class="text-center py-4" aria-live="polite">
-            <?php if ($hasMore): ?>
-                <span class="moment-loading d-none"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>正在加载更多…</span>
-                <span class="moment-hint">继续下滑加载更多</span>
-            <?php elseif ($posts !== []): ?>
-                <span class="text-body-secondary small">已经到底了</span>
-            <?php endif; ?>
-        </div>
-        <div id="gallery-sentinel" aria-hidden="true"></div>
+        <?= ContentPager::widget([
+            'pagination' => $pagination,
+            'route' => ['/images/index'],
+            'params' => ['tag' => $activeTag?->slug],
+        ]) ?>
     </div>
 </div>
-
-<?php
-$this->registerJs(<<<JS
-(function () {
-    const grid = document.getElementById('gallery-grid');
-    const status = document.getElementById('gallery-status');
-    const sentinel = document.getElementById('gallery-sentinel');
-    if (!grid || !status || !sentinel) return;
-
-    const loading = status.querySelector('.moment-loading');
-    const hint = status.querySelector('.moment-hint');
-    let loadingPage = false;
-
-    const loadNextPage = async function () {
-        if (loadingPage || grid.dataset.hasMore !== '1') return;
-        loadingPage = true;
-        if (loading) loading.classList.remove('d-none');
-        if (hint) hint.classList.add('d-none');
-
-        try {
-            const page = grid.dataset.nextPage;
-            const response = await fetch('{$feedUrl}'.replace('__PAGE__', encodeURIComponent(page)), {
-                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
-            });
-            if (!response.ok) throw new Error('gallery feed request failed');
-            const result = await response.json();
-            grid.insertAdjacentHTML('beforeend', result.html || '');
-            grid.dataset.nextPage = String(Number(page) + 1);
-            grid.dataset.hasMore = result.hasMore ? '1' : '0';
-            if (!result.hasMore) status.innerHTML = '<span class="text-body-secondary small">已经到底了</span>';
-        } catch (error) {
-            if (hint) {
-                hint.textContent = '加载失败，点击重试';
-                hint.classList.remove('d-none');
-                hint.classList.add('moment-retry');
-            }
-        } finally {
-            loadingPage = false;
-            if (loading) loading.classList.add('d-none');
-        }
-    };
-
-    if (hint) hint.addEventListener('click', loadNextPage);
-    if ('IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries) {
-            if (entries[0].isIntersecting) loadNextPage();
-        }, {rootMargin: '500px 0px'}).observe(sentinel);
-    } else {
-        window.addEventListener('scroll', function () {
-            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) loadNextPage();
-        }, {passive: true});
-    }
-})();
-JS);
-?>

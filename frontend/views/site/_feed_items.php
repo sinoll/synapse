@@ -164,7 +164,7 @@ foreach ($posts as $index => $post):
                 <div class="d-flex align-items-center gap-2">
                     <?= LikeButton::widget(['post' => $post]) ?>
                     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
-                    <?= Html::a('查看详情 →', [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-more']) ?>
+                    <?= Html::a('阅读更多', [$detailRoute, 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-success']) ?>
                 </div>
             </div>
         </div>

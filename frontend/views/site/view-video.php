@@ -76,7 +76,7 @@ $durationOf = static function (?Post $item): ?string {
                                 <span class="video-shorts-avatar video-shorts-avatar-fallback" aria-hidden="true"><?= Html::encode($authorInitial) ?></span>
                             <?php endif; ?>
                             <div class="min-w-0">
-                                <div class="video-shorts-author-name"><?= Html::encode($authorName) ?></div>
+                                <div class="video-shorts-author-name"><?php if ($author !== null): ?><?= Html::a($authorName, ['/users/profile', 'id' => (int) $author->id], ['class' => 'video-shorts-author-link']) ?><?php else: ?><?= Html::encode($authorName) ?><?php endif; ?></div>
                                 <div class="video-shorts-author-meta"><?= Html::encode($publishedAt) ?></div>
                             </div>
                         </div>
@@ -169,7 +169,7 @@ $durationOf = static function (?Post $item): ?string {
                             <span class="video-watch-avatar video-watch-avatar-fallback" aria-hidden="true"><?= Html::encode($authorInitial) ?></span>
                         <?php endif; ?>
                         <div>
-                            <div class="video-watch-author"><?= Html::encode($authorName) ?></div>
+                            <div class="video-watch-author"><?php if ($author !== null): ?><?= Html::a($authorName, ['/users/profile', 'id' => (int) $author->id], ['class' => 'video-watch-author-link']) ?><?php else: ?><?= Html::encode($authorName) ?><?php endif; ?></div>
                             <div class="video-watch-sub">
                                 发布于 <?= Html::encode($publishedAt) ?>
                                 <?php if ($durationLabel !== null): ?> · <?= Html::encode($durationLabel) ?><?php endif; ?>

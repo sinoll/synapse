@@ -4,19 +4,24 @@ declare(strict_types=1);
 
 /** @var yii\web\View $this */
 /** @var common\models\Post[] $posts */
-/** @var bool $hasMore */
+/** @var yii\data\Pagination $pagination */
+/** @var array $definitions */
 
+use frontend\widgets\ContentPager;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
 $this->title = '拾光';
+$currentPage = $pagination->getPage() + 1;
+$pageCount = max(1, $pagination->getPageCount());
+$hasMore = $currentPage < $pageCount;
 $displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity?->username;
 ?>
 
 <div class="home-feed py-3 py-md-4">
     <header class="exhibition-masthead mb-4 mb-md-5">
         <div class="exhibition-heading">            
-            <h2 class="exhibition-title mb-3"><b>拾</b>取,<br>生活的时<b>光</b>。</h2>            
+            <h2 class="exhibition-title mb-3"><b style="color:#396;">拾</b>取 <br>生活的时<b style="color:#396;">光</b></h2>            
         </div>
         <div class="exhibition-aside">
             <span class="exhibition-index" aria-hidden="true">
@@ -46,7 +51,7 @@ $displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity
     </header>
 
 
-    <div id="home-feed-list" class="home-feed-list" data-next-page="2" data-has-more="<?= $hasMore ? '1' : '0' ?>">
+    <div id="home-feed-list" class="home-feed-list" data-next-page="<?= $currentPage + 1 ?>" data-has-more="<?= $hasMore ? '1' : '0' ?>">
         <?= $this->render('_feed_items', ['posts' => $posts]) ?>
     </div>
 
@@ -54,6 +59,12 @@ $displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity
         <?php if ($hasMore): ?>
             <span class="home-feed-loading d-none"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>正在加载更多内容…</span>
             <span class="home-feed-hint">继续下滑加载更多</span>
+            <?php /* 无限滚动的可抓取回退：JS 接管后隐藏，爬虫与无 JS 访客沿这条链接翻页。 */ ?>
+            <?= Html::a(
+                '查看更早的内容',
+                ['/', 'page' => $currentPage + 1],
+                ['class' => 'btn btn-outline-secondary btn-sm home-feed-more'],
+            ) ?>
         <?php elseif ($posts !== []): ?>
             <span class="text-body-secondary">已经到底了</span>
         <?php else: ?>
@@ -62,6 +73,8 @@ $displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity
     </div>
     <div id="home-feed-sentinel" aria-hidden="true"></div>
 </div>
+
+<?= ContentPager::widget(['pagination' => $pagination, 'route' => ['/'], 'showPager' => false]) ?>
 
 <?php
 $feedUrl = Url::to(['/site/feed']);
@@ -74,7 +87,11 @@ $this->registerJs(<<<JS
 
     const loading = status.querySelector('.home-feed-loading');
     const hint = status.querySelector('.home-feed-hint');
+    const more = status.querySelector('.home-feed-more');
     let loadingPage = false;
+
+    // JS 可用时由滚动加载接管，隐藏给爬虫和无 JS 访客的翻页链接。
+    if (more) more.classList.add('d-none');
 
     const loadNextPage = async function () {
         if (loadingPage || list.dataset.hasMore !== '1') return;

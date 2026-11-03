@@ -46,6 +46,12 @@ trait ContentVisibilityTrait
         return $tag;
     }
 
+    /** 当前访客身份对应的用户 id，未登录为 null；与 Post::applyVisibilityScope() 配套使用。 */
+    protected function currentUserId(): ?int
+    {
+        return Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
+    }
+
     protected function canViewContent(Post $post): bool
     {
         if ((int) $post->status !== Post::STATUS_PUBLISHED) {

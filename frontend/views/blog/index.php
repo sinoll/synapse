@@ -7,9 +7,9 @@ declare(strict_types=1);
 /** @var array<int,int> $tagCounts */
 /** @var common\models\Cate[] $blogCategories */
 
+use frontend\widgets\ContentPager;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\LikeButton;
-use yii\bootstrap5\LinkPager;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -152,15 +152,9 @@ $profileInitial = $profileName !== '' ? mb_strtoupper(mb_substr($profileName, 0,
                         </div>
                     </article>
                 <?php endforeach; ?>
-
-                <div class="d-flex justify-content-center mt-4">
-                    <?= LinkPager::widget([
-                        'pagination' => $dataProvider->pagination,
-                        'options' => ['class' => 'pagination mb-0'],
-                        'maxButtonCount' => 10,
-                    ]) ?>
-                </div>
             <?php endif; ?>
+
+            <?= ContentPager::widget(['pagination' => $dataProvider->getPagination(), 'route' => ['/blog/index']]) ?>
         </div>
     </div>
 </div>

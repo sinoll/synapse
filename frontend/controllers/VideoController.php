@@ -7,12 +7,14 @@ namespace frontend\controllers;
 use common\models\Post;
 use common\models\ShortVideo;
 use common\models\Tag;
+use frontend\components\ListPagination;
 use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\web\Controller;
+use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -23,6 +25,7 @@ class VideoController extends Controller
     use ContentVisibilityTrait;
 
     private const FIELDS = ['title', 'description', 'video_path', 'cover_path', 'duration_seconds', 'video_type'];
+    private const SHELF_LIMIT = 12;
 
     public function getViewPath(): string
     {
@@ -59,43 +62,66 @@ class VideoController extends Controller
         ];
     }
 
-    public function actionIndex(?string $tag = null): string
+    /**
+     * 短视频频道。不带 orientation 时是双货架首页（每个方向只取有限几条），
+     * 带 orientation=horizontal|vertical 时是该方向的完整分页列表，可被搜索引擎抓取。
+     */
+    public function actionIndex(?string $tag = null, ?string $orientation = null): string
     {
         $activeTag = $this->findTagBySlug($tag);
+        $orientationId = $this->normalizeOrientation($orientation);
 
-        $query = Post::find()
-            ->alias('p')
-            ->with(['user', 'shortVideo'])
-            ->where(['p.type' => Post::TYPE_SHORT_VIDEO, 'p.status' => Post::STATUS_PUBLISHED])
-            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+        if ($orientationId === null) {
+            $horizontal = $this->videoShelf($activeTag?->id, ShortVideo::ORIENTATION_HORIZONTAL);
+            $vertical = $this->videoShelf($activeTag?->id, ShortVideo::ORIENTATION_VERTICAL);
 
-        if ($activeTag !== null) {
-            $query->innerJoin(['pt' => '{{%post_tag}}'], 'pt.post_id = p.id')
-                ->andWhere(['pt.tag_id' => $activeTag->id]);
+            return $this->render('index', [
+                'orientation' => null,
+                'horizontalVideos' => $horizontal['videos'],
+                'horizontalTotal' => $horizontal['total'],
+                'verticalVideos' => $vertical['videos'],
+                'verticalTotal' => $vertical['total'],
+                'videoTags' => $this->videoTags(),
+                'activeTag' => $activeTag,
+            ]);
         }
 
-        $this->applyVisibilityFilter($query);
-
-        $horizontalVideos = [];
-        $verticalVideos = [];
-        foreach ($query->all() as $post) {
-            $video = $post->shortVideo;
-            if ($video === null) {
-                continue;
-            }
-            if ($video->isVertical()) {
-                $verticalVideos[] = $post;
-            } else {
-                $horizontalVideos[] = $post;
-            }
-        }
+        $provider = ListPagination::provider($this->videoQuery($activeTag?->id, $orientationId), ListPagination::SIZE_GRID);
 
         return $this->render('index', [
-            'horizontalVideos' => $horizontalVideos,
-            'verticalVideos' => $verticalVideos,
+            'orientation' => $orientation,
+            'posts' => $provider->getModels(),
+            'pagination' => $provider->getPagination(),
             'videoTags' => $this->videoTags(),
             'activeTag' => $activeTag,
         ]);
+    }
+
+    /** @return array{videos: Post[], total: int} 货架内最多 SHELF_LIMIT 条，total 为该方向可见总数。 */
+    private function videoShelf(?int $tagId, int $orientation): array
+    {
+        $query = $this->videoQuery($tagId, $orientation);
+
+        return [
+            'videos' => (clone $query)->limit(self::SHELF_LIMIT)->all(),
+            'total' => (int) $query->count(),
+        ];
+    }
+
+    /** 把 ?orientation= 归一化为 short_video.video_type，未给出时为 null。 */
+    private function normalizeOrientation(?string $orientation): ?int
+    {
+        if ($orientation === null || $orientation === '') {
+            return null;
+        }
+        if ($orientation === 'horizontal') {
+            return ShortVideo::ORIENTATION_HORIZONTAL;
+        }
+        if ($orientation === 'vertical') {
+            return ShortVideo::ORIENTATION_VERTICAL;
+        }
+
+        throw new BadRequestHttpException('未知的视频方向筛选。');
     }
 
     public function actionView(int $id): string
@@ -121,54 +147,78 @@ class VideoController extends Controller
         return $this->render('@frontend/views/site/view-video', $viewData);
     }
 
-    /** @return Post[] Same-orientation videos first, then the rest. */
-    private function relatedVideos(Post $current, int $limit = 8): array
-    {
-        $horizontal = [];
-        $vertical = [];
-        foreach ($this->visibleVideoQuery()->andWhere(['<>', 'p.id', $current->id])->all() as $post) {
-            if ($post->shortVideo === null) {
-                continue;
-            }
-            if ($post->shortVideo->isVertical()) {
-                $vertical[] = $post;
-            } else {
-                $horizontal[] = $post;
-            }
-        }
-
-        return array_slice(array_merge($horizontal, $vertical), 0, $limit);
-    }
-
-    /** @return array{0: Post|null, 1: Post|null} [newer, older] vertical videos. */
-    private function verticalNeighbors(Post $current): array
-    {
-        $vertical = [];
-        foreach ($this->visibleVideoQuery()->all() as $post) {
-            if ($post->shortVideo !== null && $post->shortVideo->isVertical()) {
-                $vertical[] = $post;
-            }
-        }
-
-        foreach ($vertical as $index => $post) {
-            if ((int) $post->id === (int) $current->id) {
-                return [$vertical[$index - 1] ?? null, $vertical[$index + 1] ?? null];
-            }
-        }
-
-        return [null, null];
-    }
-
-    private function visibleVideoQuery(): ActiveQuery
+    /** 短视频可见列表的统一查询；tagId/orientation 为可选筛选。 */
+    private function videoQuery(?int $tagId, ?int $orientation): ActiveQuery
     {
         $query = Post::find()
             ->alias('p')
             ->with(['user', 'shortVideo'])
             ->where(['p.type' => Post::TYPE_SHORT_VIDEO, 'p.status' => Post::STATUS_PUBLISHED])
             ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
-        $this->applyVisibilityFilter($query);
+
+        if ($tagId !== null) {
+            $query->innerJoin(['pt' => '{{%post_tag}}'], 'pt.post_id = p.id')
+                ->andWhere(['pt.tag_id' => $tagId]);
+        }
+
+        if ($orientation !== null) {
+            // short_video.post_id 上有唯一索引，1:1 连接不会放大行数。
+            $query->innerJoin(['sv' => '{{%short_video}}'], 'sv.post_id = p.id')
+                ->andWhere(['sv.video_type' => $orientation]);
+        }
+
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query;
+    }
+
+    /** @return Post[] 相关推荐：横屏优先，不足时用竖屏补齐。 */
+    private function relatedVideos(Post $current, int $limit = 8): array
+    {
+        $videos = $this->otherVideos($current, ShortVideo::ORIENTATION_HORIZONTAL, $limit);
+        if (count($videos) < $limit) {
+            $videos = array_merge(
+                $videos,
+                $this->otherVideos($current, ShortVideo::ORIENTATION_VERTICAL, $limit - count($videos))
+            );
+        }
+
+        return $videos;
+    }
+
+    /** @return Post[] */
+    private function otherVideos(Post $current, int $orientation, int $limit): array
+    {
+        return $this->videoQuery(null, $orientation)
+            ->andWhere(['not', ['p.id' => (int) $current->id]])
+            ->limit($limit)
+            ->all();
+    }
+
+    /** @return array{0: Post|null, 1: Post|null} [newer, older] vertical videos. */
+    private function verticalNeighbors(Post $current): array
+    {
+        return [
+            $this->neighborVideo($current, true),
+            $this->neighborVideo($current, false),
+        ];
+    }
+
+    private function neighborVideo(Post $current, bool $newer): ?Post
+    {
+        $createdAt = (int) $current->created_at;
+        $id = (int) $current->id;
+
+        return $this->videoQuery(null, ShortVideo::ORIENTATION_VERTICAL)
+            ->andWhere(['not', ['p.id' => $id]])
+            ->andWhere($newer
+                ? ['or', ['>', 'p.created_at', $createdAt], ['and', ['p.created_at' => $createdAt], ['>', 'p.id', $id]]]
+                : ['or', ['<', 'p.created_at', $createdAt], ['and', ['p.created_at' => $createdAt], ['<', 'p.id', $id]]])
+            ->orderBy($newer
+                ? ['p.created_at' => SORT_ASC, 'p.id' => SORT_ASC]
+                : ['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC])
+            ->limit(1)
+            ->one();
     }
 
 
@@ -446,22 +496,6 @@ class VideoController extends Controller
         }
     }
 
-    private function applyVisibilityFilter(ActiveQuery $query, string $alias = 'p'): void
-    {
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
-        if ($userId === null) {
-            $query->andWhere([$alias . '.visibility' => Post::VISIBILITY_PUBLIC]);
-            return;
-        }
-
-        $query->andWhere([
-            'or',
-            [$alias . '.visibility' => Post::VISIBILITY_PUBLIC],
-            [$alias . '.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-            ['and', [$alias . '.visibility' => Post::VISIBILITY_PRIVATE], [$alias . '.user_id' => $userId]],
-        ]);
-    }
-
     /** Tags used by published short videos, ordered by usage. @return Tag[] */
     private function videoTags(int $limit = 10): array
     {
@@ -474,7 +508,7 @@ class VideoController extends Controller
             ->groupBy(['t.id', 't.name', 't.slug'])
             ->orderBy(['postCount' => SORT_DESC, 't.name' => SORT_ASC])
             ->limit($limit);
-        $this->applyVisibilityFilter($query);
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query->all();
     }

@@ -8,8 +8,8 @@ use common\models\BlogPost;
 use common\models\Cate;
 use common\models\Post;
 use common\models\Tag;
+use frontend\components\ListPagination;
 use Yii;
-use yii\data\ActiveDataProvider;
 use yii\db\ActiveRecord;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
@@ -63,7 +63,7 @@ class BlogController extends Controller
 
     public function actionIndex(): string
     {
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
+        $userId = $this->currentUserId();
 
         $query = Post::find()
             ->alias('p')
@@ -71,26 +71,13 @@ class BlogController extends Controller
             ->where(['p.type' => Post::TYPE_BLOG, 'p.status' => Post::STATUS_PUBLISHED])
             ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
 
-        if ($userId === null) {
-            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
-        } else {
-            $query->andWhere([
-                'or',
-                ['p.visibility' => Post::VISIBILITY_PUBLIC],
-                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-                ['and', ['p.visibility' => Post::VISIBILITY_PRIVATE], ['p.user_id' => $userId]],
-            ]);
-        }
+        Post::applyVisibilityScope($query, $userId);
 
-        $dataProvider = new ActiveDataProvider([
-            'query' => $query,
-            'pagination' => ['pageSize' => 10],
-            'sort' => false,
-        ]);
+        $provider = ListPagination::provider($query, ListPagination::SIZE_FEED);
 
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
-            'tagCounts' => $this->tagPostCounts($dataProvider->getModels()),
+            'dataProvider' => $provider,
+            'tagCounts' => $this->tagPostCounts($provider->getModels()),
             'blogCategories' => $this->blogCategories(),
         ]);
     }
@@ -98,8 +85,6 @@ class BlogController extends Controller
     /** Categories used by published blog posts. @return Cate[] */
     private function blogCategories(int $limit = 10): array
     {
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
-
         $query = Cate::find()
             ->alias('c')
             ->select(['c.id', 'c.name', 'c.slug', 'postCount' => 'COUNT([[p]].[[id]])'])
@@ -110,16 +95,7 @@ class BlogController extends Controller
             ->orderBy(['postCount' => SORT_DESC, 'c.name' => SORT_ASC])
             ->limit($limit);
 
-        if ($userId === null) {
-            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
-        } else {
-            $query->andWhere([
-                'or',
-                ['p.visibility' => Post::VISIBILITY_PUBLIC],
-                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-                ['and', ['p.visibility' => Post::VISIBILITY_PRIVATE], ['p.user_id' => $userId]],
-            ]);
-        }
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query->all();
     }
@@ -165,7 +141,17 @@ class BlogController extends Controller
             throw new NotFoundHttpException('找不到该内容。');
         }
 
-        return $this->render('@frontend/views/site/view-blog', ['post' => $post, 'blog' => $blog]);
+        $userId = $this->currentUserId();
+        [$prev, $next] = Post::neighborsFor($post, $userId);
+
+        return $this->render('view', [
+            'post' => $post,
+            'blog' => $blog,
+            'related' => Post::relatedFor($post, $userId),
+            'prev' => $prev,
+            'next' => $next,
+            'authorCounts' => Post::authorCounts((int) $post->user_id, $userId),
+        ]);
     }
 
     public function actionCreate(?string $type = null): string|Response

@@ -3,19 +3,42 @@
 declare(strict_types=1);
 
 /** @var yii\web\View $this */
+/** @var string|null $orientation horizontal|vertical，null 表示双货架首页 */
 /** @var common\models\Post[] $horizontalVideos */
+/** @var int $horizontalTotal */
 /** @var common\models\Post[] $verticalVideos */
+/** @var int $verticalTotal */
+/** @var common\models\Post[] $posts */
+/** @var yii\data\Pagination $pagination */
 /** @var common\models\Tag[] $videoTags */
 /** @var common\models\Tag|null $activeTag */
 
+use frontend\widgets\ContentPager;
 use yii\helpers\Html;
+use yii\helpers\Url;
 
 $identity = Yii::$app->user->identity;
 $profileName = $identity !== null ? ($identity->nickname ?: $identity->username) : '';
 $profileInitial = $profileName !== '' ? mb_strtoupper(mb_substr($profileName, 0, 1)) : '拾';
 
-$this->title = $activeTag !== null ? '短视频 · ' . $activeTag->name : '短视频';
+$isVerticalList = $orientation === 'vertical';
+$orientationLabel = $orientation === null ? null : ($isVerticalList ? '竖屏短视频' : '横屏视频');
+$this->title = $orientationLabel !== null
+    ? '短视频 · ' . $orientationLabel
+    : ($activeTag !== null ? '短视频 · ' . $activeTag->name : '短视频');
 
+/** 列表内跳转保留当前筛选条件；null 参数会被 UrlManager 丢弃。 */
+$listUrl = function (array $overrides) use ($activeTag, $orientation): array {
+    return array_merge(
+        ['/video/index', 'tag' => $activeTag?->slug, 'orientation' => $orientation],
+        $overrides,
+    );
+};
+
+// 双货架页没有分页器，但仍需要自引用 canonical，避免 ?tag= 变体被判重复。
+if ($orientation === null) {
+    $this->registerLinkTag(['rel' => 'canonical', 'href' => Url::to(['/video/index', 'tag' => $activeTag?->slug], true)]);
+}
 ?>
 <div class="row g-3 g-xl-4">
     <aside class="col-12 col-lg-3 d-none d-lg-block">
@@ -65,9 +88,11 @@ $this->title = $activeTag !== null ? '短视频 · ' . $activeTag->name : '短�
     <div class="col-12 col-lg-9">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
             <div>
-                <h1 class="h3 mb-1">短视频</h1>
+                <h1 class="h3 mb-1"><?= $orientationLabel !== null ? Html::encode($orientationLabel) : '短视频' ?></h1>
                 <p class="text-body-secondary small mb-0">
-                    <?php if ($activeTag !== null): ?>
+                    <?php if ($orientation !== null): ?>
+                        共 <?= (int) $pagination->totalCount ?> 条<?php if ($activeTag !== null): ?> · 标签 #<?= Html::encode($activeTag->name) ?><?php endif; ?>
+                    <?php elseif ($activeTag !== null): ?>
                         标签 #<?= Html::encode($activeTag->name) ?> · 按视频方向分栏浏览
                     <?php else: ?>
                         横屏故事与竖屏片段，按视频方向分栏浏览。
@@ -81,11 +106,11 @@ $this->title = $activeTag !== null ? '短视频 · ' . $activeTag->name : '短�
 
         <?php if ($videoTags !== []): ?>
             <nav class="moment-tabs mb-3" aria-label="视频标签">
-                <?= Html::a('全部', ['/video/index'], ['class' => 'moment-tab' . ($activeTag === null ? ' active' : '')]) ?>
+                <?= Html::a('全部', $listUrl(['tag' => null]), ['class' => 'moment-tab' . ($activeTag === null ? ' active' : '')]) ?>
                 <?php foreach ($videoTags as $tab): ?>
                     <?= Html::a(
                         '<i class="bi bi-hash me-1" aria-hidden="true"></i>' . Html::encode($tab->name) . '<span class="moment-tab-count">' . (int) $tab->postCount . '</span>',
-                        ['/video/index', 'tag' => $tab->slug],
+                        $listUrl(['tag' => $tab->slug]),
                         [
                             'class' => 'moment-tab' . ($activeTag !== null && (int) $activeTag->id === (int) $tab->id ? ' active' : ''),
                             'encode' => false,
@@ -95,22 +120,56 @@ $this->title = $activeTag !== null ? '短视频 · ' . $activeTag->name : '短�
             </nav>
         <?php endif; ?>
 
+        <nav class="moment-tabs mb-4" aria-label="视频方向">
+            <?= Html::a('<i class="bi bi-grid me-1" aria-hidden="true"></i>分栏浏览', $listUrl(['orientation' => null]), ['class' => 'moment-tab' . ($orientation === null ? ' active' : ''), 'encode' => false]) ?>
+            <?= Html::a('<i class="bi bi-camera-reels me-1" aria-hidden="true"></i>横屏视频', $listUrl(['orientation' => 'horizontal']), ['class' => 'moment-tab' . ($orientation === 'horizontal' ? ' active' : ''), 'encode' => false]) ?>
+            <?= Html::a('<i class="bi bi-phone me-1" aria-hidden="true"></i>竖屏短视频', $listUrl(['orientation' => 'vertical']), ['class' => 'moment-tab' . ($isVerticalList ? ' active' : ''), 'encode' => false]) ?>
+        </nav>
+
+        <?php if ($orientation !== null): ?>
+            <?php if ($posts === []): ?>
+                <div class="video-shelf-empty">
+                    <i class="bi <?= $isVerticalList ? 'bi-phone' : 'bi-camera-reels' ?> d-block mb-2" aria-hidden="true"></i>
+                    <p class="mb-0">
+                        <?= $activeTag !== null
+                            ? '该标签下还没有' . Html::encode($orientationLabel) . '，' . Html::a('看全部', $listUrl(['tag' => null])) . '。'
+                            : '还没有' . Html::encode($orientationLabel) . '，' . ($identity !== null ? Html::a('上传第一个', ['/video/create']) : Html::a('登录后上传', ['/users/login'])) . '。' ?>
+                    </p>
+                </div>
+            <?php else: ?>
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+                    <?php foreach ($posts as $post): ?>
+                        <div class="col"><?= $this->render('_card', ['post' => $post, 'vertical' => $isVerticalList]) ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <?= ContentPager::widget([
+                'pagination' => $pagination,
+                'route' => ['/video/index'],
+                'params' => ['tag' => $activeTag?->slug, 'orientation' => $orientation],
+            ]) ?>
+        <?php else: ?>
+
         <section class="video-shelf-section mb-4" aria-labelledby="video-horizontal-heading">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                 <h2 id="video-horizontal-heading" class="video-shelf-title h5 mb-0">
                     <span class="video-shelf-icon" aria-hidden="true"><i class="bi bi-camera-reels"></i></span>
                     横屏视频
-                    <span class="video-shelf-count"><?= count($horizontalVideos) ?></span>
+                    <span class="video-shelf-count"><?= (int) $horizontalTotal ?></span>
                 </h2>
                 <?php if ($horizontalVideos !== []): ?>
                     <span class="video-shelf-note d-none d-sm-inline">16:9 · 左右滑动查看更多</span>
+                <?php endif; ?>
+                <?php if ($horizontalTotal > count($horizontalVideos)): ?>
+                    <?= Html::a('查看全部', $listUrl(['orientation' => 'horizontal']), ['class' => 'btn btn-outline-secondary btn-sm']) ?>
                 <?php endif; ?>
             </div>
             <?php if ($horizontalVideos === []): ?>
                 <div class="video-shelf-empty">
                     <i class="bi bi-camera-reels d-block mb-2" aria-hidden="true"></i>
                     <?php if ($activeTag !== null): ?>
-                        <p class="mb-0">该标签下还没有横屏视频，<?= Html::a('看全部视频', ['/video/index']) ?>。</p>
+                        <p class="mb-0">该标签下还没有横屏视频，<?= Html::a('看全部视频', $listUrl(['orientation' => null])) ?>。</p>
                     <?php else: ?>
                         <p class="mb-0">还没有横屏视频，<?= $identity !== null ? Html::a('上传第一个', ['/video/create']) : Html::a('登录后上传', ['/users/login']) ?>。</p>
                     <?php endif; ?>
@@ -129,17 +188,20 @@ $this->title = $activeTag !== null ? '短视频 · ' . $activeTag->name : '短�
                 <h2 id="video-vertical-heading" class="video-shelf-title h5 mb-0">
                     <span class="video-shelf-icon" aria-hidden="true"><i class="bi bi-phone"></i></span>
                     竖屏短视频
-                    <span class="video-shelf-count"><?= count($verticalVideos) ?></span>
+                    <span class="video-shelf-count"><?= (int) $verticalTotal ?></span>
                 </h2>
                 <?php if ($verticalVideos !== []): ?>
                     <span class="video-shelf-note d-none d-sm-inline">9:16 · 左右滑动查看更多</span>
+                <?php endif; ?>
+                <?php if ($verticalTotal > count($verticalVideos)): ?>
+                    <?= Html::a('查看全部', $listUrl(['orientation' => 'vertical']), ['class' => 'btn btn-outline-secondary btn-sm']) ?>
                 <?php endif; ?>
             </div>
             <?php if ($verticalVideos === []): ?>
                 <div class="video-shelf-empty">
                     <i class="bi bi-phone d-block mb-2" aria-hidden="true"></i>
                     <?php if ($activeTag !== null): ?>
-                        <p class="mb-0">该标签下还没有竖屏短视频，<?= Html::a('看全部视频', ['/video/index']) ?>。</p>
+                        <p class="mb-0">该标签下还没有竖屏短视频，<?= Html::a('看全部视频', $listUrl(['orientation' => null])) ?>。</p>
                     <?php else: ?>
                         <p class="mb-0">还没有竖屏视频，<?= $identity !== null ? Html::a('上传第一个', ['/video/create']) : Html::a('登录后上传', ['/users/login']) ?>。</p>
                     <?php endif; ?>
@@ -152,5 +214,6 @@ $this->title = $activeTag !== null ? '短视频 · ' . $activeTag->name : '短�
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
     </div>
 </div>

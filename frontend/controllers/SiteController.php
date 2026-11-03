@@ -9,10 +9,12 @@ use common\models\Cate;
 use common\models\Post;
 use common\models\Tag;
 use common\models\VerifyPhoneForm;
+use frontend\components\ListPagination;
 use Yii;
 use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
+use yii\db\ActiveQuery;
 use yii\web\Controller;
 use yii\web\ErrorAction;
 use yii\web\NotFoundHttpException;
@@ -37,13 +39,19 @@ class SiteController extends Controller
      *
      * @return string
      */
+    /**
+     * 首页信息流：唯一保留无限滚动的列表。
+     * ?page=N 仍会整页渲染，爬虫与无 JS 访客拿到的就是第 N 页。
+     *
+     * @return string
+     */
     public function actionIndex(): string
     {
-        [$posts, $hasMore] = $this->publicFeed(1);
+        $provider = ListPagination::provider($this->publicQuery(), ListPagination::SIZE_FEED);
 
         return $this->render('index', [
-            'posts' => $posts,
-            'hasMore' => $hasMore,
+            'posts' => $provider->getModels(),
+            'pagination' => $provider->getPagination(),
             'definitions' => Post::typeDefinitions(),
         ]);
     }
@@ -51,15 +59,32 @@ class SiteController extends Controller
     /** Return the next page of public content for the home feed. */
     public function actionFeed(int $page = 1): Response
     {
+        $pageSize = ListPagination::SIZE_FEED;
+        $query = $this->publicQuery();
+        $total = (int) (clone $query)->count();
         $page = max(1, $page);
-        [$posts, $hasMore] = $this->publicFeed($page);
+        $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
 
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         return $this->asJson([
             'html' => $this->renderPartial('_feed_items', ['posts' => $posts, 'featured' => false]),
-            'hasMore' => $hasMore,
+            'hasMore' => $page * $pageSize < $total,
         ]);
+    }
+
+    /** 首页信息流查询：已发布且当前访客可见，按时间倒序。 */
+    private function publicQuery(): ActiveQuery
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->with(['user', 'blog', 'images', 'moment', 'shortVideo', 'tags', 'categories'])
+            ->where(['p.status' => Post::STATUS_PUBLISHED])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+
+        Post::applyVisibilityScope($query, $this->currentUserId());
+
+        return $query;
     }
 
     /** Display all content associated with a specific tag. */
@@ -78,70 +103,30 @@ class SiteController extends Controller
             ->orderBy(['t.name' => SORT_ASC])
             ->all();
 
-        [$posts, $hasMore] = $this->tagFeed($tag->id, 1);
+        $provider = ListPagination::provider($this->tagQuery((int) $tag->id), ListPagination::SIZE_GRID);
 
         return $this->render('tag', [
             'tag' => $tag,
             'tags' => $tags,
-            'posts' => $posts,
-            'hasMore' => $hasMore,
+            'posts' => $provider->getModels(),
+            'pagination' => $provider->getPagination(),
         ]);
     }
 
-    /** Return the next page of content for a specific tag. */
-    public function actionTagFeed(string $slug, int $page = 1): Response
+    /** 指定标签下的内容查询：已发布且当前访客可见，按时间倒序。 */
+    private function tagQuery(int $tagId): ActiveQuery
     {
-        $tag = Tag::find()->where(['slug' => $slug])->one();
-        if ($tag === null) {
-            Yii::$app->response->format = Response::FORMAT_JSON;
-            return $this->asJson(['html' => '', 'hasMore' => false]);
-        }
-
-        $page = max(1, $page);
-        [$posts, $hasMore] = $this->tagFeed($tag->id, $page);
-
-        Yii::$app->response->format = Response::FORMAT_JSON;
-
-        return $this->asJson([
-            'html' => $this->renderPartial('_cover_items', ['posts' => $posts]),
-            'hasMore' => $hasMore,
-        ]);
-    }
-
-    /** @return array{0: Post[], 1: bool} */
-    private function tagFeed(int $tagId, int $page): array
-    {
-        $pageSize = 10;
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
         $query = Post::find()
             ->alias('p')
             ->innerJoin(['pt' => '{{%post_tag}}'], 'pt.post_id = p.id')
             ->with(['user', 'blog', 'images', 'moment', 'shortVideo', 'tags', 'categories'])
             ->where(['p.status' => Post::STATUS_PUBLISHED])
-            ->andWhere(['pt.tag_id' => $tagId]);
+            ->andWhere(['pt.tag_id' => $tagId])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
 
-        if ($userId === null) {
-            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
-        } else {
-            $visibleToUser = [
-                'or',
-                ['p.visibility' => Post::VISIBILITY_PUBLIC],
-                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-                [
-                    'and',
-                    ['p.visibility' => Post::VISIBILITY_PRIVATE],
-                    ['p.user_id' => $userId],
-                ],
-            ];
-            $query->andWhere($visibleToUser);
-        }
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
-        $query->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
-
-        $total = (clone $query)->count();
-        $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
-
-        return [$posts, $page * $pageSize < $total];
+        return $query;
     }
 
     /** Display all content associated with a specific category. */
@@ -160,104 +145,30 @@ class SiteController extends Controller
             ->orderBy(['c.name' => SORT_ASC])
             ->all();
 
-        [$posts, $hasMore] = $this->cateFeed($cate->id, 1);
+        $provider = ListPagination::provider($this->cateQuery((int) $cate->id), ListPagination::SIZE_GRID);
 
         return $this->render('cate', [
             'cate' => $cate,
             'cates' => $cates,
-            'posts' => $posts,
-            'hasMore' => $hasMore,
+            'posts' => $provider->getModels(),
+            'pagination' => $provider->getPagination(),
         ]);
     }
 
-    /** Return the next page of content for a specific category. */
-    public function actionCateFeed(string $slug, int $page = 1): Response
+    /** 指定分类下的内容查询：已发布且当前访客可见，按时间倒序。 */
+    private function cateQuery(int $cateId): ActiveQuery
     {
-        $cate = Cate::find()->where(['slug' => $slug])->one();
-        if ($cate === null) {
-            Yii::$app->response->format = Response::FORMAT_JSON;
-            return $this->asJson(['html' => '', 'hasMore' => false]);
-        }
-
-        $page = max(1, $page);
-        [$posts, $hasMore] = $this->cateFeed($cate->id, $page);
-
-        Yii::$app->response->format = Response::FORMAT_JSON;
-
-        return $this->asJson([
-            'html' => $this->renderPartial('_cover_items', ['posts' => $posts]),
-            'hasMore' => $hasMore,
-        ]);
-    }
-
-    /** @return array{0: Post[], 1: bool} */
-    private function cateFeed(int $cateId, int $page): array
-    {
-        $pageSize = 10;
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
         $query = Post::find()
             ->alias('p')
             ->innerJoin(['pc' => '{{%post_cate}}'], 'pc.post_id = p.id')
             ->with(['user', 'blog', 'images', 'moment', 'shortVideo', 'tags', 'categories'])
             ->where(['p.status' => Post::STATUS_PUBLISHED])
-            ->andWhere(['pc.cate_id' => $cateId]);
+            ->andWhere(['pc.cate_id' => $cateId])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
 
-        if ($userId === null) {
-            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
-        } else {
-            $visibleToUser = [
-                'or',
-                ['p.visibility' => Post::VISIBILITY_PUBLIC],
-                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-                [
-                    'and',
-                    ['p.visibility' => Post::VISIBILITY_PRIVATE],
-                    ['p.user_id' => $userId],
-                ],
-            ];
-            $query->andWhere($visibleToUser);
-        }
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
-        $query->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
-
-        $total = (clone $query)->count();
-        $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
-
-        return [$posts, $page * $pageSize < $total];
-    }
-
-    /** @return array{0: Post[], 1: bool} */
-    private function publicFeed(int $page): array
-    {
-        $pageSize = 10;
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
-        $query = Post::find()
-            ->alias('p')
-            ->with(['user', 'blog', 'images', 'moment', 'shortVideo', 'tags', 'categories'])
-            ->where(['p.status' => Post::STATUS_PUBLISHED]);
-
-        if ($userId === null) {
-            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
-        } else {
-            $visibleToUser = [
-                'or',
-                ['p.visibility' => Post::VISIBILITY_PUBLIC],
-                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-                [
-                    'and',
-                    ['p.visibility' => Post::VISIBILITY_PRIVATE],
-                    ['p.user_id' => $userId],
-                ],
-            ];
-            $query->andWhere($visibleToUser);
-        }
-
-        $query->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
-
-        $total = (clone $query)->count();
-        $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
-
-        return [$posts, $page * $pageSize < $total];
+        return $query;
     }
 
 

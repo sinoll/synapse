@@ -7,6 +7,7 @@ namespace frontend\controllers;
 use common\models\Image;
 use common\models\Post;
 use common\models\Tag;
+use frontend\components\ListPagination;
 use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -23,7 +24,6 @@ class ImagesController extends Controller
     use ContentVisibilityTrait;
 
     private const FIELDS = ['caption', 'file_path'];
-    private const PAGE_SIZE = 12;
     private const MAX_TAGS = 10;
     private const EMPTY_CAPTION_ERROR = '请填写图片标题或说明。';
     private const TOO_MANY_TAGS_ERROR = '标题和说明中最多包含 10 个 #话题#。';
@@ -63,33 +63,17 @@ class ImagesController extends Controller
         ];
     }
 
-    public function actionIndex(?string $tag = null, int $page = 1): string
+    public function actionIndex(?string $tag = null): string
     {
         $activeTag = $this->findTagBySlug($tag);
-        $page = max(1, $page);
-        [$posts, $hasMore, $total] = $this->imageFeed($activeTag?->id, $page);
+        $provider = ListPagination::provider($this->imageQuery($activeTag?->id), ListPagination::SIZE_GRID);
 
         return $this->render('index', [
-            'posts' => $posts,
-            'hasMore' => $hasMore,
-            'nextPage' => $page + 1,
-            'total' => $total,
+            'posts' => $provider->getModels(),
+            'pagination' => $provider->getPagination(),
+            'total' => $provider->getTotalCount(),
             'activeTag' => $activeTag,
             'galleryTags' => $this->imageTags(),
-        ]);
-    }
-
-    /** Return the next page of the gallery feed. */
-    public function actionFeed(?string $tag = null, int $page = 1): Response
-    {
-        $activeTag = $this->findTagBySlug($tag);
-        [$posts, $hasMore] = $this->imageFeed($activeTag?->id, max(1, $page));
-
-        Yii::$app->response->format = Response::FORMAT_JSON;
-
-        return $this->asJson([
-            'html' => $this->renderPartial('_items', ['posts' => $posts]),
-            'hasMore' => $hasMore,
         ]);
     }
 
@@ -104,7 +88,17 @@ class ImagesController extends Controller
             throw new NotFoundHttpException('找不到该内容。');
         }
 
-        return $this->render('view', ['post' => $post, 'images' => $images]);
+        $userId = $this->currentUserId();
+        [$prev, $next] = Post::neighborsFor($post, $userId);
+
+        return $this->render('view', [
+            'post' => $post,
+            'images' => $images,
+            'related' => Post::relatedFor($post, $userId),
+            'prev' => $prev,
+            'next' => $next,
+            'authorCounts' => Post::authorCounts((int) $post->user_id, $userId),
+        ]);
     }
 
     public function actionCreate(?string $type = null): string|Response
@@ -385,16 +379,6 @@ class ImagesController extends Controller
         return $post;
     }
 
-    /** @return array{0: Post[], 1: bool, 2: int} Posts, whether more pages exist, total collections. */
-    private function imageFeed(?int $tagId, int $page): array
-    {
-        $query = $this->imageQuery($tagId);
-        $total = (int) (clone $query)->count();
-        $posts = $query->offset(($page - 1) * self::PAGE_SIZE)->limit(self::PAGE_SIZE)->all();
-
-        return [$posts, $page * self::PAGE_SIZE < $total, $total];
-    }
-
     private function imageQuery(?int $tagId): ActiveQuery
     {
         $query = Post::find()
@@ -408,7 +392,7 @@ class ImagesController extends Controller
                 ->andWhere(['pt.tag_id' => $tagId]);
         }
 
-        $this->applyVisibilityFilter($query);
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query;
     }
@@ -425,25 +409,9 @@ class ImagesController extends Controller
             ->groupBy(['t.id', 't.name', 't.slug'])
             ->orderBy(['postCount' => SORT_DESC, 't.name' => SORT_ASC])
             ->limit($limit);
-        $this->applyVisibilityFilter($query);
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query->all();
-    }
-
-    private function applyVisibilityFilter(ActiveQuery $query, string $alias = 'p'): void
-    {
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
-        if ($userId === null) {
-            $query->andWhere([$alias . '.visibility' => Post::VISIBILITY_PUBLIC]);
-            return;
-        }
-
-        $query->andWhere([
-            'or',
-            [$alias . '.visibility' => Post::VISIBILITY_PUBLIC],
-            [$alias . '.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-            ['and', [$alias . '.visibility' => Post::VISIBILITY_PRIVATE], [$alias . '.user_id' => $userId]],
-        ]);
     }
 
     private function ensureOwner(Post $post): void

@@ -5,6 +5,10 @@ declare(strict_types=1);
 /** @var yii\web\View $this */
 /** @var common\models\Post $post */
 /** @var common\models\Image[] $images */
+/** @var array<int, array{post: common\models\Post, reason: string}> $related */
+/** @var common\models\Post|null $prev */
+/** @var common\models\Post|null $next */
+/** @var array{total: int, byType: array<string, int>} $authorCounts */
 
 use yii\helpers\Html;
 
@@ -23,55 +27,66 @@ $formatFileSize = static function (int $bytes): string {
 };
 ?>
 <div class="row justify-content-center">
-    <div class="col-12 col-xl-11 col-xxl-10">
+    <div class="col-12 col-lg-10 col-xl-11 col-xxl-10">
         <article class="content-view content-view-images py-3 py-md-4">
-            <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $post->title]) ?>
+            <div class="content-detail-layout">
+                <div class="content-detail-main">
+                    <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $post->title]) ?>
 
-            <?php if ($galleryDescription !== ''): ?>
-                <p class="text-center text-body-secondary mb-4"><?= Html::encode($galleryDescription) ?></p>
-            <?php endif; ?>
+                    <?php if ($galleryDescription !== ''): ?>
+                        <p class="text-center text-body-secondary mb-4"><?= Html::encode($galleryDescription) ?></p>
+                    <?php endif; ?>
 
-            <div class="image-gallery d-flex flex-column gap-4">
-                <?php foreach ($images as $image): ?>
-                    <?php
-                    $imagePath = (string) $image->file_path;
-                    $imageAlt = (string) ($image->alt_text ?: $post->title);
-                    $imageTitle = trim((string) $image->title);
-                    $imageMeta = [];
-                    $imageFile = $webroot . '/' . ltrim($imagePath, '/');
-                    if ($imagePath !== '' && is_file($imageFile)) {
-                        $imageSize = @getimagesize($imageFile);
-                        if (is_array($imageSize)) {
-                            $imageMeta[] = $imageSize[0] . ' × ' . $imageSize[1];
-                        }
-                        $imageBytes = filesize($imageFile);
-                        if ($imageBytes !== false) {
-                            $imageMeta[] = $formatFileSize($imageBytes);
-                        }
-                    }
-                    $imageMetaText = implode(' · ', $imageMeta);
-                    ?>
-                    <figure class="mb-0">
-                        <a href="<?= Html::encode($imagePath) ?>"
-                           class="d-block"
-                           data-image-preview
-                           data-bs-toggle="modal"
-                           data-bs-target="#imagePreviewModal"
-                           data-image-src="<?= Html::encode($imagePath) ?>"
-                           data-image-alt="<?= Html::encode($imageAlt) ?>"
-                           data-image-title="<?= Html::encode($imageTitle !== '' ? $imageTitle : $this->title) ?>"
-                           data-image-name="<?= Html::encode(basename($imagePath)) ?>"
-                           data-image-meta="<?= Html::encode($imageMetaText) ?>">
-                            <img src="<?= Html::encode($imagePath) ?>"
-                                 alt="<?= Html::encode($imageAlt) ?>"
-                                 class="img-fluid w-100 rounded shadow-sm" loading="lazy">
-                        </a>
-                        <br />
-                    </figure>
-                <?php endforeach; ?>
+                    <div class="image-gallery d-flex flex-column gap-4">
+                        <?php foreach ($images as $image): ?>
+                            <?php
+                            $imagePath = (string) $image->file_path;
+                            $imageAlt = (string) ($image->alt_text ?: $post->title);
+                            $imageTitle = trim((string) $image->title);
+                            $imageMeta = [];
+                            $imageFile = $webroot . '/' . ltrim($imagePath, '/');
+                            if ($imagePath !== '' && is_file($imageFile)) {
+                                $imageSize = @getimagesize($imageFile);
+                                if (is_array($imageSize)) {
+                                    $imageMeta[] = $imageSize[0] . ' × ' . $imageSize[1];
+                                }
+                                $imageBytes = filesize($imageFile);
+                                if ($imageBytes !== false) {
+                                    $imageMeta[] = $formatFileSize($imageBytes);
+                                }
+                            }
+                            $imageMetaText = implode(' · ', $imageMeta);
+                            ?>
+                            <figure class="mb-0">
+                                <a href="<?= Html::encode($imagePath) ?>"
+                                   class="d-block"
+                                   data-image-preview
+                                   data-bs-toggle="modal"
+                                   data-bs-target="#imagePreviewModal"
+                                   data-image-src="<?= Html::encode($imagePath) ?>"
+                                   data-image-alt="<?= Html::encode($imageAlt) ?>"
+                                   data-image-title="<?= Html::encode($imageTitle !== '' ? $imageTitle : $this->title) ?>"
+                                   data-image-name="<?= Html::encode(basename($imagePath)) ?>"
+                                   data-image-meta="<?= Html::encode($imageMetaText) ?>">
+                                    <img src="<?= Html::encode($imagePath) ?>"
+                                         alt="<?= Html::encode($imageAlt) ?>"
+                                         class="img-fluid w-100 rounded shadow-sm" loading="lazy">
+                                </a>
+                            </figure>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <p class="text-center text-body-secondary small mt-4 mb-0">共 <?= count($images) ?> 张图片</p>
+
+                    <?= $this->render('@frontend/views/site/_prev_next', ['prev' => $prev, 'next' => $next]) ?>
+                    <?= $this->render('@frontend/views/site/_channel_bar', ['post' => $post]) ?>
+                </div>
+
+                <aside class="content-detail-side">
+                    <?= $this->render('@frontend/views/site/_author_card', ['post' => $post, 'authorCounts' => $authorCounts]) ?>
+                    <?= $this->render('@frontend/views/site/_related_list', ['items' => $related, 'heading' => '相关图集']) ?>
+                </aside>
             </div>
-
-            <p class="text-center text-body-secondary small mt-4 mb-0">共 <?= count($images) ?> 张图片</p>
 
             <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
         </article>

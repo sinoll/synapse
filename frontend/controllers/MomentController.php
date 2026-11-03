@@ -8,6 +8,7 @@ use common\models\Cate;
 use common\models\Moment;
 use common\models\Post;
 use common\models\Tag;
+use frontend\components\ListPagination;
 use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -72,36 +73,30 @@ class MomentController extends Controller
             throw new NotFoundHttpException('找不到该内容。');
         }
 
-        return $this->render('view', ['post' => $post, 'moment' => $moment]);
-    }
+        $userId = $this->currentUserId();
+        [$prev, $next] = Post::neighborsFor($post, $userId);
 
-    public function actionIndex(?string $cate = null, int $page = 1): string
-    {
-        $activeCate = $this->findCateBySlug($cate);
-        $page = max(1, $page);
-        [$posts, $hasMore] = $this->momentFeed($activeCate?->id, $page);
-
-        return $this->render('index', [
-            'posts' => $posts,
-            'hasMore' => $hasMore,
-            'nextPage' => $page + 1,
-            'activeCate' => $activeCate,
-            'cateTabs' => $this->momentCateTabs(),
-            'momentTags' => $this->momentTags(),
+        return $this->render('view', [
+            'post' => $post,
+            'moment' => $moment,
+            'related' => Post::relatedFor($post, $userId),
+            'prev' => $prev,
+            'next' => $next,
+            'authorCounts' => Post::authorCounts((int) $post->user_id, $userId),
         ]);
     }
 
-    /** Return the next page of the moment feed. */
-    public function actionFeed(?string $cate = null, int $page = 1): Response
+    public function actionIndex(?string $cate = null): string
     {
         $activeCate = $this->findCateBySlug($cate);
-        [$posts, $hasMore] = $this->momentFeed($activeCate?->id, max(1, $page));
+        $provider = ListPagination::provider($this->momentQuery($activeCate?->id), ListPagination::SIZE_FEED);
 
-        Yii::$app->response->format = Response::FORMAT_JSON;
-
-        return $this->asJson([
-            'html' => $this->renderPartial('_items', ['posts' => $posts]),
-            'hasMore' => $hasMore,
+        return $this->render('index', [
+            'posts' => $provider->getModels(),
+            'pagination' => $provider->getPagination(),
+            'activeCate' => $activeCate,
+            'cateTabs' => $this->momentCateTabs(),
+            'momentTags' => $this->momentTags(),
         ]);
     }
 
@@ -119,17 +114,6 @@ class MomentController extends Controller
         return $cate;
     }
 
-    /** @return array{0: Post[], 1: bool} */
-    private function momentFeed(?int $cateId, int $page): array
-    {
-        $pageSize = 10;
-        $query = $this->momentQuery($cateId);
-        $total = (int) (clone $query)->count();
-        $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
-
-        return [$posts, $page * $pageSize < $total];
-    }
-
     private function momentQuery(?int $cateId): ActiveQuery
     {
         $query = Post::find()
@@ -143,25 +127,9 @@ class MomentController extends Controller
                 ->andWhere(['pc.cate_id' => $cateId]);
         }
 
-        $this->applyVisibilityFilter($query);
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query;
-    }
-
-    private function applyVisibilityFilter(ActiveQuery $query, string $alias = 'p'): void
-    {
-        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
-        if ($userId === null) {
-            $query->andWhere([$alias . '.visibility' => Post::VISIBILITY_PUBLIC]);
-            return;
-        }
-
-        $query->andWhere([
-            'or',
-            [$alias . '.visibility' => Post::VISIBILITY_PUBLIC],
-            [$alias . '.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-            ['and', [$alias . '.visibility' => Post::VISIBILITY_PRIVATE], [$alias . '.user_id' => $userId]],
-        ]);
     }
 
     /** @return Cate[] */
@@ -175,7 +143,7 @@ class MomentController extends Controller
             ->where(['p.type' => Post::TYPE_MOMENT, 'p.status' => Post::STATUS_PUBLISHED])
             ->groupBy(['c.id', 'c.name', 'c.slug'])
             ->orderBy(['postCount' => SORT_DESC, 'c.name' => SORT_ASC]);
-        $this->applyVisibilityFilter($query);
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query->all();
     }
@@ -192,7 +160,7 @@ class MomentController extends Controller
             ->groupBy(['t.id', 't.name', 't.slug'])
             ->orderBy(['postCount' => SORT_DESC, 't.name' => SORT_ASC])
             ->limit($limit);
-        $this->applyVisibilityFilter($query);
+        Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query->all();
     }

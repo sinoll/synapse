@@ -21,6 +21,8 @@ $this->registerCss(<<<'CSS'
 .content-view .rich-content pre { overflow-x: auto; max-width: 100%; margin: 1rem 0; padding: 1rem 1.1rem; border: 1px solid var(--bs-border-color); border-radius: .65rem; background: var(--bs-tertiary-bg); color: var(--bs-body-color); font-family: var(--bs-font-monospace); font-size: .9em; line-height: 1.6; white-space: pre; }
 .content-view .rich-content pre code { padding: 0; background: transparent; color: inherit; font: inherit; white-space: inherit; }
 .content-view .content-view-summary { margin: 0 0 1.5rem; padding: .9rem 1.2rem; border-left: 4px solid var(--bs-primary); border-radius: 0 .5rem .5rem 0; background: var(--bs-primary-bg-subtle); color: var(--bs-body-color); line-height: 1.8; }
+.content-view .content-view-author-name a { color: var(--bs-link-color); text-decoration: none; }
+.content-view .content-view-author-name a:hover { color: var(--bs-link-hover-color); text-decoration: underline; }
 CSS);
 ?>
 <nav aria-label="breadcrumb" class="mb-3">
@@ -37,7 +39,11 @@ CSS);
 
 <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3 text-body-secondary small">
     <span class="home-feed-type"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
-    <span><?= Html::encode($post->user?->nickname ?: $post->user?->username ?: '用户') ?></span>
+    <?php if ($post->user !== null): ?>
+        <span class="content-view-author-name"><?= Html::a(Html::encode($post->user->nickname ?: $post->user->username ?: '用户'), ['/users/profile', 'id' => (int) $post->user->id]) ?></span>
+    <?php else: ?>
+        <span>用户</span>
+    <?php endif; ?>
     <span>·</span>
     <time datetime="<?= Html::encode(date('Y-m-d H:i:s', (int) $post->created_at)) ?>"><?= date('Y-m-d H:i:s', $post->created_at) ?></time>
     <?php if ((int) $post->status === Post::STATUS_DRAFT): ?><span>· 草稿</span><?php endif; ?>

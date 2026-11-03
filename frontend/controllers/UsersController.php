@@ -8,15 +8,18 @@ use common\models\LoginForm;
 use common\models\ChangePasswordForm;
 use common\models\VerifyPhoneForm;
 use frontend\models\ProfileForm;
+use frontend\components\ListPagination;
 use common\models\Post;
+use common\models\User;
 use Yii;
 use yii\captcha\CaptchaAction;
-use yii\data\ActiveDataProvider;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\db\ActiveQuery;
+use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\web\ErrorAction;
+use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
 /**
@@ -53,10 +56,10 @@ class UsersController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['logout', 'favorite', 'like'],
+                'only' => ['index', 'logout', 'favorite', 'like'],
                 'rules' => [
                     [
-                        'actions' => ['logout', 'favorite', 'like'],
+                        'actions' => ['index', 'logout', 'favorite', 'like'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -108,16 +111,47 @@ class UsersController extends Controller
             $query->andWhere(['p.type' => $definitions[$type]['postType']]);
         }
 
-        $dataProvider = new ActiveDataProvider([
-            'query' => $query,
-            'pagination' => ['pageSize' => 20],
-        ]);
+        $dataProvider = ListPagination::provider($query, ListPagination::SIZE_TABLE);
 
         return $this->render('index', [
             'dataProvider' => $dataProvider,
             'definitions' => $definitions,
             'selectedType' => $type,
         ]);        
+    }
+
+    /**
+     * 作者主页：展示该作者在当前身份下可见的内容，可按类型筛选。
+     *
+     * @return string
+     */
+    public function actionProfile(int $id, ?string $type = null): string
+    {
+        $author = User::find()->where(['id' => $id, 'status' => User::STATUS_ACTIVE])->one();
+        if ($author === null) {
+            throw new NotFoundHttpException('找不到该用户。');
+        }
+        if ($type !== null && !isset(Post::TYPE_LABELS[$type])) {
+            throw new BadRequestHttpException('未知的内容类型。');
+        }
+
+        $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
+        $query = Post::find()
+            ->alias('p')
+            ->with(['user', 'blog', 'moment', 'images', 'shortVideo'])
+            ->where(['p.user_id' => (int) $author->id, 'p.status' => Post::STATUS_PUBLISHED])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+        if ($type !== null) {
+            $query->andWhere(['p.type' => $type]);
+        }
+        Post::applyVisibilityScope($query, $userId);
+
+        return $this->render('profile', [
+            'author' => $author,
+            'dataProvider' => ListPagination::provider($query, ListPagination::SIZE_GRID),
+            'counts' => Post::authorCounts((int) $author->id, $userId),
+            'activeType' => $type,
+        ]);
     }
 
     /**
@@ -132,10 +166,10 @@ class UsersController extends Controller
             throw new \yii\web\BadRequestHttpException('未知的内容类型。');
         }
 
-        $dataProvider = new ActiveDataProvider([
-            'query' => $this->interactionQuery('{{%post_favorite}}', 'pf', 'favoriteAt', $type),
-            'pagination' => ['pageSize' => 12],
-        ]);
+        $dataProvider = ListPagination::provider(
+            $this->interactionQuery('{{%post_favorite}}', 'pf', 'favoriteAt', $type),
+            ListPagination::SIZE_GRID,
+        );
 
         return $this->render('favorite', [
             'dataProvider' => $dataProvider,
@@ -156,10 +190,10 @@ class UsersController extends Controller
             throw new \yii\web\BadRequestHttpException('未知的内容类型。');
         }
 
-        $dataProvider = new ActiveDataProvider([
-            'query' => $this->interactionQuery('{{%post_like}}', 'pl', 'likedAt', $type),
-            'pagination' => ['pageSize' => 12],
-        ]);
+        $dataProvider = ListPagination::provider(
+            $this->interactionQuery('{{%post_like}}', 'pl', 'likedAt', $type),
+            ListPagination::SIZE_GRID,
+        );
 
         return $this->render('like', [
             'dataProvider' => $dataProvider,

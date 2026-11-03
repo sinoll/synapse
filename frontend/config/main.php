@@ -52,6 +52,7 @@ return [
             'showScriptName' => false,
             'rules' => [
                 'search' => 'search/index',
+                'u/<id:\d+>' => 'users/profile',
             ],
         ],
     ],

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace frontend\controllers;
 
 use common\models\Post;
+use frontend\components\ListPagination;
 use Yii;
-use yii\data\ActiveDataProvider;
 use yii\db\ActiveQuery;
 use yii\web\BadRequestHttpException;
 use yii\web\Controller;
@@ -27,11 +27,10 @@ class SearchController extends Controller
 
         $dataProvider = null;
         if ($keyword !== '') {
-            $dataProvider = new ActiveDataProvider([
-                'query' => $this->searchQuery($keyword, $definitions[$selectedType]['postType'] ?? null),
-                'pagination' => ['pageSize' => 10],
-                'sort' => false,
-            ]);
+            $dataProvider = ListPagination::provider(
+                $this->searchQuery($keyword, $definitions[$selectedType]['postType'] ?? null),
+                ListPagination::SIZE_FEED,
+            );
         }
 
         return $this->render('index', [
@@ -83,20 +82,7 @@ class SearchController extends Controller
         }
 
         $userId = Yii::$app->user->isGuest ? null : (int) Yii::$app->user->id;
-        if ($userId === null) {
-            $query->andWhere(['p.visibility' => Post::VISIBILITY_PUBLIC]);
-        } else {
-            $query->andWhere([
-                'or',
-                ['p.visibility' => Post::VISIBILITY_PUBLIC],
-                ['p.visibility' => Post::VISIBILITY_REGISTERED_USERS],
-                [
-                    'and',
-                    ['p.visibility' => Post::VISIBILITY_PRIVATE],
-                    ['p.user_id' => $userId],
-                ],
-            ]);
-        }
+        Post::applyVisibilityScope($query, $userId);
 
         return $query;
     }
