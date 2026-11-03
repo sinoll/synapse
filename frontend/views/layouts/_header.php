@@ -13,7 +13,7 @@ $identity = Yii::$app->user->identity;
 $searchKeyword = Yii::$app->request->get('q');
 $searchKeyword = is_string($searchKeyword) ? $searchKeyword : '';
 $accountItems = [
-    ['label' => '内容管理', 'url' => ['/users/index']],
+    ['label' => '我的内容', 'url' => ['/users/index']],
     ['label' => '我的收藏', 'url' => ['/users/favorite']],
     ['label' => '我的点赞', 'url' => ['/users/like']],
 ];

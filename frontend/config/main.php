@@ -12,7 +12,9 @@ $params = array_merge(
 return [
     'id' => 'app-frontend',
     'name' => '拾光',
+    'charset' => 'utf-8',
     'language' => 'zh-CN',
+    'timeZone' => 'Asia/Shanghai',
     'basePath' => dirname(__DIR__),
     'bootstrap' => ['log', 'siteSettings'],
     'controllerNamespace' => 'frontend\controllers',

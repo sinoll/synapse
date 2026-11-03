@@ -11,6 +11,7 @@ use yii\helpers\Html;
 $this->title = '内容管理';
 $typeLabels = [];
 $typeControllers = [];
+$detailRoutes = Post::TYPE_DETAIL_ROUTES;
 foreach ($definitions as $key => $definition) {
     $typeLabels[$definition['postType']] = $definition['label'];
     $typeControllers[$definition['postType']] = $key;
@@ -78,14 +79,14 @@ foreach ($definitions as $key => $definition) {
                                 <tr>
                                     <td><span class="badge text-bg-light"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span></td>
                                     <td class="content-management-title">
-                                        <?= Html::a(Html::encode($post->title), ['/content/view', 'id' => $post->id], ['class' => 'fw-semibold text-decoration-none']) ?>
+                                        <?= Html::a(Html::encode($post->title), [$detailRoutes[$post->type], 'id' => $post->id], ['class' => 'fw-semibold text-decoration-none']) ?>
                                         <?php if ($post->status === Post::STATUS_DRAFT): ?><span class="badge text-bg-secondary ms-1">草稿</span><?php endif; ?>
                                     </td>
                                     <td><?= Html::encode($post->user?->nickname ?: $post->user?->username ?: '用户') ?></td>
                                     <td><?= Html::encode($visibilityLabels[$post->visibility] ?? '未知') ?></td>
                                     <td class="text-body-secondary"><?= date('Y-m-d', $post->created_at) ?></td>
                                     <td class="text-end text-nowrap">
-                                        <?= Html::a('查看', ['/content/view', 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
+                                        <?= Html::a('查看', [$detailRoutes[$post->type], 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-secondary']) ?>
                                         <?php if ($isOwner && $controller !== null): ?>
                                             <?= Html::a('编辑', ['/' . $controller . '/update', 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-primary']) ?>
                                             <?= Html::a('删除', ['/' . $controller . '/delete', 'id' => $post->id], [

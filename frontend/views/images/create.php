@@ -182,7 +182,7 @@ JS);
                                 'class' => 'form-select form-select-sm image-visibility',
                                 'aria-label' => '可见范围',
                             ]) ?>
-                            <?= Html::a('取消', $isUpdate ? ['/content/view', 'id' => $post->id] : ['/content/index'], ['class' => 'btn btn-link btn-sm text-body-secondary text-decoration-none px-1']) ?>
+                            <?= Html::a('取消', $isUpdate ? ['/images/view', 'id' => $post->id] : ['/users/index'], ['class' => 'btn btn-link btn-sm text-body-secondary text-decoration-none px-1']) ?>
                             <?= Html::submitButton($isUpdate ? '保存' : '发布', ['class' => 'btn btn-primary image-publish']) ?>
                         </div>
                     </div>

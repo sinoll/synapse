@@ -119,9 +119,7 @@ foreach ($posts as $post):
                 <div class="d-flex align-items-center gap-3">
                     <?= LikeButton::widget(['post' => $post]) ?>
                     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
-                    <a class="moment-action" href="<?= Html::encode(Url::to($detailUrl)) ?>">
-                        查看详情<i class="bi bi-chevron-right" aria-hidden="true"></i>
-                    </a>
+                    <?= Html::a('阅读更多', $detailUrl, ['class' => 'btn btn-sm btn-outline-success']) ?>
                 </div>
             </footer>
         </div>

@@ -282,7 +282,7 @@ JS);
 
             <div class="content-compose-actions d-flex flex-column flex-sm-row gap-2 mt-4">
                 <?= Html::submitButton($isUpdate ? '保存修改' : '发布内容', ['class' => 'btn btn-primary px-4']) ?>
-                <?= Html::a('取消', $isUpdate ? ['/content/view', 'id' => $post->id] : ['/content/index'], ['class' => 'btn btn-outline-secondary px-4']) ?>
+                <?= Html::a('取消', $isUpdate ? ['/blog/view', 'id' => $post->id] : ['/users/index'], ['class' => 'btn btn-outline-secondary px-4']) ?>
             </div>
             <?php ActiveForm::end(); ?>
         </div>

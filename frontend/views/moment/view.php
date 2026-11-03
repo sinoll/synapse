@@ -24,13 +24,14 @@ CSS);
         <article class="content-view content-view-moment py-3 py-md-4">
             <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $displayTitle]) ?>
 
-            <div class="border rounded-4 p-3 p-md-4 bg-body-tertiary">
+            <div class="border rounded-4 p-3 p-md-4 card">
                 <div class="rich-content text-break">
                     <?= Tag::linkifyHashtags(HtmlPurifier::process((string) $moment->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]'])) ?>
                 </div>
+                <br />
+                <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
             </div>
-
-            <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
+            
         </article>
     </div>
 </div>

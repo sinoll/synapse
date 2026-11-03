@@ -49,7 +49,7 @@ $feedUrl = Url::to($feedRoute);
                     <p class="text-body-secondary small mb-2">@<?= Html::encode($identity->username) ?></p>
                     <div class="d-grid gap-2 mt-3">
                         <?= Html::a('<i class="bi bi-images me-1" aria-hidden="true"></i>上传图片', ['/images/create'], ['class' => 'btn btn-primary btn-sm', 'encode' => false]) ?>
-                        <?= Html::a('内容管理', ['/content/index'], ['class' => 'btn btn-outline-secondary btn-sm']) ?>
+                        <?= Html::a('内容管理', ['/users/index'], ['class' => 'btn btn-outline-secondary btn-sm']) ?>
                     </div>
                 </div>
             </div>
@@ -64,7 +64,7 @@ $feedUrl = Url::to($feedRoute);
                 <?= Html::a('<i class="bi bi-images me-2" aria-hidden="true"></i>图集', ['/images/index'], ['class' => 'list-group-item list-group-item-action active', 'encode' => false, 'aria-current' => 'page']) ?>
                 <?= Html::a('<i class="bi bi-camera-reels me-2" aria-hidden="true"></i>短视频', ['/video/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
                 <?php if ($identity !== null): ?>
-                    <?= Html::a('<i class="bi bi-collection me-2" aria-hidden="true"></i>我的内容', ['/content/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
+                    <?= Html::a('<i class="bi bi-collection me-2" aria-hidden="true"></i>我的内容', ['/users/index'], ['class' => 'list-group-item list-group-item-action', 'encode' => false]) ?>
                 <?php endif; ?>
             </div>
         </div>

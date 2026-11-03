@@ -179,7 +179,7 @@ class ImagesController extends Controller
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
-                    return $this->redirect(['/content/view', 'id' => $post->id]);
+                    return $this->redirect(['/images/view', 'id' => $post->id]);
                 } catch (\Throwable $exception) {
                     foreach ($imagePaths as $imagePath) {
                         $this->deleteStoredImage($imagePath);
@@ -326,7 +326,7 @@ class ImagesController extends Controller
                     }
                     Yii::$app->session->setFlash('success', '内容已更新。');
 
-                    return $this->redirect(['/content/view', 'id' => $post->id]);
+                    return $this->redirect(['/images/view', 'id' => $post->id]);
                 } catch (\Throwable $exception) {
                     foreach ($imagePaths as $imagePath) {
                         $this->deleteStoredImage($imagePath);
@@ -351,7 +351,7 @@ class ImagesController extends Controller
         }
         Yii::$app->session->setFlash('success', '内容已删除。');
 
-        return $this->redirect(['/content/index']);
+        return $this->redirect(['/users/index']);
     }
 
     private function renderForm(
