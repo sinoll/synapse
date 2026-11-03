@@ -133,28 +133,24 @@ foreach ($posts as $index => $post):
                         <span class="home-feed-avatar home-feed-avatar-fallback" aria-hidden="true"><?= Html::encode($avatarInitial) ?></span>
                     <?php endif; ?>
                     <div class="min-width-0">
-                        <div class="home-feed-author text-truncate"><?= Html::encode($author) ?></div>
                         <div class="d-flex align-items-center gap-2">
+                            <h5 class="text-truncate"><?= Html::encode($author) ?></h5>
                             <span class="home-feed-type"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
                             <time class="text-body-secondary small text-nowrap" datetime="<?= Html::encode(date(DATE_ATOM, (int) $post->created_at)) ?>"><?= Yii::$app->formatter->asRelativeTime($post->created_at) ?></time>
                         </div>
                     </div>
                 </div>
-                <?php if (!empty($post->categories)): ?>
-                    <div class="home-feed-categories mt-2">
-                        <?php foreach ($post->categories as $cate): ?>
-                            <?= Html::a(Html::encode($cate->name), ['/site/cate', 'slug' => $cate->slug], ['class' => 'badge text-bg-primary me-1 text-decoration-none']) ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+                <div class="home-feed-categories mt-2">
+                    <?= $post->user !== null ? FollowButton::widget(['user' => $post->user]) : '' ?>
+                </div>
             </div>
+
             <h2 class="home-feed-card-title h4 mb-2">
-                <?php if ($post->type === Post::TYPE_MOMENT): ?>
-                    <?= $highlight($post->title ?: '动态') ?>
-                <?php else: ?>
-                    <?= Html::a($highlight((string) $post->title), [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-title']) ?>
-                <?php endif; ?>
+                <?php if ($post->type !== Post::TYPE_MOMENT){ 
+                    Html::a($highlight((string) $post->title), [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-title']);
+                } ?>
             </h2>
+
             <?php if ($preview !== ''): ?><p class="home-feed-preview text-body-secondary mb-3"><?= $highlight($preview) ?></p><?php endif; ?>
             <?php if ($hasMedia): ?>
                 <div class="home-feed-media mb-3">
@@ -189,6 +185,7 @@ foreach ($posts as $index => $post):
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
+
             <?php if (!empty($post->tags)): ?>
                 <div class="home-feed-tags mt-2">
                     <?php foreach ($post->tags as $tag): ?>
@@ -196,15 +193,19 @@ foreach ($posts as $index => $post):
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+
+
             <div class="home-feed-card-footer d-flex justify-content-between align-items-center gap-2 flex-wrap mt-3">
                 <?php if ($post->type === Post::TYPE_IMAGES): ?><span class="small text-body-secondary"><?= count($post->images) ?> 张图片</span><?php else: ?><span></span><?php endif; ?>
                 <div class="d-flex align-items-center gap-2">
-                    <?= $post->user !== null ? FollowButton::widget(['user' => $post->user]) : '' ?>
+                    
                     <?= LikeButton::widget(['post' => $post]) ?>
                     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
                     <?= Html::a('阅读更多', [$detailRoute, 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-success']) ?>
                 </div>
             </div>
+
+
         </div>
     </article>
 <?php endforeach; ?>
