@@ -475,7 +475,7 @@ body {
 
 /* ---------- Exhibition Homepage ---------- */
 
-.home-feed { width: min(100%, 1130px); margin: 0 auto; }
+.home-feed { width: min(100%, 1120px); margin: 0 auto; }
 .exhibition-masthead {
     position: relative;
     display: flex;

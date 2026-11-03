@@ -33,10 +33,6 @@ $accountItems[] = [
 
 $menuItems = [
     [
-        'label' => '首页',
-        'url' => ['/site/index'],
-    ],
-    [
         'label' => 'Blog',
         'url' => ['/blog/index'],
     ],

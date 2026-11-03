@@ -5,10 +5,13 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
+use frontend\assets\ImageViewerAsset;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
 use yii\helpers\Html;
+
+ImageViewerAsset::register($this);
 
 $typeLabels = Post::TYPE_LABELS;
 $detailRoutes = Post::TYPE_DETAIL_ROUTES;
@@ -42,7 +45,10 @@ $momentFeedImages = static function (string $html): array {
         if ($thumbnail === $source) {
             $thumbnail = (string) preg_replace('#^/uploads/blog/\d{4}/#', '/uploads/thumb/blog/', $source);
         }
-        $images[] = $thumbnail !== $source && is_file($webRoot . $thumbnail) ? $thumbnail : $source;
+        $images[] = [
+            'thumb' => $thumbnail !== $source && is_file($webRoot . $thumbnail) ? $thumbnail : $source,
+            'full' => $source,
+        ];
         if (count($images) === 9) {
             break;
         }
@@ -54,7 +60,9 @@ $momentFeedImages = static function (string $html): array {
 foreach ($posts as $index => $post):
     $preview = '';
     $momentImages = [];
+    $galleryImages = [];
     $blogCover = null;
+    $blogCoverViewable = false;
     if ($post->type === Post::TYPE_BLOG && $post->blog !== null) {
         $preview = (string) ($post->blog->summary ?: $post->blog->content);
         $blogCover = '/images/default-cover.png';
@@ -62,7 +70,9 @@ foreach ($posts as $index => $post):
         if ($thumb !== '') {
             $thumbPath = '/' . ltrim($thumb, '/');
             if (is_file(Yii::getAlias('@frontend/web') . $thumbPath)) {
+                // 封面列存的就是上传时生成的缩略图，站点里没有更深的原图，放大用的也是它。
                 $blogCover = $thumbPath;
+                $blogCoverViewable = true;
             }
         }
     } elseif ($post->type === Post::TYPE_MOMENT && $post->moment !== null) {
@@ -70,6 +80,14 @@ foreach ($posts as $index => $post):
         $momentImages = $momentFeedImages($preview);
     } elseif ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null) {
         $preview = (string) $post->shortVideo->description;
+    } elseif ($post->type === Post::TYPE_IMAGES) {
+        foreach (array_slice($post->images, 0, 9) as $image) {
+            $full = (string) $image->file_path;
+            if ($full === '') {
+                continue;
+            }
+            $galleryImages[] = ['thumb' => (string) $image->thumbnailPath, 'full' => $full];
+        }
     }
     $preview = trim(preg_replace('/\s+/u', ' ', strip_tags($preview)) ?? '');
     if ($keyword !== '') {
@@ -88,8 +106,22 @@ foreach ($posts as $index => $post):
     $avatarInitial = mb_strtoupper(mb_substr($author, 0, 1));
     $hasMedia = $momentImages !== []
         || $blogCover !== null
-        || ($post->type === Post::TYPE_IMAGES && $post->images !== [])
+        || $galleryImages !== []
         || ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null);
+    $imageGroup = 'feed-post-' . (int) $post->id;
+    $imageCaption = (string) ($post->title ?: '图片');
+    /** 缩略图指向原图的链接，交给看图模式脚本接管点击。 */
+    $viewLink = static function (array $image) use ($imageGroup, $imageCaption): string {
+        return Html::a(
+            Html::img($image['thumb'], ['alt' => $imageCaption, 'loading' => 'lazy']),
+            $image['full'],
+            [
+                'data' => ['image-view' => '', 'image-group' => $imageGroup, 'image-caption' => $imageCaption],
+                'title' => '点击查看大图',
+                'aria-label' => '查看大图：' . $imageCaption,
+            ],
+        );
+    };
     ?>
     <article class="home-feed-card card<?= $featured && $index === 0 ? ' is-featured' : '' ?>">
         <div class="card-body p-4">
@@ -128,20 +160,24 @@ foreach ($posts as $index => $post):
                 <div class="home-feed-media mb-3">
                     <?php if ($blogCover !== null): ?>
                         <div class="home-feed-blog-cover">
-                            <img src="<?= Html::encode($blogCover) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
+                            <?php if ($blogCoverViewable): ?>
+                                <?= $viewLink(['thumb' => $blogCover, 'full' => $blogCover]) ?>
+                            <?php else: ?>
+                                <img src="<?= Html::encode($blogCover) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                     <?php if ($momentImages !== []): ?>
                         <div class="home-feed-images">
                             <?php foreach ($momentImages as $momentImage): ?>
-                                <img src="<?= Html::encode($momentImage) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
+                                <?= $viewLink($momentImage) ?>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
-                    <?php if ($post->type === Post::TYPE_IMAGES && $post->images !== []): ?>
+                    <?php if ($galleryImages !== []): ?>
                         <div class="home-feed-images">
-                            <?php foreach (array_slice($post->images, 0, 9) as $image): ?>
-                                <img src="<?= Html::encode($image->file_path) ?>" alt="<?= Html::encode($post->title) ?>" loading="lazy">
+                            <?php foreach ($galleryImages as $galleryImage): ?>
+                                <?= $viewLink($galleryImage) ?>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
