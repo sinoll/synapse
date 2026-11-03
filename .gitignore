@@ -35,6 +35,8 @@ composer.lock
 /package.json
 /package-lock.json
 
+/c3.php
+
 # phpunit itself is not needed
 phpunit.phar
 # local phpunit config
@@ -47,10 +49,15 @@ phpunit.phar
 /frontend/web/index.php
 /frontend/web/index-test.php
 /frontend/web/robots.txt
+/frontend/config/main-local.php
+/frontend/config/params-local.php
 /backend/web/index.php
 /backend/web/index-test.php
 /backend/web/robots.txt
+/backend/config/main-local.php
+/backend/config/params-local.php
 /common/config/main-local.php
 /common/config/params-local.php
 /console/config/main-local.php
-
+/console/config/params-local.php
+/restful/config/main-local.php

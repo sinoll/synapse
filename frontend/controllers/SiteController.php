@@ -68,7 +68,7 @@ class SiteController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         return $this->asJson([
-            'html' => $this->renderPartial('_feed_items', ['posts' => $posts, 'featured' => false]),
+            'html' => $this->renderPartial('_feed_items', ['posts' => $posts]),
             'hasMore' => $page * $pageSize < $total,
         ]);
     }

@@ -51,7 +51,6 @@ $total = $dataProvider === null ? 0 : $dataProvider->getTotalCount();
         <div class="home-feed-list">
             <?= $this->render('@frontend/views/site/_feed_items', [
                 'posts' => $dataProvider->getModels(),
-                'featured' => false,
                 'keyword' => $keyword,
             ]) ?>
         </div>

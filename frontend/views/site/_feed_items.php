@@ -5,29 +5,72 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
+use common\models\Tag;
 use frontend\assets\ImageViewerAsset;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
 use yii\helpers\Html;
+use yii\helpers\Url;
 
 ImageViewerAsset::register($this);
 
 $typeLabels = Post::TYPE_LABELS;
 $detailRoutes = Post::TYPE_DETAIL_ROUTES;
-$featured = $featured ?? true;
 $keyword = $keyword ?? '';
 
-/** 返回已转义的 HTML，关键词用 <mark> 包裹，可直接输出或交给 Html::a()。 */
-$highlight = static function (string $text) use ($keyword): string {
+$previewSource = static function (Post $post): string {
+    if ($post->type === Post::TYPE_BLOG && $post->blog !== null) {
+        return (string) ($post->blog->summary ?: $post->blog->content);
+    }
+    if ($post->type === Post::TYPE_MOMENT && $post->moment !== null) {
+        return (string) $post->moment->content;
+    }
+    if ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null) {
+        return (string) $post->shortVideo->description;
+    }
+
+    return '';
+};
+
+/* 先收集整页文案里的 #话题# 写法，再一次查库拿到已存在的标签；正文渲染时只链已入库的标签。 */
+$hashtagPattern = '/#([^#\s<>][^#<>]{0,30})#/u';
+$hashtagNames = [];
+foreach ($posts as $post) {
+    foreach ([$post->title, $previewSource($post)] as $raw) {
+        if (preg_match_all($hashtagPattern, strip_tags((string) $raw), $matches)) {
+            foreach ($matches[1] as $name) {
+                $hashtagNames[trim($name)] = true;
+            }
+        }
+    }
+}
+$hashtagSlugs = [];
+if ($hashtagNames !== []) {
+    foreach (Tag::find()->select(['name', 'slug'])->where(['name' => array_keys($hashtagNames)])->all() as $tag) {
+        $hashtagSlugs[$tag->name] = (string) $tag->slug;
+    }
+}
+
+/** 返回已转义的 HTML，关键词用 <mark> 包裹；$linkHashtags 时 #标签# 变成话题链接。标题本身已是链接时不能再嵌 <a>。 */
+$highlight = static function (string $text, bool $linkHashtags = true) use ($keyword, $hashtagPattern, $hashtagSlugs): string {
     $encoded = Html::encode($text);
-    if ($keyword === '') {
+    if ($keyword !== '') {
+        $pattern = '/(' . preg_quote(Html::encode($keyword), '/') . ')/iu';
+        $encoded = preg_replace($pattern, '<mark>$1</mark>', $encoded) ?? $encoded;
+    }
+    if (!$linkHashtags || $hashtagSlugs === []) {
         return $encoded;
     }
 
-    $pattern = '/(' . preg_quote(Html::encode($keyword), '/') . ')/iu';
+    return preg_replace_callback($hashtagPattern, static function (array $matches) use ($hashtagSlugs): string {
+        $name = html_entity_decode(trim($matches[1]), ENT_QUOTES, 'UTF-8');
+        if (!isset($hashtagSlugs[$name])) {
+            return $matches[0];
+        }
 
-    return preg_replace($pattern, '<mark>$1</mark>', $encoded) ?? $encoded;
+        return '<a class="home-feed-hashtag" href="' . Html::encode(Url::to(['/site/tag', 'slug' => $hashtagSlugs[$name]])) . '">' . $matches[0] . '</a>';
+    }, $encoded) ?? $encoded;
 };
 
 $momentFeedImages = static function (string $html): array {
@@ -57,14 +100,13 @@ $momentFeedImages = static function (string $html): array {
     return $images;
 };
 
-foreach ($posts as $index => $post):
-    $preview = '';
+foreach ($posts as $post):
+    $preview = $previewSource($post);
     $momentImages = [];
     $galleryImages = [];
     $blogCover = null;
     $blogCoverViewable = false;
     if ($post->type === Post::TYPE_BLOG && $post->blog !== null) {
-        $preview = (string) ($post->blog->summary ?: $post->blog->content);
         $blogCover = '/images/default-cover.png';
         $thumb = trim((string) $post->blog->thumb);
         if ($thumb !== '') {
@@ -76,10 +118,7 @@ foreach ($posts as $index => $post):
             }
         }
     } elseif ($post->type === Post::TYPE_MOMENT && $post->moment !== null) {
-        $preview = (string) $post->moment->content;
         $momentImages = $momentFeedImages($preview);
-    } elseif ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null) {
-        $preview = (string) $post->shortVideo->description;
     } elseif ($post->type === Post::TYPE_IMAGES) {
         foreach (array_slice($post->images, 0, 9) as $image) {
             $full = (string) $image->file_path;
@@ -102,6 +141,8 @@ foreach ($posts as $index => $post):
     }
     $detailRoute = $detailRoutes[$post->type] ?? '/site/view';
     $author = $post->user?->nickname ?: $post->user?->username ?: '用户';
+    $authorId = $post->user?->id !== null ? (int) $post->user->id : null;
+    $authorUrl = $authorId !== null ? ['/users/profile', 'id' => $authorId] : null;
     $avatar = $post->user?->avatar;
     $avatarInitial = mb_strtoupper(mb_substr($author, 0, 1));
     $hasMedia = $momentImages !== []
@@ -123,32 +164,39 @@ foreach ($posts as $index => $post):
         );
     };
     ?>
-    <article class="home-feed-card card<?= $featured && $index === 0 ? ' is-featured' : '' ?>">
+    <article class="home-feed-card card">
         <div class="card-body p-4">
-            <div class="home-feed-card-header d-flex justify-content-between align-items-start gap-3 mb-3">
-                <div class="d-flex align-items-center gap-3 min-width-0">
-                    <?php if ($avatar): ?>
-                        <img class="home-feed-avatar" src="<?= Html::encode($avatar) ?>" alt="<?= Html::encode($author) ?>" loading="lazy">
+            <div class="home-feed-card-header d-flex align-items-center gap-3 mb-3">
+                <?php if ($avatar): ?>
+                    <img class="home-feed-avatar" src="<?= Html::encode($avatar) ?>" alt="<?= Html::encode($author) ?>" loading="lazy">
+                <?php else: ?>
+                    <span class="home-feed-avatar home-feed-avatar-fallback" aria-hidden="true"><?= Html::encode($avatarInitial) ?></span>
+                <?php endif; ?>
+                <div class="home-feed-byline d-flex flex-column min-width-0 flex-grow-1">
+                    <?php if ($authorUrl !== null): ?>
+                        <div class="home-feed-author text-truncate"><?= Html::a(Html::encode($author), $authorUrl, ['class' => 'home-feed-author-link']) ?></div>
                     <?php else: ?>
-                        <span class="home-feed-avatar home-feed-avatar-fallback" aria-hidden="true"><?= Html::encode($avatarInitial) ?></span>
+                        <div class="home-feed-author text-truncate"><?= Html::encode($author) ?></div>
                     <?php endif; ?>
-                    <div class="min-width-0">
-                        <div class="d-flex align-items-center gap-2">
-                            <h5 class="text-truncate"><?= Html::encode($author) ?></h5>
-                            <span class="home-feed-type"><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
-                            <time class="text-body-secondary small text-nowrap" datetime="<?= Html::encode(date(DATE_ATOM, (int) $post->created_at)) ?>"><?= Yii::$app->formatter->asRelativeTime($post->created_at) ?></time>
-                        </div>
+                    <div class="home-feed-meta text-body-secondary">
+                        <time datetime="<?= Html::encode(date(DATE_ATOM, (int) $post->created_at)) ?>"><?= Yii::$app->formatter->asRelativeTime($post->created_at) ?></time>
+                        <span aria-hidden="true">·</span>
+                        <span><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
                     </div>
                 </div>
-                <div class="home-feed-categories mt-2">
-                    <?= $post->user !== null ? FollowButton::widget(['user' => $post->user]) : '' ?>
-                </div>
+                <?php if ($post->user !== null): ?>
+                    <div class="home-feed-header-action flex-shrink-0">
+                        <?= FollowButton::widget(['user' => $post->user]) ?>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <h2 class="home-feed-card-title h4 mb-2">
-                <?php if ($post->type !== Post::TYPE_MOMENT){ 
-                    Html::a($highlight((string) $post->title), [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-title']);
-                } ?>
+            <h2 class="home-feed-card-title h5 mb-2">
+                <?php if ($post->type === Post::TYPE_MOMENT): ?>
+                    <?= $highlight($post->title ?: '动态') ?>
+                <?php else: ?>
+                    <?= Html::a($highlight((string) $post->title, false), [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-title', 'encode' => false]) ?>
+                <?php endif; ?>
             </h2>
 
             <?php if ($preview !== ''): ?><p class="home-feed-preview text-body-secondary mb-3"><?= $highlight($preview) ?></p><?php endif; ?>
@@ -185,27 +233,14 @@ foreach ($posts as $index => $post):
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
-
-            <?php if (!empty($post->tags)): ?>
-                <div class="home-feed-tags mt-2">
-                    <?php foreach ($post->tags as $tag): ?>
-                        <?= Html::a(Html::encode($tag->name), ['/site/tag', 'slug' => $tag->slug], ['class' => 'badge text-bg-light me-1 text-decoration-none']) ?>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-
-
-            <div class="home-feed-card-footer d-flex justify-content-between align-items-center gap-2 flex-wrap mt-3">
-                <?php if ($post->type === Post::TYPE_IMAGES): ?><span class="small text-body-secondary"><?= count($post->images) ?> 张图片</span><?php else: ?><span></span><?php endif; ?>
-                <div class="d-flex align-items-center gap-2">
-                    
-                    <?= LikeButton::widget(['post' => $post]) ?>
-                    <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
-                    <?= Html::a('阅读更多', [$detailRoute, 'id' => $post->id], ['class' => 'btn btn-sm btn-outline-success']) ?>
-                </div>
+            <div class="home-feed-card-footer d-flex align-items-center gap-4 flex-wrap">
+                <?= LikeButton::widget(['post' => $post]) ?>
+                <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
+                <?php if ($post->type === Post::TYPE_IMAGES): ?>
+                    <span class="home-feed-media-count small text-body-secondary"><?= count($post->images) ?> 张图片</span>
+                <?php endif; ?>
+                <?= Html::a('阅读更多 <i class="bi bi-chevron-right" aria-hidden="true"></i>', [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-readmore ms-auto text-decoration-none', 'encode' => false]) ?>
             </div>
-
-
         </div>
     </article>
 <?php endforeach; ?>
