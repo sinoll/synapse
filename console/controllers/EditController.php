@@ -13,6 +13,9 @@ class EditController extends Controller
         $this->stdout("控制器工作正常\n"."修复数据几个函数\n");
     }
 
+
+    // php yii edit/content-img   #修复导入旧博客后的正文图片路径问题
+
     /***
      *  修复新表中文章 缩略图 的所有相对路径为: uploads/thumb/blog/    文件名 *.png 不修改
      *  命令：php yii edit/thumb
