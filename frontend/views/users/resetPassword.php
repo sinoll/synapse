@@ -28,16 +28,6 @@ $token = $token ?? '';
             <div class="col-md-5 d-none d-md-flex login-brand-panel text-white">
                 <div class="d-flex flex-column justify-content-between p-4 p-lg-5 w-100">
                     <div>
-                        <?= Html::img(
-                            Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
-                            [
-                                'alt' => Yii::$app->name,
-                                'class' => 'mb-4',
-                                'height' => 40,
-                            ],
-                        ) ?>
-                    </div>
-                    <div>
                         <h2 class="fw-bold mb-3 login-brand-title">
                             设置一<br>个新密码
                         </h2>
@@ -52,16 +42,6 @@ $token = $token ?? '';
             <div class="col-md-7">
                 <div class="p-4 p-lg-5">
                     <div class="text-center mb-4">
-                        <div class="d-md-none mb-3">
-                            <?= Html::img(
-                                Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
-                                [
-                                    'alt' => Yii::$app->name,
-                                    'class' => 'login-mobile-logo',
-                                    'height' => 36,
-                                ],
-                            ) ?>
-                        </div>
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
                         <p class="text-body-secondary small">请为你的账户选择一个新的密码</p>
                     </div>

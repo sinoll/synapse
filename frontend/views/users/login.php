@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var yii\bootstrap5\ActiveForm $form */
 /** @var \common\models\LoginForm $model */
 
+use common\models\SiteSetting;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 
@@ -86,8 +87,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     <?php ActiveForm::end(); ?>
 
                     <div class="text-body-secondary text-center mt-3 small">
-                        <?= Html::a('注册新账户', ['/users/signup']) ?>
-                        ·
+                        <?php if (SiteSetting::signupEnabled()): ?>
+                            <?= Html::a('注册新账户', ['/users/signup']) ?>
+                            ·
+                        <?php endif; ?>
                         <?= Html::a('忘记密码', ['/users/request-password-reset']) ?>
                         ·
                         <?= Html::a('重发确认邮件', ['/users/resend-verification-email']) ?>

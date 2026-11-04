@@ -5,6 +5,7 @@ declare(strict_types=1);
 /** @var yii\web\View $this */
 /** @var yii\bootstrap5\ActiveForm $form */
 /** @var \frontend\models\SignupForm $model */
+/** @var bool $signupEnabled */
 
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
@@ -43,11 +44,21 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                 <div class="p-4 p-lg-5">
                     <div class="text-center mb-4">
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
-                        <p class="text-body-secondary small">填写下面的信息即可创建账户</p>
+                        <p class="text-body-secondary small">
+                            <?= $signupEnabled ? '填写下面的信息即可创建账户' : '自助注册暂时关闭，请稍后再来' ?>
+                        </p>
                     </div>
 
                     <?= $this->render('_flash') ?>
 
+                    <?php if (!$signupEnabled): ?>
+                        <div class="alert alert-warning mb-0" role="alert">
+                            <strong class="d-block mb-1">注册暂时关闭</strong>
+                            站点管理员已暂停自助注册。已有账户可以在下方直接登录；需要新账户请联系管理员开通。
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($signupEnabled): ?>
                     <?php $form = ActiveForm::begin(['id' => 'form-signup']); ?>
 
                     <div class="mb-3">
@@ -111,6 +122,7 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     </div>
 
                     <?php ActiveForm::end(); ?>
+                    <?php endif; ?>
 
                     <div class="text-body-secondary text-center mt-3 small">
                         已有账户？<?= Html::a('去登录', ['/users/login']) ?>

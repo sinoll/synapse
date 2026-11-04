@@ -23,7 +23,17 @@ final class SiteSetting extends ActiveRecord
 
     public function behaviors(): array
     {
-        return [TimestampBehavior::class];
+        return [
+            [
+                'class' => TimestampBehavior::class,
+                // 表里只有 updated_at，用默认的 created_at+updated_at 会让新 key 的首次写入
+                // 在 beforeInsert 阶段抛 UnknownPropertyException，只有已存在的行才碰巧能存下来。
+                'attributes' => [
+                    self::EVENT_BEFORE_INSERT => ['updated_at'],
+                    self::EVENT_BEFORE_UPDATE => ['updated_at'],
+                ],
+            ],
+        ];
     }
 
     public function rules(): array
@@ -46,5 +56,13 @@ final class SiteSetting extends ActiveRecord
         $setting = self::findOne(['key' => $key]) ?? new self(['key' => $key]);
         $setting->value = $value;
         return $setting->save();
+    }
+
+    /**
+     * 自助注册开关。缺行时按开启处理：新环境还没插这行数据也不该把注册入口整个藏掉。
+     */
+    public static function signupEnabled(): bool
+    {
+        return self::read('signup_enabled', '1') === '1';
     }
 }

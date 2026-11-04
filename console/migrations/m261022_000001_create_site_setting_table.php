@@ -28,6 +28,11 @@ class m261022_000001_create_site_setting_table extends Migration
             'value' => '0',
             'updated_at' => time(),
         ]);
+        $this->insert('{{%site_setting}}', [
+            'key' => 'signup_enabled',
+            'value' => '1',
+            'updated_at' => time(),
+        ]);
     }
 
     public function safeDown(): void

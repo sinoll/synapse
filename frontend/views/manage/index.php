@@ -14,11 +14,13 @@ use yii\grid\GridView;
 /** @var string $section */
 /** @var string $siteName */
 /** @var bool $nodeEnabled */
+/** @var bool $signupEnabled */
 
 $titles = [
     'site-name' => '站点名称',
     'users' => '用户管理',
     'categories' => '分类管理',
+    'signup' => '用户注册设置',
     'node' => '开启节点',
 ];
 $this->title = $titles[$section] ?? '系统管理';
@@ -32,7 +34,7 @@ $this->title = $titles[$section] ?? '系统管理';
             <div class="mb-4">
                 <p class="small text-body-secondary text-uppercase mb-1">系统管理</p>
                 <h1 id="manage-title" class="h2 mb-1"><?= Html::encode($this->title) ?></h1>
-                <p class="text-body-secondary mb-0">管理站点设置、用户账号、内容分类和节点状态。</p>
+                <p class="text-body-secondary mb-0">管理站点设置、用户账号、内容分类、注册开关和节点状态。</p>
             </div>
 
             <?php if ($section === 'site-name'): ?>
@@ -69,6 +71,27 @@ $this->title = $titles[$section] ?? '系统管理';
                         <?= Html::hiddenInput('enabled', $nodeEnabled ? '0' : '1') ?>
                         <?= Html::submitButton($nodeEnabled ? '关闭节点' : '开启节点', [
                             'class' => $nodeEnabled ? 'btn btn-outline-secondary' : 'btn btn-primary',
+                        ]) ?>
+                        <?php ActiveForm::end(); ?>
+                    </div>
+                </div>
+            <?php elseif ($section === 'signup'): ?>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-3 p-md-4">
+                        <h2 class="h5 mb-2">自助注册</h2>
+                        <p class="text-body-secondary">
+                            控制访客能否在本站自己创建账户。关闭后导航与登录页的注册入口消失，
+                            直接访问注册地址只会看到暂停提示；已注册账户的登录、找回密码和这里添加用户都不受影响。
+                        </p>
+                        <div class="d-flex align-items-center gap-2 mb-4">
+                            <span class="badge <?= $signupEnabled ? 'text-bg-success' : 'text-bg-secondary' ?>">
+                                <?= $signupEnabled ? '已开启' : '已关闭' ?>
+                            </span>
+                        </div>
+                        <?php $form = ActiveForm::begin(['id' => 'signup-setting-form']); ?>
+                        <?= Html::hiddenInput('enabled', $signupEnabled ? '0' : '1') ?>
+                        <?= Html::submitButton($signupEnabled ? '关闭注册' : '开启注册', [
+                            'class' => $signupEnabled ? 'btn btn-outline-secondary' : 'btn btn-primary',
                         ]) ?>
                         <?php ActiveForm::end(); ?>
                     </div>

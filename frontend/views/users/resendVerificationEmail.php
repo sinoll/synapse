@@ -26,16 +26,6 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
             <div class="col-md-5 d-none d-md-flex login-brand-panel text-white">
                 <div class="d-flex flex-column justify-content-between p-4 p-lg-5 w-100">
                     <div>
-                        <?= Html::img(
-                            Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
-                            [
-                                'alt' => Yii::$app->name,
-                                'height' => 40,
-                                'class' => 'mb-4',
-                            ],
-                        ) ?>
-                    </div>
-                    <div>
                         <h2 class="fw-bold mb-3 login-brand-title">
                             确认你的<br>邮箱
                         </h2>
@@ -50,16 +40,6 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
             <div class="col-md-7">
                 <div class="p-4 p-lg-5">
                     <div class="text-center mb-4">
-                        <div class="d-md-none mb-3">
-                            <?= Html::img(
-                                Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
-                                [
-                                    'alt' => Yii::$app->name,
-                                    'class' => 'login-mobile-logo',
-                                    'height' => 36,
-                                ],
-                            ) ?>
-                        </div>
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
                         <p class="text-body-secondary small">填写注册邮箱以接收新的确认链接</p>
                     </div>

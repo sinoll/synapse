@@ -52,12 +52,13 @@ class ManageController extends Controller
 
     public function actionIndex(string $section = 'users'): string|Response
     {
-        if (!in_array($section, ['site-name', 'users', 'categories', 'node'], true)) {
+        if (!in_array($section, ['site-name', 'users', 'categories', 'node', 'signup'], true)) {
             $section = 'users';
         }
 
         $siteName = SiteSetting::read('site_name', Yii::$app->name);
         $nodeEnabled = SiteSetting::read('node_enabled', '0') === '1';
+        $signupEnabled = SiteSetting::signupEnabled();
         if (Yii::$app->request->isPost) {
             if ($section === 'site-name') {
                 $submittedName = trim((string) Yii::$app->request->post('siteName', ''));
@@ -79,12 +80,26 @@ class ManageController extends Controller
                     return $this->redirect(['index', 'section' => $section]);
                 }
                 Yii::$app->session->setFlash('error', '节点设置保存失败，请重试。');
+            } elseif ($section === 'signup') {
+                $signupEnabled = Yii::$app->request->post('enabled') === '1';
+                if (SiteSetting::write('signup_enabled', $signupEnabled ? '1' : '0')) {
+                    Yii::$app->session->setFlash('success', $signupEnabled ? '自助注册已开启。' : '自助注册已关闭。');
+                    return $this->redirect(['index', 'section' => $section]);
+                }
+                Yii::$app->session->setFlash('error', '注册设置保存失败，请重试。');
             }
         }
 
         $users = $section === 'users' ? User::find()->orderBy(['id' => SORT_ASC])->all() : [];
         $categories = $section === 'categories' ? $this->categoryList() : [];
-        return $this->render('index', compact('users', 'categories', 'section', 'siteName', 'nodeEnabled'));
+        return $this->render('index', [
+            'users' => $users,
+            'categories' => $categories,
+            'section' => $section,
+            'siteName' => $siteName,
+            'nodeEnabled' => $nodeEnabled,
+            'signupEnabled' => $signupEnabled,
+        ]);
     }
 
     public function actionCreate(): string|Response

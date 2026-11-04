@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var yii\bootstrap5\ActiveForm $form */
 /** @var \frontend\models\PasswordResetRequestForm $model */
 
+use common\models\SiteSetting;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 
@@ -26,16 +27,6 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
             <div class="col-md-5 d-none d-md-flex login-brand-panel text-white">
                 <div class="d-flex flex-column justify-content-between p-4 p-lg-5 w-100">
                     <div>
-                        <?= Html::img(
-                            Yii::getAlias('@web/images/yii3_full_white_for_dark.svg'),
-                            [
-                                'alt' => Yii::$app->name,
-                                'class' => 'mb-4',
-                                'height' => 40,
-                            ],
-                        ) ?>
-                    </div>
-                    <div>
                         <h2 class="fw-bold mb-3 login-brand-title">
                             忘记密码了？<br>没关系
                         </h2>
@@ -50,16 +41,6 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
             <div class="col-md-7">
                 <div class="p-4 p-lg-5">
                     <div class="text-center mb-4">
-                        <div class="d-md-none mb-3">
-                            <?= Html::img(
-                                Yii::getAlias('@web/images/yii3_full_black_for_light.svg'),
-                                [
-                                    'alt' => Yii::$app->name,
-                                    'class' => 'login-mobile-logo',
-                                    'height' => 36,
-                                ],
-                            ) ?>
-                        </div>
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
                         <p class="text-body-secondary small">重置链接会发送到你的注册邮箱</p>
                     </div>
@@ -103,8 +84,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
 
                     <div class="text-body-secondary text-center mt-2 small">
                         想起来了？<?= Html::a('去登录', ['/users/login']) ?>
-                        ·
-                        <?= Html::a('注册新账户', ['/users/signup']) ?>
+                        <?php if (SiteSetting::signupEnabled()): ?>
+                            ·
+                            <?= Html::a('注册新账户', ['/users/signup']) ?>
+                        <?php endif; ?>
                     </div>
 
                 </div>

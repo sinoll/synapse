@@ -9,6 +9,7 @@ $items = [
     ['id' => 'site-name', 'label' => '站点名称', 'description' => '修改站点显示名称', 'icon' => '⌂'],
     ['id' => 'users', 'label' => '用户管理', 'description' => '查看和添加用户', 'icon' => '♙'],
     ['id' => 'categories', 'label' => '分类管理', 'description' => '维护内容分类', 'icon' => '▤'],
+    ['id' => 'signup', 'label' => '用户注册设置', 'description' => '开放或关闭自助注册', 'icon' => '✎'],
     ['id' => 'node', 'label' => '开启节点', 'description' => '管理内容节点状态', 'icon' => '◉'],
 ];
 ?>

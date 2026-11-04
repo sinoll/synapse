@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 /** @var yii\web\View $this */
 
+use common\models\SiteSetting;
 use yii\bootstrap5\Nav;
 use yii\bootstrap5\NavBar;
 use yii\helpers\Html;
@@ -44,11 +45,13 @@ if ($identity === null) {
             'label' => '登录',
             'url' => ['/users/login'],
         ],
-        [
+    ];
+    if (SiteSetting::signupEnabled()) {
+        $accountMenu[] = [
             'label' => '注册',
             'url' => ['/users/signup'],
-        ],
-    ];
+        ];
+    }
 } else {
     $accountMenu = [
         [

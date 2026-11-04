@@ -15,6 +15,7 @@ use frontend\models\SignupForm;
 use frontend\models\VerifyEmailForm;
 use frontend\components\ListPagination;
 use common\models\Post;
+use common\models\SiteSetting;
 use common\models\User;
 use common\models\UserFollow;
 use Yii;
@@ -384,6 +385,11 @@ class UsersController extends Controller
             return $this->goHome();
         }
 
+        // 关掉开关时连表单都不再解析，直接POST绕过隐藏入口也建不出账户。
+        if (!SiteSetting::signupEnabled()) {
+            return $this->render('signup', ['model' => new SignupForm(), 'signupEnabled' => false]);
+        }
+
         $model = new SignupForm();
         if ($model->load(Yii::$app->request->post())) {
             // 配额只统计真正的提交：注册页本身允许反复打开，否则用户试错几次就被锁在门外。
@@ -397,9 +403,12 @@ class UsersController extends Controller
             $user = $model->signup();
             if ($user !== null) {
                 Yii::$app->user->login($user);
-                // 确认信发不出去也不回滚注册：登录页有重发入口。
-                $model->sendVerificationEmail(Yii::$app->mailSender);
-                Yii::$app->session->setFlash('success', '注册完成，确认邮件已发送到 ' . $user->email . '。');
+                // 确认信发不出去也不回滚注册：登录页有重发入口，但要把"没发出去"告诉用户。
+                if ($model->sendVerificationEmail(Yii::$app->mailSender)) {
+                    Yii::$app->session->setFlash('success', '注册完成，确认邮件已发送到 ' . $user->email . '。');
+                } else {
+                    Yii::$app->session->setFlash('warning', '注册完成，但确认邮件发送失败，你可以稍后在登录页重新发送。');
+                }
 
                 return $this->redirect(['index']);
             }
@@ -407,6 +416,7 @@ class UsersController extends Controller
 
         return $this->render('signup', [
             'model' => $model,
+            'signupEnabled' => true,
         ]);
     }
 
