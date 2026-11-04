@@ -70,7 +70,7 @@ class Image extends \common\models\base\Image
 
     public static function thumbnailForPath(string $imagePath): ?string
     {
-        if (!preg_match('#^/uploads/images/([A-Za-z0-9_-]+)\.[A-Za-z0-9]+$#', $imagePath, $match)) {
+        if (!preg_match('#^/uploads/images/(?:\d{6}/)?([A-Za-z0-9_-]+)\.[A-Za-z0-9]+$#', $imagePath, $match)) {
             return null;
         }
 

@@ -508,8 +508,8 @@ class BlogController extends Controller
     private function storeRichEditorImages(array $files): array
     {
         $webRoot = Yii::getAlias('@frontend/web');
-        $year = date('Y');
-        $directory = $webRoot . '/uploads/blog/' . $year;
+        $yearMonth = date('Ym');
+        $directory = $webRoot . '/uploads/blog/' . $yearMonth;
         $thumbDirectory = $webRoot . '/uploads/thumb/blog';
 
         foreach ([$directory, $thumbDirectory] as $targetDirectory) {
@@ -527,7 +527,7 @@ class BlogController extends Controller
                 return [];
             }
 
-            $paths[] = '/uploads/blog/' . $year . '/' . $name;
+            $paths[] = '/uploads/blog/' . $yearMonth . '/' . $name;
 
             $thumbnail = $thumbDirectory . DIRECTORY_SEPARATOR . $name;
             try {
@@ -577,7 +577,7 @@ class BlogController extends Controller
             $thumb = $this->blogThumbnailPath($paths[0]);
         } elseif ($current === '') {
             preg_match_all(
-                '#/uploads/blog/\d{4}/[A-Za-z0-9_-]+\.[A-Za-z0-9]+#',
+                '#/uploads/(?:blog|moment)/(?:\d{4}/\d{2}/|\d{6}/|\d{4}/)[A-Za-z0-9_-]+\.[A-Za-z0-9]+#',
                 (string) $model->getAttribute('content'),
                 $matches,
             );
@@ -600,13 +600,22 @@ class BlogController extends Controller
 
     private function blogThumbnailPath(string $imagePath): ?string
     {
-        if (!preg_match('#^/uploads/blog/\d{4}/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
+        if (!preg_match('#^/uploads/(?:blog|moment)/(?:\d{4}/(?:\d{2}/)?|\d{6}/)([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
             return null;
         }
 
-        $thumb = 'uploads/thumb/blog/' . $match[1];
+        // thumb/blog is flat but predates the current scheme, so also accept its
+        // historical uploads/blog/YYYY/ and uploads/moment/YYYY/MM/ sources.
+        $base = pathinfo($match[1], PATHINFO_FILENAME);
+        foreach (['/uploads/thumb/blog/', '/uploads/thumb/moment/'] as $prefix) {
+            foreach ([$match[1], $base . '.jpg'] as $candidate) {
+                if (is_file(Yii::getAlias('@frontend/web') . '/' . $prefix . $candidate)) {
+                    return $prefix . $candidate;
+                }
+            }
+        }
 
-        return is_file(Yii::getAlias('@frontend/web') . '/' . $thumb) ? $thumb : null;
+        return null;
     }
 
     private function deleteBlogThumbnail(string $thumbPath): void
@@ -630,12 +639,12 @@ class BlogController extends Controller
     {
         $webRoot = Yii::getAlias('@frontend/web');
         foreach ($paths as $path) {
-            if (!preg_match('#^/uploads/blog/(\d{4})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
+            if (!preg_match('#^/uploads/((?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
                 continue;
             }
             $files = [
-                $webRoot . '/uploads/blog/' . $matches[1] . '/' . $matches[2],
-                $webRoot . '/uploads/thumb/blog/' . $matches[2],
+                $webRoot . $path,
+                $webRoot . '/uploads/thumb/blog/' . $matches[1],
             ];
             foreach ($files as $file) {
                 if (is_file($file)) {

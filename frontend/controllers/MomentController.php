@@ -422,7 +422,7 @@ class MomentController extends Controller
             return $this->momentThumbnailPath($newImagePaths[0]) ?? '/images/default-cover.png';
         }
 
-        preg_match_all('#/uploads/(?:moment/\d{4}/\d{2}|blog/\d{4})/[A-Za-z0-9_-]+\.[A-Za-z0-9]+#', $content, $matches);
+        preg_match_all('#/uploads/(?:moment|blog)/(?:\d{4}/\d{2}/|\d{6}/|\d{4}/)[A-Za-z0-9_-]+\.[A-Za-z0-9]+#', $content, $matches);
         foreach (array_unique($matches[0]) as $candidate) {
             $thumbnail = $this->momentThumbnailPath($candidate);
             if ($thumbnail !== null) {
@@ -437,16 +437,29 @@ class MomentController extends Controller
     {
         $webRoot = Yii::getAlias('@frontend/web');
 
-        if (preg_match('#^/uploads/moment/(\d{4})/(\d{2})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
-            $thumbnail = '/uploads/thumb/moment/' . $match[1] . '/' . $match[2] . '/' . $match[3];
-        } elseif (preg_match('#^/uploads/blog/\d{4}/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
-            $thumbnail = '/uploads/thumb/blog/' . $match[1];
+        if (preg_match('#^/uploads/(?:moment|blog)/(\d{4})/(\d{2})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
+            // Legacy moment thumbnails were stored with the source year/month nesting.
+            $candidates = [
+                '/uploads/thumb/moment/' . $match[1] . '/' . $match[2] . '/' . $match[3],
+                '/uploads/thumb/moment/' . $match[3],
+                '/uploads/thumb/blog/' . $match[3],
+            ];
+        } elseif (preg_match('#^/uploads/(?:moment|blog)/(?:\d{6}|\d{4})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $imagePath, $match)) {
+            $base = pathinfo($match[1], PATHINFO_FILENAME);
+            $candidates = [
+                '/uploads/thumb/moment/' . $match[1],
+                '/uploads/thumb/blog/' . $match[1],
+                '/uploads/thumb/moment/' . $base . '.jpg',
+                '/uploads/thumb/blog/' . $base . '.jpg',
+            ];
         } else {
             return null;
         }
 
-        if (is_file($webRoot . $thumbnail)) {
-            return $thumbnail;
+        foreach ($candidates as $thumbnail) {
+            if (is_file($webRoot . $thumbnail)) {
+                return $thumbnail;
+            }
         }
 
         return is_file($webRoot . $imagePath) ? $imagePath : null;
@@ -485,8 +498,8 @@ class MomentController extends Controller
     private function storeRichEditorImages(array $files): array
     {
         $webRoot = Yii::getAlias('@frontend/web');
-        $relativeDirectory = '/uploads/moment/' . date('Y') . '/' . date('m');
-        $relativeThumbDirectory = '/uploads/thumb/moment/' . date('Y') . '/' . date('m');
+        $relativeDirectory = '/uploads/moment/' . date('Ym');
+        $relativeThumbDirectory = '/uploads/thumb/moment';
         $directory = $webRoot . $relativeDirectory;
         $thumbDirectory = $webRoot . $relativeThumbDirectory;
 
@@ -542,19 +555,13 @@ class MomentController extends Controller
     {
         $webRoot = Yii::getAlias('@frontend/web');
         foreach ($paths as $path) {
-            if (preg_match('#^/uploads/moment/(\d{4})/(\d{2})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
-                $files = [
-                    $webRoot . $path,
-                    $webRoot . '/uploads/thumb/moment/' . $matches[1] . '/' . $matches[2] . '/' . $matches[3],
-                ];
-            } elseif (preg_match('#^/uploads/blog/(\d{4})/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
-                $files = [
-                    $webRoot . '/uploads/blog/' . $matches[1] . '/' . $matches[2],
-                    $webRoot . '/uploads/thumb/blog/' . $matches[2],
-                ];
-            } else {
+            if (!preg_match('#^/uploads/((?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', $path, $matches)) {
                 continue;
             }
+            $files = [
+                $webRoot . $path,
+                $webRoot . '/uploads/thumb/moment/' . $matches[1],
+            ];
             foreach ($files as $file) {
                 if (is_file($file)) {
                     @unlink($file);

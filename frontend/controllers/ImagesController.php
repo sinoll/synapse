@@ -483,7 +483,8 @@ class ImagesController extends Controller
     /** @param UploadedFile[] $files @return string[] */
     private function storeImageUploads(array $files): array
     {
-        $directory = Yii::getAlias('@frontend/web/uploads/images');
+        $yearMonth = date('Ym');
+        $directory = Yii::getAlias('@frontend/web/uploads/images') . DIRECTORY_SEPARATOR . $yearMonth;
         if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
             return [];
         }
@@ -499,7 +500,7 @@ class ImagesController extends Controller
                 return [];
             }
             $this->createGalleryThumbnail($storedFile, $name);
-            $paths[] = '/uploads/images/' . $name;
+            $paths[] = '/uploads/images/' . $yearMonth . '/' . $name;
         }
 
         return $paths;
@@ -533,7 +534,7 @@ class ImagesController extends Controller
         }
 
         $fileName = substr($filePath, strlen($prefix));
-        if ($fileName === '' || basename($fileName) !== $fileName) {
+        if ($fileName === '' || !preg_match('#^(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.[A-Za-z0-9]+$#', $fileName)) {
             return;
         }
 

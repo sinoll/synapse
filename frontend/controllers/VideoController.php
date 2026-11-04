@@ -274,9 +274,9 @@ class VideoController extends Controller
                 $coverPath = null;
                 try {
                     $coverPath = $uploadedCover !== null
-                        ? $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/video-covers')
+                        ? $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/thumb/video')
                         : $this->generateVideoCover($uploadedVideo);
-                    $videoPath = $this->storeUploadedFile($uploadedVideo, '@frontend/web/uploads/videos');
+                    $videoPath = $this->storeUploadedFile($uploadedVideo, '@frontend/web/uploads/video/' . date('Ym'));
                     if ($videoPath === null) {
                         throw new \RuntimeException('视频上传失败。');
                     }
@@ -388,12 +388,12 @@ class VideoController extends Controller
                 try {
                     if ($replaceVideo) {
                         $coverPath = $replaceCover
-                            ? $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/video-covers')
+                            ? $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/thumb/video')
                             : $this->generateVideoCover($uploadedVideo);
                         if ($replaceCover && $coverPath === null) {
                             throw new \RuntimeException('封面上传失败。');
                         }
-                        $videoPath = $this->storeUploadedFile($uploadedVideo, '@frontend/web/uploads/videos');
+                        $videoPath = $this->storeUploadedFile($uploadedVideo, '@frontend/web/uploads/video/' . date('Ym'));
                         if ($videoPath === null) {
                             throw new \RuntimeException('视频上传失败。');
                         }
@@ -402,7 +402,7 @@ class VideoController extends Controller
                         // new one, so drop it even when generation fails.
                         $model->cover_path = $coverPath;
                     } elseif ($replaceCover) {
-                        $coverPath = $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/video-covers');
+                        $coverPath = $this->storeUploadedFile($uploadedCover, '@frontend/web/uploads/thumb/video');
                         if ($coverPath === null) {
                             throw new \RuntimeException('封面上传失败。');
                         }
@@ -617,7 +617,7 @@ class VideoController extends Controller
         if ($video === null) {
             return null;
         }
-        $directory = Yii::getAlias('@frontend/web/uploads/video-covers');
+        $directory = Yii::getAlias('@frontend/web/uploads/thumb/video');
         if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
             return null;
         }
@@ -635,6 +635,6 @@ class VideoController extends Controller
             }
             return null;
         }
-        return '/uploads/video-covers/' . $name;
+        return '/uploads/thumb/video/' . $name;
     }
 }

@@ -93,9 +93,27 @@ $momentFeedImages = static function (string $html): array {
         if (!str_starts_with($source, '/uploads/')) {
             continue;
         }
-        $thumbnail = (string) preg_replace('#^/uploads/moment/(\d{4})/(\d{2})/#', '/uploads/thumb/moment/$1/$2/', $source);
-        if ($thumbnail === $source) {
-            $thumbnail = (string) preg_replace('#^/uploads/blog/\d{4}/#', '/uploads/thumb/blog/', $source);
+        $segments = explode('/', substr($source, strlen('/uploads/')));
+        $name = array_pop($segments);
+        $thumbnail = $source;
+        if (($segments[0] ?? '') === 'moment' || ($segments[0] ?? '') === 'blog') {
+            $type = $segments[0];
+            // Year/month path segments are purely numeric; thumbs live flat per type.
+            $dirs = array_slice($segments, 1);
+            if ($dirs !== [] && $dirs !== array_filter($dirs, 'ctype_digit')) {
+                $dirs = [];
+            }
+            $candidates = ['/uploads/thumb/' . $type . '/' . $name];
+            if ($type === 'moment' && count($dirs) === 2) {
+                // Legacy moment thumbnails kept the source year/month nesting.
+                $candidates[] = '/uploads/thumb/moment/' . $dirs[0] . '/' . $dirs[1] . '/' . $name;
+            }
+            foreach ($candidates as $candidate) {
+                if (is_file($webRoot . $candidate)) {
+                    $thumbnail = $candidate;
+                    break;
+                }
+            }
         }
         $images[] = [
             'thumb' => $thumbnail !== $source && is_file($webRoot . $thumbnail) ? $thumbnail : $source,
