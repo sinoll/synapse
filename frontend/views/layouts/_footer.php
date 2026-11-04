@@ -53,9 +53,9 @@ $typeIcons = ['blog' => 'bi-journal-text', 'moment' => 'bi-chat-square-text', 'i
                         <li><?= Html::a('<span>登录</span>', ['/users/login'], ['encode' => false]) ?></li>
                         <li><?= Html::a('<span>注册</span>', ['/users/signup'], ['encode' => false]) ?></li>
                     <?php else: ?>
-                        <li><?= Html::a('<span>我的内容</span>', ['/users/index'], ['encode' => false]) ?></li>
-                        <li><?= Html::a('<span>我的收藏</span>', ['/users/favorite'], ['encode' => false]) ?></li>
-                        <li><?= Html::a('<span>我的点赞</span>', ['/users/like'], ['encode' => false]) ?></li>
+                        <li><?= Html::a('<span>用户首页</span>', ['/users/index'], ['encode' => false]) ?></li>
+                        <li><?= Html::a('<span>修改头像</span>', ['/users/settings'], ['encode' => false]) ?></li>
+                        <li><?= Html::a('<span>修改密码</span>', ['/users/change-password'], ['encode' => false]) ?></li>
                         <?php if ($identity->isAdministrator()): ?>
                             <li><?= Html::a('<span>系统管理</span>', ['/manage/index'], ['encode' => false]) ?></li>
                         <?php endif; ?>
