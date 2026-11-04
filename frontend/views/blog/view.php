@@ -30,7 +30,7 @@ CSS);
         <article class="content-view content-view-blog py-3 py-md-4">
             <div class="content-detail-layout">
                 <div class="content-detail-main">
-                    <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $post->title]) ?>
+                    <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $post->title, 'authorCounts' => $authorCounts]) ?>
 
                     <?php if (trim((string) $blog->summary) !== ''): ?>
                         <p class="content-view-summary"><?= Html::encode($blog->summary) ?></p>
@@ -45,7 +45,6 @@ CSS);
                 </div>
 
                 <aside class="content-detail-side">
-                    <?= $this->render('@frontend/views/site/_author_card', ['post' => $post, 'authorCounts' => $authorCounts]) ?>
                     <?= $this->render('@frontend/views/site/_toc', ['headings' => $headings]) ?>
                     <?= $this->render('@frontend/views/site/_related_list', ['items' => $related, 'heading' => '相关文章']) ?>
                 </aside>

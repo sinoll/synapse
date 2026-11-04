@@ -790,31 +790,71 @@ body {
 .browse-page .breadcrumb a:hover { color: var(--bs-link-hover-color); text-decoration: underline; }
 .browse-page-title { font-size: 1.6rem; font-weight: 700; }
 
-/* 标签云：--w 是内容量权重（0~1），决定字号和底色浓度；--i 用于逐个入场的错峰延迟。 */
-.tag-cloud { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; margin-bottom: 1.75rem; }
+/* 标签云：--w 是内容量权重（0~1），只管字号；颜色走 .tag-c1 ~ .tag-c15 的固定色相分配。
+   旧站那 15 档色号被重新调过饱和度与明度，绿色系占一半以上，才压得住站点的 emerald 主色。 */
+.tag-cloud { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .5rem; margin-bottom: 1.75rem; }
+
+.tag-c1 { --h: 120; --s: 45%; --l: 29%; }
+.tag-c2 { --h: 310; --s: 38%; --l: 36%; }
+.tag-c3 { --h: 268; --s: 32%; --l: 42%; }
+.tag-c4 { --h: 145; --s: 50%; --l: 29%; }
+.tag-c5 { --h: 26; --s: 70%; --l: 37%; }
+.tag-c6 { --h: 205; --s: 45%; --l: 38%; }
+.tag-c7 { --h: 336; --s: 48%; --l: 42%; }
+.tag-c8 { --h: 168; --s: 55%; --l: 27%; }
+.tag-c9 { --h: 192; --s: 50%; --l: 32%; }
+.tag-c10 { --h: 352; --s: 62%; --l: 42%; }
+.tag-c11 { --h: 318; --s: 45%; --l: 42%; }
+.tag-c12 { --h: 92; --s: 40%; --l: 28%; }
+.tag-c13 { --h: 156; --s: 50%; --l: 26%; }
+.tag-c14 { --h: 60; --s: 45%; --l: 26%; }
+.tag-c15 { --h: 44; --s: 55%; --l: 31%; }
+
 .tag-cloud-item {
     display: inline-flex; align-items: baseline; gap: .3rem;
-    padding: .22rem .7rem; border-radius: 999px;
-    color: var(--bs-primary-text-emphasis);
-    background: rgba(var(--bs-primary-rgb), calc(.07 + var(--w, .4) * .12));
+    padding: .22rem .72rem; border: 1px solid hsl(var(--h, 150) var(--s, 40%) var(--l, 34%) / .26);
+    border-radius: 999px;
+    color: hsl(var(--h, 150) calc(var(--s, 40%) + 10%) calc(var(--l, 34%) - 2%));
+    background-color: hsl(var(--h, 150) var(--s, 40%) var(--l, 34%) / calc(.06 + var(--w, .4) * .08));
     font-size: calc(.76rem + var(--w, .4) * .6rem);
     font-weight: 600; line-height: 1.45; text-decoration: none; white-space: nowrap;
     animation: tag-cloud-in .42s cubic-bezier(.22, .68, .36, 1) backwards;
     animation-delay: calc(var(--i, 0) * 22ms);
-    transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease;
+    transition: transform .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
-.tag-cloud-item:hover { transform: translateY(-2px) scale(1.06); }
-.tag-cloud-item:not(.active):hover {
-    background: rgba(var(--bs-primary-rgb), calc(.16 + var(--w, .4) * .18));
+
+.tag-cloud-item:hover {
+    transform: translateY(-2px) scale(1.06);
+    border-color: transparent;
+    background-color: hsl(var(--h, 150) var(--s, 40%) calc(var(--l, 34%) + 3%));
     box-shadow: var(--shadow-sm);
+    color: #fff;
 }
-.tag-cloud-item:focus-visible { outline: 2px solid rgba(var(--bs-primary-rgb), .7); outline-offset: 2px; }
-.tag-cloud-count { font-size: .68rem; font-weight: 700; opacity: .6; transition: opacity .18s ease; }
-.tag-cloud-item:hover .tag-cloud-count { opacity: 1; }
+
+.tag-cloud-item:focus-visible {
+    outline: 2px solid hsl(var(--h, 150) var(--s, 40%) calc(var(--l, 34%) + 12%));
+    outline-offset: 2px;
+}
+
+.tag-cloud-count { font-size: .68rem; font-weight: 700; opacity: .55; transition: opacity .18s ease; }
+.tag-cloud-item:hover .tag-cloud-count { opacity: .9; }
+
+/* 当前标签：实心同色 + 同色光环，比原来统一的绿底更容易在彩色里认出自己点的那颗。 */
 .tag-cloud-item.active {
-    background: var(--bs-primary-bg-subtle);
-    box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .35);
+    border-color: transparent;
+    background-color: hsl(var(--h, 150) var(--s, 40%) var(--l, 34%));
+    box-shadow: 0 0 0 3px hsl(var(--h, 150) var(--s, 40%) var(--l, 34%) / .28);
+    color: #fff;
 }
+
+.tag-cloud-item.active .tag-cloud-count { opacity: .85; }
+
+[data-bs-theme="dark"] .tag-cloud-item {
+    border-color: hsl(var(--h, 150) var(--s, 40%) calc(var(--l, 34%) + 22%) / .34);
+    color: hsl(var(--h, 150) calc(var(--s, 40%) + 14%) calc(var(--l, 34%) + 34%));
+    background-color: hsl(var(--h, 150) calc(var(--s, 40%) - 6%) calc(var(--l, 34%) + 8%) / calc(.13 + var(--w, .4) * .09));
+}
+
 @keyframes tag-cloud-in {
     from { opacity: 0; transform: translateY(.45rem) scale(.84); }
 }
@@ -1557,13 +1597,32 @@ mark {
     line-height: 1.4;
 }
 
-/* 作者卡 */
+/* 作者署名卡：紧跟标题，位于正文上方 */
 .content-detail-author {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem 1rem;
+    margin: 0 0 1.5rem;
     padding: 1rem 1.1rem;
     border: 1px solid var(--bs-border-color);
     border-radius: var(--radius-md);
     background-color: var(--site-surface);
     box-shadow: var(--shadow-sm);
+    text-align: left;
+}
+
+.content-detail-author-body {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.content-detail-author-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .5rem;
 }
 
 .content-detail-author-head {
@@ -1924,4 +1983,435 @@ mark {
 .content-pager .page-item.disabled .page-link {
     color: var(--bs-secondary-color);
     opacity: .65;
+}
+
+/* ---------- 页脚站点地图 ---------- */
+.site-footer {
+    margin-top: auto;
+    padding: 2.5rem 0 1.25rem;
+    border-top: 1px solid var(--site-nav-border-color);
+    background-color: var(--bs-tertiary-bg);
+}
+
+.site-footer-cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.75rem 1.25rem;
+}
+
+@media (min-width: 768px) {
+    .site-footer-cols {
+        grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
+        gap: 2rem 1.5rem;
+    }
+}
+
+.site-footer-logo {
+    display: inline-block;
+    padding: .15rem .6rem;
+    border-radius: var(--radius-sm);
+    background-image: var(--site-primary-gradient);
+    color: var(--site-on-primary);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+}
+
+.site-footer-tagline {
+    margin: .8rem 0 .25rem;
+    color: var(--bs-emphasis-color);
+    font-size: .95rem;
+    font-weight: 600;
+}
+
+.site-footer-desc {
+    max-width: 22rem;
+    margin: 0 0 .9rem;
+    color: var(--bs-secondary-color);
+    font-size: .88rem;
+    line-height: 1.7;
+}
+
+.site-footer-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .35rem .85rem;
+    border: 1px solid var(--bs-primary-border-subtle);
+    border-radius: 999px;
+    color: var(--bs-link-color);
+    font-size: .85rem;
+    text-decoration: none;
+}
+
+.site-footer-cta:hover {
+    border-color: transparent;
+    background-image: var(--site-primary-gradient);
+    color: var(--site-on-primary);
+}
+
+.site-footer-title {
+    margin: 0 0 .7rem;
+    color: var(--bs-secondary-color);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+}
+
+.site-footer-list {
+    display: grid;
+    gap: .45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.site-footer-list a {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    color: var(--bs-body-color);
+    font-size: .9rem;
+    text-decoration: none;
+}
+
+.site-footer-list a:hover {
+    color: var(--bs-link-hover-color);
+}
+
+.site-footer-list a i {
+    color: var(--bs-secondary-color);
+    font-size: .85rem;
+}
+
+.site-footer-list a:hover i {
+    color: var(--bs-link-color);
+}
+
+.site-footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--site-nav-border-color);
+    color: var(--bs-secondary-color);
+    font-size: .85rem;
+}
+
+.site-footer-copy {
+    font-variant-numeric: tabular-nums;
+}
+
+/* 时间归档：一屏一年的时间轴，主轴是一条竖线，月份是轴上的节点。 */
+.archive-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.archive-head-text {
+    min-width: 0;
+}
+
+/* 年份可能十几个（迁移来的旧站跨年很久），单行横向滚动比换行成墙更好扫读。 */
+.archive-years {
+    display: flex;
+    gap: .4rem;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: .35rem;
+    scrollbar-width: thin;
+}
+
+.archive-year {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: baseline;
+    gap: .4rem;
+    padding: .3rem .7rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background-color: var(--site-surface);
+    color: var(--bs-body-color);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color .18s ease, transform .18s ease;
+}
+
+.archive-year:hover {
+    border-color: var(--bs-primary-border-subtle);
+    transform: translateY(-1px);
+}
+
+.archive-year-num {
+    font-size: .9rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-year-count {
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-year.active {
+    border-color: transparent;
+    background-image: var(--site-primary-gradient);
+    color: var(--site-on-primary);
+}
+
+.archive-year.active .archive-year-count {
+    color: rgba(255, 255, 255, .78);
+}
+
+.archive-timeline {
+    position: relative;
+    display: grid;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0 0 0 .35rem;
+    list-style: none;
+}
+
+/* 主轴：贯穿所有月份的竖线，两端用渐隐收住，避免硬切。 */
+.archive-timeline::before {
+    content: "";
+    position: absolute;
+    top: .4rem;
+    bottom: .4rem;
+    left: .55rem;
+    width: 2px;
+    border-radius: 2px;
+    background-image: linear-gradient(180deg, transparent, var(--bs-primary-border-subtle) 1.5rem, var(--bs-primary-border-subtle) calc(100% - 1.5rem), transparent);
+}
+
+.archive-month {
+    scroll-margin-top: 5.25rem;
+}
+
+.archive-month-head {
+    position: sticky;
+    top: 4.5rem;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-left: 1.9rem;
+    margin-bottom: .75rem;
+    padding: .45rem .8rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--site-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 轴上的节点：一个圆点压在竖线上，一截横线连到月份卡片。 */
+.archive-month-head::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -1.35rem;
+    width: 1.35rem;
+    border-top: 2px solid var(--bs-primary-border-subtle);
+}
+
+.archive-month-head::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -2.05rem;
+    width: 9px;
+    height: 9px;
+    transform: translateY(-50%);
+    border: 2px solid var(--site-surface);
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+}
+
+.archive-month-title {
+    margin: 0;
+    color: var(--bs-emphasis-color);
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.archive-month-count {
+    color: var(--bs-secondary-color);
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 密度条：当月条数 / 全年最高月条数，一眼看出哪个月写得最勤。 */
+.archive-month-density {
+    flex: 1 1 3rem;
+    max-width: 7rem;
+    height: 4px;
+    margin-left: auto;
+    border-radius: 999px;
+    background-color: var(--bs-tertiary-bg);
+    overflow: hidden;
+}
+
+.archive-month-density::after {
+    content: "";
+    display: block;
+    width: calc(var(--w, 1) * 100%);
+    height: 100%;
+    border-radius: inherit;
+    background-image: var(--site-primary-gradient);
+}
+
+.archive-month.is-located > .archive-month-head {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle);
+}
+
+.archive-days {
+    display: grid;
+    gap: .1rem;
+    margin: 0;
+    padding: 0 0 0 1.9rem;
+    list-style: none;
+}
+
+.archive-day {
+    display: grid;
+    grid-template-columns: 2.2rem minmax(0, 1fr);
+    gap: .5rem;
+    align-items: start;
+}
+
+/* 日期块竖排靠右，贴着条目；横排在窄栏里会把「周三」拆成两行。 */
+.archive-day-mark {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-top: .3rem;
+    color: var(--bs-secondary-color);
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+.archive-day-num {
+    color: var(--bs-emphasis-color);
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-day-week {
+    font-size: .68rem;
+}
+
+.archive-entries {
+    display: grid;
+    gap: .1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.archive-entry {
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
+    padding: .3rem .6rem;
+    border-radius: var(--radius-sm);
+    transition: background-color .16s ease;
+}
+
+.archive-entry:hover {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.archive-entry-type {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    width: 1.15rem;
+    font-size: .9rem;
+}
+
+/* 类型只用绿色梯度分层级，蓝 / 紫 / 粉一类的高饱和色会和站点主色打架。 */
+.archive-entry-type.is-blog { color: var(--bs-primary); }
+.archive-entry-type.is-moment { color: #74c69d; }
+.archive-entry-type.is-images { color: #146c43; }
+.archive-entry-type.is-short_video { color: #0b5c39; }
+
+[data-bs-theme="dark"] .archive-entry-type.is-blog { color: #37b982; }
+[data-bs-theme="dark"] .archive-entry-type.is-moment { color: #52b788; }
+[data-bs-theme="dark"] .archive-entry-type.is-images { color: #95d5b2; }
+[data-bs-theme="dark"] .archive-entry-type.is-short_video { color: #b7e4c7; }
+
+.archive-entry-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    color: var(--bs-body-color);
+    font-size: .95rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    text-decoration: none;
+}
+
+a.archive-entry-title:hover {
+    color: var(--bs-link-hover-color);
+    text-decoration: underline;
+}
+
+.archive-entry.is-dead .archive-entry-title {
+    color: var(--bs-secondary-color);
+}
+
+.archive-entry-time {
+    flex: 0 0 auto;
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-foot {
+    margin: 1.75rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--bs-border-color);
+    font-size: .85rem;
+}
+
+@media (max-width: 575.98px) {
+    .archive-month-head {
+        top: 3.75rem;
+        margin-left: 1.35rem;
+        padding: .4rem .6rem;
+    }
+
+    .archive-month-head::before {
+        left: -1.15rem;
+        width: 1.15rem;
+    }
+
+    .archive-month-head::after {
+        left: -1.92rem;
+    }
+
+    .archive-timeline::before {
+        left: .18rem;
+    }
+
+    .archive-days {
+        padding-left: 1.35rem;
+    }
+
+    .archive-day {
+        grid-template-columns: 2rem minmax(0, 1fr);
+    }
+
+    .archive-entry-time {
+        display: none;
+    }
 }

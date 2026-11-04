@@ -128,14 +128,12 @@ class SiteController extends Controller
         return $counts;
     }
 
-    /** Display all content associated with a specific tag. */
-    public function actionTag(string $slug): string
+    /**
+     * 标签页：带 slug 看单个标签的内容，不带 slug 就是标签云总览。
+     * 页脚的「标签云」入口靠这个空 slug 形态，省掉一个只有云没有内容的独立页。
+     */
+    public function actionTag(?string $slug = null): string
     {
-        $tag = Tag::find()->where(['slug' => $slug])->one();
-        if ($tag === null) {
-            throw new NotFoundHttpException('找不到该标签。');
-        }
-
         $tags = Tag::find()
             ->alias('t')
             ->select(['t.*', 'COUNT([[pt]].[[post_id]]) AS postCount'])
@@ -143,6 +141,20 @@ class SiteController extends Controller
             ->groupBy('t.id')
             ->orderBy(['t.name' => SORT_ASC])
             ->all();
+
+        if ($slug === null || $slug === '') {
+            return $this->render('tag', [
+                'tag' => null,
+                'tags' => $tags,
+                'posts' => [],
+                'pagination' => null,
+            ]);
+        }
+
+        $tag = Tag::find()->where(['slug' => $slug])->one();
+        if ($tag === null) {
+            throw new NotFoundHttpException('找不到该标签。');
+        }
 
         $provider = ListPagination::provider($this->tagQuery((int) $tag->id), ListPagination::SIZE_GRID);
 
@@ -170,14 +182,11 @@ class SiteController extends Controller
         return $query;
     }
 
-    /** Display all content associated with a specific category. */
-    public function actionCate(string $slug): string
+    /**
+     * 分类页：带 slug 看单个分类的内容，不带 slug 就是分类总览。
+     */
+    public function actionCate(?string $slug = null): string
     {
-        $cate = Cate::find()->where(['slug' => $slug])->one();
-        if ($cate === null) {
-            throw new NotFoundHttpException('找不到该分类。');
-        }
-
         $cates = Cate::find()
             ->alias('c')
             ->select(['c.*', 'COUNT([[pc]].[[post_id]]) AS postCount'])
@@ -185,6 +194,20 @@ class SiteController extends Controller
             ->groupBy('c.id')
             ->orderBy(['c.name' => SORT_ASC])
             ->all();
+
+        if ($slug === null || $slug === '') {
+            return $this->render('cate', [
+                'cate' => null,
+                'cates' => $cates,
+                'posts' => [],
+                'pagination' => null,
+            ]);
+        }
+
+        $cate = Cate::find()->where(['slug' => $slug])->one();
+        if ($cate === null) {
+            throw new NotFoundHttpException('找不到该分类。');
+        }
 
         $provider = ListPagination::provider($this->cateQuery((int) $cate->id), ListPagination::SIZE_GRID);
 
@@ -194,6 +217,89 @@ class SiteController extends Controller
             'posts' => $provider->getModels(),
             'pagination' => $provider->getPagination(),
         ]);
+    }
+
+    /**
+     * 时间归档：一屏一年的时间轴，month=YYYY-MM 只把视线锚到某个月份，不改变取数范围。
+     * year 与 month 都不给时，落在最近有内容的年份。
+     */
+    public function actionArchive(?string $month = null, ?string $year = null): string
+    {
+        $months = $this->archiveMonths();
+
+        if ($month !== null && $month !== '') {
+            if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) !== 1) {
+                throw new BadRequestHttpException('归档月份的格式应为 YYYY-MM。');
+            }
+            $targetYear = (int) substr($month, 0, 4);
+        } elseif ($year !== null && $year !== '') {
+            if (preg_match('/^\d{4}$/', $year) !== 1) {
+                throw new BadRequestHttpException('归档年份的格式应为 YYYY。');
+            }
+            $month = null;
+            $targetYear = (int) $year;
+        } else {
+            $month = null;
+            // 分组键是 'YYYY-MM' 且按倒序返回，第一个键的年份就是最近有内容的年份。
+            $targetYear = $months === [] ? (int) date('Y') : (int) substr((string) array_key_first($months), 0, 4);
+        }
+
+        $years = [];
+        foreach ($months as $ym => $count) {
+            $key = substr((string) $ym, 0, 4);
+            $years[$key] = ($years[$key] ?? 0) + $count;
+        }
+
+        return $this->render('archive', [
+            'year' => $targetYear,
+            'month' => $month,
+            'years' => $years,
+            'items' => $this->archiveYearItems($targetYear),
+        ]);
+    }
+
+    /** @return array<string,int> 形如 ['2026-03' => 5]，按月份倒序，只算当前访客可见的已发布内容。 */
+    private function archiveMonths(): array
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->select(['ym' => "FROM_UNIXTIME([[p]].[[created_at]], '%Y-%m')", 'cnt' => 'COUNT([[p]].[[id]])'])
+            ->where(['p.status' => Post::STATUS_PUBLISHED])
+            ->groupBy(['ym'])
+            ->orderBy(['ym' => SORT_DESC]);
+        Post::applyVisibilityScope($query, $this->currentUserId());
+
+        $months = [];
+        foreach ($query->asArray()->all() as $row) {
+            $months[(string) $row['ym']] = (int) $row['cnt'];
+        }
+
+        return $months;
+    }
+
+    /**
+     * 时间轴条目：整年可见内容的极简字段。
+     * 一行只渲染类型 / 标题 / 时刻，所以不关联加载子表和标签，一年几百条也不至于拖垮查询。
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function archiveYearItems(int $year): array
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->select(['p.id', 'p.type', 'p.title', 'p.created_at'])
+            ->where(['p.status' => Post::STATUS_PUBLISHED])
+            ->andWhere([
+                'between',
+                'p.created_at',
+                strtotime($year . '-01-01 00:00:00'),
+                strtotime($year . '-12-31 23:59:59'),
+            ])
+            ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
+
+        Post::applyVisibilityScope($query, $this->currentUserId());
+
+        return $query->asArray()->all();
     }
 
     /** 指定分类下的内容查询：已发布且当前访客可见，按时间倒序。 */

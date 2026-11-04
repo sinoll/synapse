@@ -31,7 +31,7 @@ $formatFileSize = static function (int $bytes): string {
         <article class="content-view content-view-images py-3 py-md-4">
             <div class="content-detail-layout">
                 <div class="content-detail-main">
-                    <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $post->title]) ?>
+                    <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $post->title, 'authorCounts' => $authorCounts]) ?>
 
                     <?php if ($galleryDescription !== ''): ?>
                         <p class="text-center text-body-secondary mb-4"><?= Html::encode($galleryDescription) ?></p>
@@ -83,7 +83,6 @@ $formatFileSize = static function (int $bytes): string {
                 </div>
 
                 <aside class="content-detail-side">
-                    <?= $this->render('@frontend/views/site/_author_card', ['post' => $post, 'authorCounts' => $authorCounts]) ?>
                     <?= $this->render('@frontend/views/site/_related_list', ['items' => $related, 'heading' => '相关图集']) ?>
                 </aside>
             </div>
