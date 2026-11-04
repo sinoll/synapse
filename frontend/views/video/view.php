@@ -151,7 +151,7 @@ $durationOf = static function (?Post $item): ?string {
         </div>
     <?php else: ?>
         <div class="row g-4">
-            <div class="col-12 col-xl-8">
+            <div class="col-12 col-xl-8 col-xxl-9">
                 <div class="video-watch-player ratio ratio-16x9">
                     <video controls playsinline preload="metadata"
                            poster="<?= Html::encode($coverUrl) ?>"
@@ -207,7 +207,7 @@ $durationOf = static function (?Post $item): ?string {
                 <?= $this->render('@frontend/views/comment/_thread', ['post' => $post]) ?>
             </div>
 
-            <aside class="col-12 col-xl-4">
+            <aside class="col-12 col-xl-4 col-xxl-3">
                 <h2 class="video-related-heading">接下来</h2>
                 <?php if ($relatedVideos === []): ?>
                     <p class="small text-body-secondary mb-0">暂无更多视频。</p>

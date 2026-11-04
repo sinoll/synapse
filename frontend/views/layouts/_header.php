@@ -33,22 +33,9 @@ $accountItems[] = [
 
 $menuItems = [
     [
-        'label' => 'Blog',
-        'url' => ['/blog/index'],
-    ],
-    [
-        'label' => '动态',
-        'url' => ['/moment/index'],
-    ],
-    [
-        'label' => '图集',
-        'url' => ['/images/index'],
-    ],
-    [
-        'label' => '短视频',
-        'url' => ['/video/index'],
-    ],
-    
+        'label' => '关于',
+        'url' => ['/site/about'],
+    ],    
 ];
 
 if ($identity === null) {
@@ -72,13 +59,6 @@ if ($identity === null) {
     ];
 }
 
-// 关于菜单 放在 语言 左面  和 几个下拉菜单一样靠右对齐
-$aboutItems = [
-    'label' => '关于',
-    'url' => ['/site/about'],
-];
-
-
 // 语言选择子菜单
 $languageMenu = [
     [
@@ -101,29 +81,24 @@ $languageMenu = [
             'options' => ['class' => 'navbar-expand-md navbar-light navbar-warm fixed-top shadow-sm']
         ],
     ) ?>
-    <?= Nav::widget(
-        [
-            'options' => ['class' => 'navbar-nav me-auto'],
-            'encodeLabels' => false,
-            'activateParents' => true,
-            'items' => $menuItems,
-        ],
-    ) ?>
-
-    <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+    <div class="d-flex flex-column flex-md-row align-items-md-center gap-2 me-auto">
+        <?= Nav::widget(
+            [
+                'options' => ['class' => 'navbar-nav'],
+                'encodeLabels' => false,
+                'activateParents' => true,
+                'items' => $menuItems,
+            ],
+        ) ?>
         <?= Html::beginForm(['/search/index'], 'get', ['class' => 'nav-search input-group input-group-sm', 'role' => 'search']) ?>
             <input class="form-control" type="search" name="q" maxlength="60" autocomplete="off"
                 value="<?= Html::encode($searchKeyword) ?>"
                 placeholder="搜索..." aria-label="站内搜索关键词">
             <button class="btn btn-primary" type="submit" aria-label="搜索"><i class="bi bi-search" aria-hidden="true"></i></button>
         <?= Html::endForm() ?>
-        <?= Nav::widget(
-            [
-                'options' => ['class' => 'navbar-nav'],
-                'encodeLabels' => false,
-                'items' => [$aboutItems],
-            ],
-        ) ?>
+    </div>
+
+    <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
         <?= Nav::widget(
             [
                 'options' => ['class' => 'navbar-nav'],

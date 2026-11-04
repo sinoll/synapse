@@ -55,16 +55,6 @@ class m261025_000001_create_cate_tables extends Migration
         $this->createIndex('idx-post-cate-post-id', '{{%post_cate}}', 'post_id');
         $this->createIndex('idx-post-cate-cate-id', '{{%post_cate}}', 'cate_id');
 
-        // 添加默认分类
-        $now = time();
-        $this->insert('{{%cate}}', [
-            'name' => '默认分类',
-            'slug' => 'default-cate',
-            'description' => '系统创建的默认分类',
-            'thumb' => '/images/cate.png',
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
     }
 
     public function safeDown(): void

@@ -15,6 +15,7 @@ use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\db\ActiveQuery;
+use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\web\ErrorAction;
 use yii\web\NotFoundHttpException;
@@ -42,25 +43,29 @@ class SiteController extends Controller
     /**
      * 首页信息流：唯一保留无限滚动的列表。
      * ?page=N 仍会整页渲染，爬虫与无 JS 访客拿到的就是第 N 页。
+     * ?type=blog|moment|images|video 按内容类型筛选。
      *
      * @return string
      */
-    public function actionIndex(): string
+    public function actionIndex(?string $type = null): string
     {
-        $provider = ListPagination::provider($this->publicQuery(), ListPagination::SIZE_FEED);
+        $definitions = Post::typeDefinitions();
+        $provider = ListPagination::provider($this->publicQuery($this->resolveType($definitions, $type)), ListPagination::SIZE_FEED);
 
         return $this->render('index', [
             'posts' => $provider->getModels(),
             'pagination' => $provider->getPagination(),
-            'definitions' => Post::typeDefinitions(),
+            'definitions' => $definitions,
+            'activeType' => $type,
+            'typeCounts' => $this->typeCounts(),
         ]);
     }
 
     /** Return the next page of public content for the home feed. */
-    public function actionFeed(int $page = 1): Response
+    public function actionFeed(int $page = 1, ?string $type = null): Response
     {
         $pageSize = ListPagination::SIZE_FEED;
-        $query = $this->publicQuery();
+        $query = $this->publicQuery($this->resolveType(Post::typeDefinitions(), $type));
         $total = (int) (clone $query)->count();
         $page = max(1, $page);
         $posts = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->all();
@@ -73,8 +78,8 @@ class SiteController extends Controller
         ]);
     }
 
-    /** 首页信息流查询：已发布且当前访客可见，按时间倒序。 */
-    private function publicQuery(): ActiveQuery
+    /** 首页信息流查询：已发布且当前访客可见，可按内容类型筛选，按时间倒序。 */
+    private function publicQuery(?string $postType = null): ActiveQuery
     {
         $query = Post::find()
             ->alias('p')
@@ -82,9 +87,45 @@ class SiteController extends Controller
             ->where(['p.status' => Post::STATUS_PUBLISHED])
             ->orderBy(['p.created_at' => SORT_DESC, 'p.id' => SORT_DESC]);
 
+        if ($postType !== null) {
+            $query->andWhere(['p.type' => $postType]);
+        }
+
         Post::applyVisibilityScope($query, $this->currentUserId());
 
         return $query;
+    }
+
+    /** 侧栏筛选项用的类型参数是控制器名，这里换成 post.type 并挡掉非法值。 */
+    private function resolveType(array $definitions, ?string $type): ?string
+    {
+        if ($type === null || $type === '') {
+            return null;
+        }
+        if (!isset($definitions[$type])) {
+            throw new BadRequestHttpException('未知的内容类型。');
+        }
+
+        return $definitions[$type]['postType'];
+    }
+
+    /** @return array<string,int> 各内容类型的可见条目数，键为 post.type。 */
+    private function typeCounts(): array
+    {
+        $query = Post::find()
+            ->alias('p')
+            ->select(['type' => 'p.type', 'cnt' => 'COUNT([[p]].[[id]])'])
+            ->where(['p.status' => Post::STATUS_PUBLISHED])
+            ->groupBy(['p.type']);
+        Post::applyVisibilityScope($query, $this->currentUserId());
+
+        $counts = [];
+        // 统计列不是表字段，AR 水合时会丢掉，这里直接取数组行。
+        foreach ($query->asArray()->all() as $row) {
+            $counts[(string) $row['type']] = (int) $row['cnt'];
+        }
+
+        return $counts;
     }
 
     /** Display all content associated with a specific tag. */

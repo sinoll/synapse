@@ -7,6 +7,7 @@ declare(strict_types=1);
 use common\models\Post;
 use common\models\Tag;
 use frontend\assets\ImageViewerAsset;
+use frontend\assets\MomentCollapseAsset;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
@@ -14,6 +15,7 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 
 ImageViewerAsset::register($this);
+MomentCollapseAsset::register($this);
 
 $typeLabels = Post::TYPE_LABELS;
 $detailRoutes = Post::TYPE_DETAIL_ROUTES;
@@ -31,6 +33,13 @@ $previewSource = static function (Post $post): string {
     }
 
     return '';
+};
+
+/** 动态正文剥标签但留住段落：换行和块级闭合标签换成 \n，配合 pre-line 还原微博那种多段排版。 */
+$momentText = static function (string $html): string {
+    $html = preg_replace('#<br\s*/?>|</(?:p|div|li|h[1-6])[^>]*>#i', "\n", $html) ?? $html;
+
+    return trim(preg_replace('#\n{3,}#', "\n\n", strip_tags($html)) ?? '');
 };
 
 /* 先收集整页文案里的 #话题# 写法，再一次查库拿到已存在的标签；正文渲染时只链已入库的标签。 */
@@ -128,16 +137,21 @@ foreach ($posts as $post):
             $galleryImages[] = ['thumb' => (string) $image->thumbnailPath, 'full' => $full];
         }
     }
-    $preview = trim(preg_replace('/\s+/u', ' ', strip_tags($preview)) ?? '');
-    if ($keyword !== '') {
-        // 命中位置太靠后时，把窗口挪到关键词前，否则摘要里看不到匹配的内容。
-        $position = mb_stripos($preview, $keyword);
-        if ($position !== false && $position > 40) {
-            $preview = '…' . mb_substr($preview, $position - 40);
+    if ($post->type === Post::TYPE_MOMENT) {
+        // 动态整段进 DOM，长文交给卡片里的展开/收起，不再截 150 字。
+        $preview = $momentText($preview);
+    } else {
+        $preview = trim(preg_replace('/\s+/u', ' ', strip_tags($preview)) ?? '');
+        if ($keyword !== '') {
+            // 命中位置太靠后时，把窗口挪到关键词前，否则摘要里看不到匹配的内容。
+            $position = mb_stripos($preview, $keyword);
+            if ($position !== false && $position > 40) {
+                $preview = '…' . mb_substr($preview, $position - 40);
+            }
         }
-    }
-    if (mb_strlen($preview) > 150) {
-        $preview = mb_substr($preview, 0, 150) . '…';
+        if (mb_strlen($preview) > 150) {
+            $preview = mb_substr($preview, 0, 150) . '…';
+        }
     }
     $detailRoute = $detailRoutes[$post->type] ?? '/site/view';
     $author = $post->user?->nickname ?: $post->user?->username ?: '用户';
@@ -191,15 +205,27 @@ foreach ($posts as $post):
                 <?php endif; ?>
             </div>
 
-            <h2 class="home-feed-card-title h5 mb-2">
-                <?php if ($post->type === Post::TYPE_MOMENT): ?>
-                    <?= $highlight($post->title ?: '动态') ?>
-                <?php else: ?>
+            <?php if ($post->type !== Post::TYPE_MOMENT): ?>
+                <?php // 动态的标题只是正文前 8 个字（见 MomentController::contentTitle），微博式卡片直接展示正文，不再重复一行。 ?>
+                <h2 class="home-feed-card-title h5 mb-2">
                     <?= Html::a($highlight((string) $post->title, false), [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-title', 'encode' => false]) ?>
-                <?php endif; ?>
-            </h2>
+                </h2>
+            <?php endif; ?>
 
-            <?php if ($preview !== ''): ?><p class="home-feed-preview text-body-secondary mb-3"><?= $highlight($preview) ?></p><?php endif; ?>
+            <?php if ($preview !== ''): ?>
+                <?php if ($post->type === Post::TYPE_MOMENT): ?>
+                    <?php $momentTextId = 'home-feed-moment-text-' . (int) $post->id; ?>
+                    <div class="home-feed-moment mb-3">
+                        <p class="home-feed-moment-text" id="<?= $momentTextId ?>"><?= $highlight($preview) ?></p>
+                        <button type="button" class="home-feed-toggle" aria-expanded="false" aria-controls="<?= $momentTextId ?>">
+                            <span class="home-feed-toggle-label">展开</span>
+                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                <?php else: ?>
+                    <p class="home-feed-preview text-body-secondary mb-3"><?= $highlight($preview) ?></p>
+                <?php endif; ?>
+            <?php endif; ?>
             <?php if ($hasMedia): ?>
                 <div class="home-feed-media mb-3">
                     <?php if ($blogCover !== null): ?>
@@ -239,7 +265,9 @@ foreach ($posts as $post):
                 <?php if ($post->type === Post::TYPE_IMAGES): ?>
                     <span class="home-feed-media-count small text-body-secondary"><?= count($post->images) ?> 张图片</span>
                 <?php endif; ?>
-                <?= Html::a('阅读更多 <i class="bi bi-chevron-right" aria-hidden="true"></i>', [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-readmore ms-auto text-decoration-none', 'encode' => false]) ?>
+                <?php if ($post->type !== Post::TYPE_MOMENT): ?>
+                    <?= Html::a('阅读更多 <i class="bi bi-chevron-right" aria-hidden="true"></i>', [$detailRoute, 'id' => $post->id], ['class' => 'home-feed-readmore ms-auto text-decoration-none', 'encode' => false]) ?>
+                <?php endif; ?>
             </div>
         </div>
     </article>

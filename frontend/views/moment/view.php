@@ -24,7 +24,7 @@ $this->registerCss(<<<'CSS'
 CSS);
 ?>
 <div class="row justify-content-center">
-    <div class="col-12 col-lg-10 col-xl-11 col-xxl-10">
+    <div class="col-12">
         <article class="content-view content-view-moment py-3 py-md-4">
             <div class="content-detail-layout">
                 <div class="content-detail-main">

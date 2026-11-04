@@ -13,7 +13,7 @@ use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
-$this->title = 'Blog';
+$this->title = '博客';
 
 $posts = $dataProvider->getModels();
 $webRoot = Yii::getAlias('@webroot');

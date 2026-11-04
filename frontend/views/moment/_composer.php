@@ -7,10 +7,7 @@ declare(strict_types=1);
 /** @var common\models\Post $post */
 /** @var bool $isUpdate */
 /** @var string|null $contentError */
-/** @var int $selectedCateId */
-/** @var string|null $cateError */
 
-use common\models\Cate;
 use common\models\Post;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
@@ -18,9 +15,6 @@ use yii\helpers\HtmlPurifier;
 
 $isUpdate = (bool) ($isUpdate ?? false);
 $contentError = $contentError ?? null;
-$selectedCateId = (int) ($selectedCateId ?? 0);
-$cateError = $cateError ?? null;
-$categoryOptions = Cate::find()->select(['name', 'id'])->orderBy(['name' => SORT_ASC])->indexBy('id')->column();
 
 $user = Yii::$app->user->identity;
 $author = $user?->nickname ?: $user?->username ?: '我';
@@ -178,17 +172,6 @@ JS);
                             <i class="bi bi-image" aria-hidden="true"></i>
                         </label>
 
-                        <div class="d-flex align-items-center gap-1">
-                            <i class="bi bi-folder2 text-body-secondary small" aria-hidden="true"></i>
-                            <?= Html::dropDownList('cate_id', $selectedCateId > 0 ? $selectedCateId : '', $categoryOptions, [
-                                'id' => 'moment-cate-select',
-                                'class' => 'form-select form-select-sm moment-visibility' . ($cateError !== null ? ' is-invalid' : ''),
-                                'aria-label' => '分类',
-                                'title' => '分类',
-                                'prompt' => '选择分类',
-                            ]) ?>
-                        </div>
-
                         <div class="ms-auto d-flex align-items-center gap-2">
                             <?= Html::dropDownList($post->formName() . '[visibility]', (int) $post->visibility, $visibilityOptions, [
                                 'class' => 'form-select form-select-sm moment-visibility',
@@ -199,7 +182,6 @@ JS);
                             <?= Html::submitButton($isUpdate ? '保存' : '发布', ['class' => 'btn btn-primary moment-publish']) ?>
                         </div>
                     </div>
-                    <?php if ($cateError !== null): ?><div class="text-danger small mt-2"><?= Html::encode($cateError) ?></div><?php endif; ?>
                 </div>
             </div>
             <?php ActiveForm::end(); ?>

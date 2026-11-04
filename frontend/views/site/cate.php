@@ -24,13 +24,13 @@ $this->title = '分类：' . $cate->name;
     </nav>
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-        <div>
+        <div class="col-md-5">
             <h1 class="browse-page-title mb-1"><?= Html::encode($cate->name) ?></h1>
             <?php if ($cate->description): ?>
                 <p class="text-body-secondary mb-0"><?= Html::encode($cate->description) ?></p>
             <?php endif; ?>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2" style="float: right;">
             <?php foreach ($cates as $c): ?>
                 <?= Html::a(
                     Html::encode($c->name) . ' (' . $c->postCount . ')',

@@ -170,15 +170,13 @@ class MomentController extends Controller
         $model = new Moment();
         $post = new Post();
         $contentError = null;
-        $selectedCateId = $this->defaultMomentCateId();
-        $cateError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
             $editorImages = UploadedFile::getInstancesByName('editor_images');
             $post->user_id = (int) Yii::$app->user->id;
             $post->type = Post::TYPE_MOMENT;
             $post->status = Post::STATUS_PUBLISHED;
-            $post->title = $this->contentTitle($model, 8);
+            $post->title = $this->contentTitle($model, 16);
             $model->post_id = 0;
 
             $tagNames = Tag::extractHashtags((string) $model->getAttribute('content'));
@@ -186,18 +184,12 @@ class MomentController extends Controller
             if (!$tagInputValid) {
                 $contentError = '正文中最多包含 10 个 #话题#。';
             }
-            $submittedCateId = $this->submittedCateId();
-            $cateInputValid = $submittedCateId !== null;
-            $selectedCateId = $submittedCateId ?? $this->defaultMomentCateId();
-            if (!$cateInputValid) {
-                $cateError = '请选择分类。';
-            }
 
             $modelIsValid = $model->validate();
             $this->validateRichEditorImages($model, $editorImages);
             $this->validateEditorImageTokens($model, $editorImages);
 
-            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid && $cateInputValid) {
+            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid) {
                 $transaction = Yii::$app->db->beginTransaction();
                 $richImagePaths = [];
                 try {
@@ -211,7 +203,7 @@ class MomentController extends Controller
                             $transaction->rollBack();
                             $this->deleteRichEditorImages($richImagePaths);
                             $this->validateEditorImageTokens($model, []);
-                            return $this->renderForm($model, $post, $contentError, false, $selectedCateId, $cateError);
+                            return $this->renderForm($model, $post, $contentError, false);
                         }
                     }
 
@@ -223,10 +215,9 @@ class MomentController extends Controller
                     $model->thumb = $this->resolveMomentThumbnail($richImagePaths, (string) $model->getAttribute('content'));
                     if (!$model->save()) {
                         $transaction->rollBack();
-                        return $this->renderForm($model, $post, $contentError, false, $selectedCateId, $cateError);
+                        return $this->renderForm($model, $post, $contentError, false);
                     }
 
-                    $this->syncPostCategories($post, $selectedCateId);
                     $this->syncPostTags($post, $tagNames);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
@@ -242,7 +233,7 @@ class MomentController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, $contentError, false, $selectedCateId, $cateError);
+        return $this->renderForm($model, $post, $contentError, false);
     }
 
     public function actionUpdate(int $id): string|Response
@@ -255,8 +246,6 @@ class MomentController extends Controller
             throw new NotFoundHttpException('找不到该内容。');
         }
         $contentError = null;
-        $selectedCateId = $this->existingMomentCateId($post);
-        $cateError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
             $editorImages = UploadedFile::getInstancesByName('editor_images');
@@ -268,18 +257,12 @@ class MomentController extends Controller
             if (!$tagInputValid) {
                 $contentError = '正文中最多包含 10 个 #话题#。';
             }
-            $submittedCateId = $this->submittedCateId();
-            $cateInputValid = $submittedCateId !== null;
-            $selectedCateId = $submittedCateId ?? $this->existingMomentCateId($post);
-            if (!$cateInputValid) {
-                $cateError = '请选择分类。';
-            }
 
             $modelIsValid = $model->validate();
             $this->validateRichEditorImages($model, $editorImages);
             $this->validateEditorImageTokens($model, $editorImages);
 
-            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid && $cateInputValid) {
+            if ($post->validate() && $modelIsValid && !$model->hasErrors() && $tagInputValid) {
                 $transaction = Yii::$app->db->beginTransaction();
                 $richImagePaths = [];
                 try {
@@ -293,7 +276,7 @@ class MomentController extends Controller
                             $transaction->rollBack();
                             $this->deleteRichEditorImages($richImagePaths);
                             $this->validateEditorImageTokens($model, []);
-                            return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
+                            return $this->renderForm($model, $post, $contentError, true);
                         }
                     }
 
@@ -301,14 +284,13 @@ class MomentController extends Controller
                     $model->thumb = $this->resolveMomentThumbnail($richImagePaths, (string) $model->getAttribute('content'));
                     if (!$post->save(false)) {
                         $transaction->rollBack();
-                        return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
+                        return $this->renderForm($model, $post, $contentError, true);
                     }
                     if (!$model->save()) {
                         $transaction->rollBack();
-                        return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
+                        return $this->renderForm($model, $post, $contentError, true);
                     }
 
-                    $this->syncPostCategories($post, $selectedCateId);
                     $this->syncPostTags($post, $tagNames);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已更新。');
@@ -324,7 +306,7 @@ class MomentController extends Controller
             }
         }
 
-        return $this->renderForm($model, $post, $contentError, true, $selectedCateId, $cateError);
+        return $this->renderForm($model, $post, $contentError, true);
     }
 
     public function actionDelete(int $id): Response
@@ -344,15 +326,11 @@ class MomentController extends Controller
         Post $post,
         ?string $contentError,
         bool $isUpdate,
-        int $selectedCateId,
-        ?string $cateError,
     ): string {
         return $this->render($isUpdate ? 'update' : 'create', [
             'model' => $model,
             'post' => $post,
             'contentError' => $contentError,
-            'selectedCateId' => $selectedCateId,
-            'cateError' => $cateError,
         ]);
     }
 
@@ -434,51 +412,6 @@ class MomentController extends Controller
                 }
             }
             $post->link('tags', $tag);
-        }
-    }
-
-    /** @return int Category used when a new moment has no explicit choice. */
-    private function defaultMomentCateId(): int
-    {
-        $cateId = Cate::find()->select(['id'])->where(['name' => '生活瞬间'])->scalar();
-        if ($cateId === false || $cateId === null) {
-            $cateId = Cate::find()->select(['id'])->orderBy(['id' => SORT_ASC])->scalar();
-        }
-
-        return $cateId === false || $cateId === null ? 0 : (int) $cateId;
-    }
-
-    /** Keep the category already assigned when editing, otherwise use the default. */
-    private function existingMomentCateId(Post $post): int
-    {
-        $cateId = (int) ($post->categories[0]->id ?? 0);
-
-        return $cateId > 0 ? $cateId : $this->defaultMomentCateId();
-    }
-
-    /** @return int|null Null means the submitted category is missing or invalid. */
-    private function submittedCateId(): ?int
-    {
-        $cateId = filter_var(Yii::$app->request->post('cate_id'), FILTER_VALIDATE_INT, [
-            'options' => ['min_range' => 1],
-        ]);
-
-        if ($cateId === false || !Cate::find()->where(['id' => $cateId])->exists()) {
-            return null;
-        }
-
-        return (int) $cateId;
-    }
-
-    /** Replace a post's category inside the caller's current transaction. */
-    private function syncPostCategories(Post $post, int $cateId): void
-    {
-        Yii::$app->db->createCommand()->delete('{{%post_cate}}', ['post_id' => $post->id])->execute();
-        if ($cateId > 0) {
-            Yii::$app->db->createCommand()->insert('{{%post_cate}}', [
-                'post_id' => $post->id,
-                'cate_id' => $cateId,
-            ])->execute();
         }
     }
 

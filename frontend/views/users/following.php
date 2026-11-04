@@ -61,7 +61,7 @@ $users = $dataProvider->getModels();
                                         <?= Html::a(Html::encode($name), $profileUrl, ['class' => 'fw-semibold text-decoration-none']) ?>
                                     </span>
                                 </td>
-                                <td class="text-body-secondary"><?= Html::encode($bio !== '' ? $bio : '这位作者还没有写简介。') ?></td>
+                                <td class="text-body-secondary content-management-bio"><?= Html::encode($bio !== '' ? $bio : '这位作者还没有写简介。') ?></td>
                                 <td class="text-body-secondary"><?= date('Y-m-d H:i', (int) $user->followedAt) ?></td>
                                 <td class="text-end text-nowrap">
                                     <?= Html::a('查看主页', $profileUrl, ['class' => 'btn btn-sm btn-outline-secondary me-1']) ?>

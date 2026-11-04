@@ -24,7 +24,7 @@ class AppAsset extends AssetBundle
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     public $css = [
-        'css/site.css?v=20261103-hashtag',
+        'css/site.css?v=20261104-user-table-nowrap',
     ];
     public $depends = [
         YiiAsset::class,

@@ -25,12 +25,27 @@ $this->title = '标签：' . $tag->name;
 
     <h1 class="browse-page-title mb-3"># <?= Html::encode($tag->name) ?></h1>
 
+    <?php
+    // 字号按内容量取对数，避免 45 篇的标签把只有 1 篇的挤出画面。
+    $cloudMaxCount = 0;
+    foreach ($tags as $t) {
+        $cloudMaxCount = max($cloudMaxCount, (int) $t->postCount);
+    }
+    ?>
     <div class="tag-cloud">
-        <?php foreach ($tags as $t): ?>
+        <?php foreach ($tags as $index => $t): ?>
+            <?php $weight = $cloudMaxCount > 1
+                ? log(1 + (int) $t->postCount) / log(1 + $cloudMaxCount)
+                : 1.0; ?>
             <?= Html::a(
-                Html::encode($t->name) . ' (' . $t->postCount . ')',
+                '<span class="tag-cloud-name">#' . Html::encode($t->name) . '</span>'
+                    . '<span class="tag-cloud-count">' . (int) $t->postCount . '</span>',
                 ['/site/tag', 'slug' => $t->slug],
-                ['class' => $t->id === $tag->id ? 'active' : null]
+                [
+                    'class' => 'tag-cloud-item' . ($t->id === $tag->id ? ' active' : ''),
+                    'style' => '--i:' . $index . ';--w:' . round($weight, 3),
+                    'encode' => false,
+                ],
             ) ?>
         <?php endforeach; ?>
     </div>

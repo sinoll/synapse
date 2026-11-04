@@ -13,6 +13,7 @@ use frontend\widgets\LikeButton;
 use yii\helpers\Html;
 
 $typeLabels = Post::TYPE_LABELS;
+$typeRoute = Post::TYPE_CONTROLLERS[$post->type] ?? null;
 $primaryCate = $post->categories[0] ?? null;
 
 $this->registerCss(<<<'CSS'
@@ -29,6 +30,9 @@ CSS);
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><?= Html::a('首页', ['/site/index']) ?></li>
+        <?php if ($typeRoute !== null): ?>
+            <li class="breadcrumb-item"><?= Html::a(Html::encode($typeLabels[$post->type]), ['/' . $typeRoute . '/index']) ?></li>
+        <?php endif; ?>
         <?php if ($primaryCate !== null): ?>
             <li class="breadcrumb-item"><?= Html::a(Html::encode($primaryCate->name), ['/site/cate', 'slug' => $primaryCate->slug]) ?></li>
         <?php endif; ?>
