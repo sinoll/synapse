@@ -7,6 +7,7 @@ namespace common\models;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveQuery;
+use yii\web\Cookie;
 
 /** Common content entry shared by all content types. */
 class Post extends \common\models\base\Post
@@ -310,6 +311,40 @@ class Post extends \common\models\base\Post
         };
 
         return $path === '' ? '/images/default-cover.png' : '/' . ltrim($path, '/');
+    }
+
+    /**
+     * 详情页浏览计数：同一浏览器对同一条内容每天只记一次，判重标记放在 Cookie 里，
+     * 所以游客也能计数，且不需要为计数起会话。
+     *
+     * 计数走原子 UPDATE，绕开 AR 保存——用 save() 会把 updated_at 顶成访问时间，
+     * 「最后编辑时间」就再也不能信了。模型上的属性顺手加一，让本次渲染立刻带上这次浏览。
+     */
+    public function countDailyView(): void
+    {
+        $postId = (int) $this->id;
+        if ($postId <= 0) {
+            return;
+        }
+
+        $cookieName = 'post-view-' . $postId;
+        $today = date('Ymd');
+        if (Yii::$app->request->cookies->get($cookieName)?->value === $today) {
+            return;
+        }
+
+        self::updateAllCounters(['views' => 1], ['id' => $postId]);
+        $this->views = (int) $this->views + 1;
+
+        // 判重标记写回浏览器：请求侧的 CookieCollection 是只读的，要加在响应上才会变成 Set-Cookie。
+        Yii::$app->response->cookies->add(new Cookie([
+            'name' => $cookieName,
+            'value' => $today,
+            'expire' => time() + 86400,
+            'path' => '/',
+            'httpOnly' => true,
+            'sameSite' => Cookie::SAME_SITE_LAX,
+        ]));
     }
 
     /**

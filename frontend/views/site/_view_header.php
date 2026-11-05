@@ -11,6 +11,7 @@ use common\models\Post;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
+use frontend\widgets\ViewCount;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -85,6 +86,7 @@ CSS);
     <?php endif; ?>
     <time datetime="<?= Html::encode(date('Y-m-d H:i:s', (int) $post->created_at)) ?>"><?= date('Y-m-d H:i:s', $post->created_at) ?></time>
     <?php if ((int) $post->status === Post::STATUS_DRAFT): ?><span>· 草稿</span><?php endif; ?>
+    <?= ViewCount::widget(['post' => $post]) ?>
     <?= LikeButton::widget(['post' => $post]) ?>
     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
 </div>

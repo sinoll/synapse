@@ -72,6 +72,7 @@ class SyncController extends Controller
                     'title' => $row['title'],
                     'status' => 1,
                     'visibility' => 2,
+                    'views' => $row['viewCount'],
                     'created_at' => $createdAt,
                     'updated_at' => $updatedAt,
                 ])->execute();
@@ -82,8 +83,7 @@ class SyncController extends Controller
                     'title' => $row['title'],
                     'summary' => $row['postdesc'],
                     'thumb' => $row['thumb'],
-                    'content' => $row['body'],
-                    'views' => $row['viewCount'],
+                    'content' => $row['body'],                    
                     'created_at' => $createdAt,
                     'updated_at' => $updatedAt,
                 ])->execute();

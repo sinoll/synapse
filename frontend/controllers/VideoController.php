@@ -135,6 +135,7 @@ class VideoController extends Controller
             throw new NotFoundHttpException('找不到该内容。');
         }
 
+        $post->countDailyView();
         $viewData = ['post' => $post, 'video' => $video];
         if ($video->isVertical()) {
             [$previousVideo, $nextVideo] = $this->verticalNeighbors($post);

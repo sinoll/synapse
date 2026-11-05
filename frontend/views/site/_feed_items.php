@@ -11,6 +11,7 @@ use frontend\assets\MomentCollapseAsset;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
+use frontend\widgets\ViewCount;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -223,6 +224,7 @@ foreach ($posts as $post):
                         <time datetime="<?= Html::encode(date(DATE_ATOM, (int) $post->created_at)) ?>"><?= Yii::$app->formatter->asRelativeTime($post->created_at) ?></time>
                         <span aria-hidden="true">·</span>
                         <span><?= Html::encode($typeLabels[$post->type] ?? $post->type) ?></span>
+                        <?= ViewCount::widget(['post' => $post]) ?>
                     </div>
                 </div>
                 <?php if ($post->user !== null): ?>

@@ -143,6 +143,7 @@ class BlogController extends Controller
 
         $userId = $this->currentUserId();
         [$prev, $next] = Post::neighborsFor($post, $userId);
+        $post->countDailyView();
 
         return $this->render('view', [
             'post' => $post,

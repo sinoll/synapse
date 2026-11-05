@@ -14,6 +14,7 @@ use common\models\Tag;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\LikeButton;
 use frontend\widgets\FollowButton;
+use frontend\widgets\ViewCount;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -134,6 +135,7 @@ $durationOf = static function (?Post $item): ?string {
                         <span class="video-meta-chip"><i class="bi bi-clock me-1" aria-hidden="true"></i><?= Html::encode($durationLabel) ?></span>
                     <?php endif; ?>
                     <span class="video-meta-chip"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i><?= Html::encode($publishedAt) ?></span>
+                    <span class="video-meta-chip"><?= ViewCount::widget(['post' => $post]) ?></span>
                     <?php if ($canManage): ?>
                         <?= Html::a('编辑视频', ['/video/update', 'id' => $post->id], ['class' => 'btn btn-outline-secondary btn-sm']) ?>
                     <?php endif; ?>
@@ -176,6 +178,7 @@ $durationOf = static function (?Post $item): ?string {
                                 发布于 <?= Html::encode($publishedAt) ?>
                                 <?php if ($durationLabel !== null): ?> · <?= Html::encode($durationLabel) ?><?php endif; ?>
                                 · 横屏
+                                · <?= ViewCount::widget(['post' => $post]) ?>
                             </div>
                         </div>
                     </div>
