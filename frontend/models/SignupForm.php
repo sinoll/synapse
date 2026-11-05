@@ -96,7 +96,8 @@ class SignupForm extends Model
         $user = new User();
         $user->username = $this->username;
         $user->email = $this->email;
-        $user->status = User::STATUS_ACTIVE;
+        // 账户要等用户点击确认邮件里的链接才激活，见 VerifyEmailForm::verifyEmail()。
+        $user->status = User::STATUS_INACTIVE;
         // 自助注册者刚自己选过口令，不能再被强制改密；公开入口也永远不给管理权限。
         $user->must_change_password = 0;
         $user->is_admin = 0;
@@ -119,7 +120,7 @@ class SignupForm extends Model
     }
 
     /**
-     * 发送邮箱归属确认信。发信失败不影响注册结果，只影响提示文案。
+     * 发送激活邮件（内含一次性确认链接）。发信失败不影响注册结果，账户保持待激活。
      */
     public function sendVerificationEmail(MailSenderInterface $mailSender): bool
     {
@@ -130,7 +131,7 @@ class SignupForm extends Model
         return MailMessage::send(
             $mailSender,
             $this->_createdUser->email,
-            '确认你的邮箱 - ' . Yii::$app->name,
+            '激活你的账户 - ' . Yii::$app->name,
             '@common/mail/emailVerify',
             ['user' => $this->_createdUser, 'verifyLink' => Yii::$app->urlManager->createAbsoluteUrl(
                 ['users/verify-email', 'token' => $this->_createdUser->emailVerifySecret],

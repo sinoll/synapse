@@ -30,7 +30,7 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                             确认你的<br>邮箱
                         </h2>
                         <p class="opacity-75 mb-0 login-brand-text">
-                            我们会重新发送一封确认邮件。确认邮箱不影响登录，只是找回密码的前提。
+                            我们会重新发送一封确认邮件。账户要点击邮件里的确认链接激活后才能登录。
                         </p>
                     </div>
                 </div>

@@ -23,7 +23,7 @@ return [
     'smtp.fromName' => '',
     // 规范站点地址。留空时从当前请求推断；生产建议显式配置，
     // 避免伪造 Host 头时把带重置令牌的外链发往攻击者域名。
-    'siteBaseUrl' => 'sinocd.cn',
+    'siteBaseUrl' => 'http://localhost',
     // 内容类型，取值以 Post::TYPE_* 常量为唯一来源。
     'content.type' => [
         1 => Post::TYPE_BLOG,

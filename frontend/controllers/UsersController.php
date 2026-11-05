@@ -375,7 +375,7 @@ class UsersController extends Controller
     }
 
     /**
-     * 自助注册：注册即激活，邮箱只作为找回密码与账号通知的凭证。
+     * 自助注册：只建待激活账户，用户点确认邮件里的链接激活后才能登录。
      *
      * @return string|Response
      */
@@ -402,15 +402,14 @@ class UsersController extends Controller
 
             $user = $model->signup();
             if ($user !== null) {
-                Yii::$app->user->login($user);
-                // 确认信发不出去也不回滚注册：登录页有重发入口，但要把"没发出去"告诉用户。
+                // 确认信是激活的唯一入口，发不出去也不回滚注册：登录页有重发入口，但要告诉用户没发出去。
                 if ($model->sendVerificationEmail(Yii::$app->mailSender)) {
-                    Yii::$app->session->setFlash('success', '注册完成，确认邮件已发送到 ' . $user->email . '。');
+                    Yii::$app->session->setFlash('success', '注册完成，请前往 ' . $user->email . ' 点击邮件里的确认链接激活账户。');
                 } else {
-                    Yii::$app->session->setFlash('warning', '注册完成，但确认邮件发送失败，你可以稍后在登录页重新发送。');
+                    Yii::$app->session->setFlash('warning', '注册完成，但激活邮件发送失败，请在下方重新发送确认邮件后再登录。');
                 }
 
-                return $this->redirect(['index']);
+                return $this->redirect(['login']);
             }
         }
 
@@ -485,7 +484,7 @@ class UsersController extends Controller
     }
 
     /**
-     * 确认邮箱归属：消费邮件链接里的一次性令牌。
+     * 确认邮箱归属：消费邮件链接里的一次性令牌，待激活账户在这里转为可用。
      *
      * @param string $token 明文令牌
      * @return Response
@@ -499,14 +498,15 @@ class UsersController extends Controller
             $user = null;
         }
 
+        $needLogin = Yii::$app->user->isGuest;
         Yii::$app->session->setFlash(
             $user === null ? 'error' : 'success',
             $user === null
                 ? '确认链接无效或已过期，请重新发送确认邮件。'
-                : '邮箱已确认。',
+                : ($needLogin ? '邮箱已确认，账户已激活，现在可以登录了。' : '邮箱已确认。'),
         );
 
-        return $this->redirect(Yii::$app->user->isGuest ? ['login'] : ['index']);
+        return $this->redirect($needLogin ? ['login'] : ['index']);
     }
 
     /**
@@ -528,7 +528,7 @@ class UsersController extends Controller
                 if (!$model->sendEmail(Yii::$app->mailSender)) {
                     Yii::error('邮箱确认信投递失败', 'mail');
                 }
-                Yii::$app->session->setFlash('success', '如果该邮箱还需要确认，新的确认邮件已发送。');
+                Yii::$app->session->setFlash('success', '如果该邮箱有等待激活的账户，新的激活邮件已经发送。');
 
                 return $this->refresh();
             }

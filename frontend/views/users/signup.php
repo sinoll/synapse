@@ -45,7 +45,7 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     <div class="text-center mb-4">
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
                         <p class="text-body-secondary small">
-                            <?= $signupEnabled ? '填写下面的信息即可创建账户' : '自助注册暂时关闭，请稍后再来' ?>
+                            <?= $signupEnabled ? '填写下面的信息创建账户，再点击确认邮件里的链接激活即可登录' : '自助注册暂时关闭，请稍后再来' ?>
                         </p>
                     </div>
 
@@ -84,7 +84,7 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                                 'maxlength' => true,
                                 'autocomplete' => 'email',
                             ],
-                        ])->textInput()->label('邮箱', $labelOptions)->hint('用于找回密码和接收账号通知，不会公开展示。') ?>
+                        ])->textInput()->label('邮箱', $labelOptions)->hint('用于激活账户、找回密码和接收账号通知，不会公开展示。') ?>
                     </div>
 
                     <div class="mb-3">

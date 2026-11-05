@@ -41,8 +41,7 @@ class ResendVerificationEmailForm extends Model
     public function sendEmail(MailSenderInterface $mailSender): bool
     {
         $user = User::find()
-            ->where(['email' => $this->email])
-            ->andWhere(['<>', 'status', User::STATUS_DELETED])
+            ->where(['email' => $this->email, 'status' => User::STATUS_INACTIVE])
             ->one();
         if ($user === null) {
             return true;
@@ -63,7 +62,7 @@ class ResendVerificationEmailForm extends Model
         $sent = MailMessage::send(
             $mailSender,
             $user->email,
-            '确认你的邮箱 - ' . Yii::$app->name,
+            '激活你的账户 - ' . Yii::$app->name,
             '@common/mail/emailVerify',
             [
                 'user' => $user,
