@@ -10,8 +10,8 @@ declare(strict_types=1);
 /** @var common\models\Post|null $next */
 /** @var array{total: int, byType: array<string, int>} $authorCounts */
 
+use common\components\RichText;
 use common\models\Tag;
-use yii\helpers\HtmlPurifier;
 
 $displayTitle = $post->title ?: '动态';
 $this->title = $displayTitle;
@@ -32,7 +32,7 @@ CSS);
 
                     <div class="border rounded-4 p-3 p-md-4 card">
                         <div class="rich-content text-break">
-                            <?= Tag::linkifyHashtags(HtmlPurifier::process((string) $moment->content, ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]'])) ?>
+                            <?= Tag::linkifyHashtags(RichText::purify((string) $moment->content)) ?>
                         </div>
                     </div>
 

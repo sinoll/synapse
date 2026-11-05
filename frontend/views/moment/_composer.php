@@ -8,10 +8,10 @@ declare(strict_types=1);
 /** @var bool $isUpdate */
 /** @var string|null $contentError */
 
+use common\components\RichText;
 use common\models\Post;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
-use yii\helpers\HtmlPurifier;
 
 $isUpdate = (bool) ($isUpdate ?? false);
 $contentError = $contentError ?? null;
@@ -147,7 +147,7 @@ JS);
                     </div>
 
                     <?php
-                    $purifiedContent = HtmlPurifier::process((string) $model->getAttribute('content'), ['HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title],pre,code']);
+                    $purifiedContent = RichText::purify((string) $model->getAttribute('content'));
                     // 丢弃历史遗留/未成功上传的图片占位符，避免它们被再次提交。
                     $purifiedContent = (string) preg_replace('/\[\[EDITOR_IMAGE_\d+\]\]/', '', $purifiedContent);
                     ?>

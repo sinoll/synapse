@@ -5,12 +5,12 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
+use common\components\RichText;
 use common\models\Tag;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
 use yii\helpers\Html;
-use yii\helpers\HtmlPurifier;
 use yii\helpers\Url;
 
 $webRoot = Yii::getAlias('@frontend/web');
@@ -75,9 +75,7 @@ foreach ($posts as $post):
     $title = (string) ($post->title ?: '动态');
     $visibilityLabel = $visibilityLabels[(int) $post->visibility] ?? null;
 
-    $contentHtml = HtmlPurifier::process((string) $moment->content, [
-        'HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title]',
-    ]);
+    $contentHtml = RichText::purify((string) $moment->content);
     $inlineHashtags = Tag::extractHashtags($contentHtml);
     $contentHtml = Tag::linkifyHashtags($contentHtml);
     $images = $momentContentImages($contentHtml);

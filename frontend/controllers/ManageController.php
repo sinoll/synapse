@@ -15,6 +15,7 @@ use yii\web\ForbiddenHttpException;
 use yii\web\MethodNotAllowedHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
+use yii\web\UploadedFile;
 
 class ManageController extends Controller
 {
@@ -118,9 +119,14 @@ class ManageController extends Controller
         $model = new Cate();
         if ($model->load(Yii::$app->request->post())) {
             $this->prepareCategorySlug($model);
-            if ($model->save()) {
-                Yii::$app->session->setFlash('success', '分类已创建。');
-                return $this->redirect(['index', 'section' => 'categories']);
+            $storedThumb = $this->applyCategoryThumbUpload($model);
+            if (!$model->hasErrors()) {
+                if ($model->save()) {
+                    Yii::$app->session->setFlash('success', '分类已创建。');
+                    return $this->redirect(['index', 'section' => 'categories']);
+                }
+                $this->deleteCategoryThumbFile($storedThumb);
+                $model->thumb = '';
             }
         }
 
@@ -130,11 +136,20 @@ class ManageController extends Controller
     public function actionCategoryUpdate(int $id): string|Response
     {
         $model = $this->findCategory($id);
+        $previousThumb = trim((string) $model->thumb);
         if ($model->load(Yii::$app->request->post())) {
             $this->prepareCategorySlug($model);
-            if ($model->save()) {
-                Yii::$app->session->setFlash('success', '分类已更新。');
-                return $this->redirect(['index', 'section' => 'categories']);
+            $storedThumb = $this->applyCategoryThumbUpload($model);
+            if (!$model->hasErrors()) {
+                if ($model->save()) {
+                    if ($storedThumb !== null) {
+                        $this->deleteCategoryThumbFile($previousThumb);
+                    }
+                    Yii::$app->session->setFlash('success', '分类已更新。');
+                    return $this->redirect(['index', 'section' => 'categories']);
+                }
+                $this->deleteCategoryThumbFile($storedThumb);
+                $model->thumb = $previousThumb;
             }
         }
 
@@ -151,6 +166,7 @@ class ManageController extends Controller
         if ($model->getPosts()->count() > 0) {
             Yii::$app->session->setFlash('error', '该分类下仍有内容，请先调整相关内容再删除。');
         } elseif ($model->delete() !== false) {
+            $this->deleteCategoryThumbFile((string) $model->thumb);
             Yii::$app->session->setFlash('success', '分类已删除。');
         } else {
             Yii::$app->session->setFlash('error', '分类删除失败，请重试。');
@@ -173,6 +189,55 @@ class ManageController extends Controller
     {
         $slug = trim((string) $model->slug);
         $model->slug = $slug !== '' ? $slug : Cate::slugForName((string) $model->name);
+    }
+
+    /**
+     * Move an uploaded category thumbnail into the thumb directory.
+     *
+     * @return string|null the stored web path, or null when no file was submitted or storing failed
+     */
+    private function applyCategoryThumbUpload(Cate $model): ?string
+    {
+        $file = UploadedFile::getInstance($model, 'thumb');
+        if ($file === null) {
+            return null;
+        }
+        if ($file->error !== UPLOAD_ERR_OK
+            || !in_array(strtolower((string) $file->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
+            || $file->size > 5 * 1024 * 1024
+            || @getimagesize($file->tempName) === false) {
+            $model->addError('thumb', '请选择有效的缩略图图片（JPG、PNG、GIF、WebP），且不超过 5 MB。');
+            return null;
+        }
+
+        $directory = Yii::getAlias('@frontend/web/uploads/thumb/cate');
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            $model->addError('thumb', '缩略图目录创建失败，请检查 uploads/thumb/cate 的写入权限。');
+            return null;
+        }
+        $name = Yii::$app->security->generateRandomString(32) . '.' . strtolower((string) $file->extension);
+        if (!$file->saveAs($directory . DIRECTORY_SEPARATOR . $name)) {
+            $model->addError('thumb', '缩略图保存失败，请重新选择文件。');
+            return null;
+        }
+
+        $model->thumb = '/uploads/thumb/cate/' . $name;
+
+        return $model->thumb;
+    }
+
+    /** Only unlinks files stored by this form; legacy hand-written thumb paths are left alone. */
+    private function deleteCategoryThumbFile(?string $path): void
+    {
+        if ($path === null || $path === ''
+            || !preg_match('#^/uploads/thumb/cate/[A-Za-z0-9_-]+\.(?:jpe?g|png|gif|webp)$#i', $path)) {
+            return;
+        }
+
+        $file = Yii::getAlias('@frontend/web') . $path;
+        if (is_file($file)) {
+            @unlink($file);
+        }
     }
 
     /** @return Cate[] */

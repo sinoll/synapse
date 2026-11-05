@@ -10,9 +10,9 @@ declare(strict_types=1);
 /** @var common\models\Post|null $next */
 /** @var array{total: int, byType: array<string, int>} $authorCounts */
 
+use common\components\RichText;
 use common\models\BlogPost;
 use yii\helpers\Html;
-use yii\helpers\HtmlPurifier;
 
 $this->title = $post->title;
 
@@ -21,9 +21,7 @@ $this->registerCss(<<<'CSS'
 CSS);
 
 // 锚点在净化之后注入，因此 HTML.Allowed 不必放开 h2[id]。
-[$contentHtml, $headings] = BlogPost::withHeadingAnchors(HtmlPurifier::process((string) $blog->content, [
-    'HTML.Allowed' => 'p,br,div,strong,b,em,i,u,s,ul,ol,li,h2,h3,blockquote,a[href|title],span,img[src|alt|title],pre,code',
-]));
+[$contentHtml, $headings] = BlogPost::withHeadingAnchors(RichText::purify((string) $blog->content));
 ?>
 <div class="row justify-content-center">
     <div class="col-12">

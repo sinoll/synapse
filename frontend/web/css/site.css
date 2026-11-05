@@ -416,6 +416,11 @@ a.desc:after {
 .rich-content img,
 .rich-content video { max-width: 100%; height: auto; }
 .rich-content a { overflow-wrap: anywhere; }
+/* 详情页正文沿用中文排版：段落首行缩进两个汉字，纯图片/视频块不缩进。 */
+.content-view .rich-content > p,
+.content-view .rich-content > div { text-indent: 2em; }
+.content-view .rich-content > p:has(img, video),
+.content-view .rich-content > div:has(img, video) { text-indent: 0; }
 
 /* ---------- Navbar Warm ---------- */
 html { scroll-padding-top: 5rem; }
