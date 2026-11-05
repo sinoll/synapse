@@ -34,13 +34,8 @@ class MailController extends Controller
      */
     public function actionDoctor(): int
     {
-        $sender = Yii::$app->mailSender;
+        $sender = $this->sender();
         if (!$sender instanceof SmtpMailSender) {
-            $this->stdout(sprintf(
-                "[FAIL] mailSender 组件是 %s，不是 SmtpMailSender。\n",
-                get_class($sender),
-            ));
-
             return ExitCode::CONFIG;
         }
 
@@ -77,8 +72,13 @@ class MailController extends Controller
             return ExitCode::USAGE;
         }
 
+        $sender = $this->sender();
+        if (!$sender instanceof SmtpMailSender) {
+            return ExitCode::CONFIG;
+        }
+
         try {
-            Yii::$app->mailSender->send(
+            $sender->send(
                 $this->to,
                 sprintf('[%s] 发信自检', Yii::$app->name),
                 '<p>这是一封由 <code>php yii mail/test</code> 发出的自检邮件，收到即表示发信通道通畅。</p>',
@@ -96,6 +96,41 @@ class MailController extends Controller
         $this->stdout(sprintf("[ OK ] 已投递到 %s，请查收（也看一下垃圾箱）。\n", $this->to));
 
         return ExitCode::OK;
+    }
+
+    /**
+     * 取发信组件。配置里没有 mailSender 时 Yii 会抛 "Getting unknown property"，
+     * 那句话对排障没有信息量，这里换成能照着改的提示。
+     */
+    private function sender(): SmtpMailSender|null
+    {
+        if (!Yii::$app->has('mailSender')) {
+            $this->stdout(<<<TXT
+                [FAIL] 当前应用的配置里没有 mailSender 组件。
+                  检查 common/config/main.php 的 components.mailSender 是否存在，
+                  以及它引用的 common/config/params.php 里有没有 smtp.* 这些键。
+                  两边都 grep 不到的话，说明服务器上的代码不是本次改造后的版本：
+                    grep -rn "mailSender" common/config/*.php
+                    git log --oneline -1
+                代码与配置必须一起部署，只覆盖其中几个文件就会出现这种"组件不存在"。
+
+                TXT);
+
+            return null;
+        }
+
+        $sender = Yii::$app->get('mailSender');
+        if (!$sender instanceof SmtpMailSender) {
+            $this->stdout(sprintf(
+                "[FAIL] mailSender 组件是 %s，不是 SmtpMailSender。"
+                . "常见原因是某个 *-local.php 里还留着旧的覆盖：grep -rn mailSender common/config/*.php\n",
+                get_class($sender),
+            ));
+
+            return null;
+        }
+
+        return $sender;
     }
 
     /**
