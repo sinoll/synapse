@@ -15,14 +15,10 @@ $detailRoutes = Post::TYPE_DETAIL_ROUTES;
 
 foreach ($posts as $post):
     $summary = '';
-    $momentThumb = null;
     if ($post->type === Post::TYPE_BLOG && $post->blog !== null) {
         $summary = (string) ($post->blog->summary ?: $post->blog->content);
     } elseif ($post->type === Post::TYPE_MOMENT && $post->moment !== null) {
         $summary = (string) $post->moment->content;
-        if (!empty($post->moment->thumb)) {
-            $momentThumb = $post->moment->thumb;
-        }
     } elseif ($post->type === Post::TYPE_SHORT_VIDEO && $post->shortVideo !== null) {
         $summary = (string) $post->shortVideo->description;
     }
@@ -30,15 +26,7 @@ foreach ($posts as $post):
     if (mb_strlen($summary) > 120) {
         $summary = mb_substr($summary, 0, 120) . '…';
     }
-    if ($post->type === Post::TYPE_BLOG && !empty($post->blog->thumb)) {
-        $cover = '/' . ltrim($post->blog->thumb, '/');
-    } elseif ($post->type === Post::TYPE_IMAGES && !empty($post->images)) {
-        $cover = $post->images[0]->file_path;
-    } elseif ($momentThumb !== null) {
-        $cover = $momentThumb;
-    } else {
-        $cover = '/images/default-cover.png';
-    }
+    $cover = $post->coverUrl();
     ?>
     <div class="col cover-list-cell">
         <?= LikeButton::widget([
