@@ -24,7 +24,7 @@ class AppAsset extends AssetBundle
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     public $css = [
-        'css/site.css?v=20261105-paragraph-indent',
+        'css/site.css?v=20261105-feed-collapse',
     ];
     public $depends = [
         YiiAsset::class,

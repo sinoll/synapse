@@ -20,7 +20,7 @@
 
     // 先套上折叠样式量一次（is-measuring），确实被截掉才挂 is-collapsible 并显示开关。
     const measure = function (block) {
-        const text = block.querySelector('.home-feed-moment-text');
+        const text = block.querySelector('.home-feed-collapse-text');
         if (!text) return;
 
         const expanded = block.classList.contains('is-expanded');
@@ -37,7 +37,7 @@
     };
 
     const measureAll = function () {
-        document.querySelectorAll('.home-feed-moment').forEach(measure);
+        document.querySelectorAll('.home-feed-collapse').forEach(measure);
     };
 
     // 事件委托：无限滚动追加进来的卡片不用重新绑定点击。
@@ -45,7 +45,7 @@
         const toggle = event.target.closest('.home-feed-toggle');
         if (!toggle) return;
 
-        const block = toggle.closest('.home-feed-moment');
+        const block = toggle.closest('.home-feed-collapse');
         if (!block) return;
 
         block.classList.toggle('is-expanded');
@@ -66,8 +66,8 @@
             records.forEach(function (record) {
                 record.addedNodes.forEach(function (node) {
                     if (node.nodeType !== 1) return;
-                    if (node.classList && node.classList.contains('home-feed-moment')) measure(node);
-                    node.querySelectorAll('.home-feed-moment').forEach(measure);
+                    if (node.classList && node.classList.contains('home-feed-collapse')) measure(node);
+                    node.querySelectorAll('.home-feed-collapse').forEach(measure);
                 });
             });
         }).observe(document.body, {childList: true, subtree: true});

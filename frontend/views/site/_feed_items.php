@@ -35,8 +35,8 @@ $previewSource = static function (Post $post): string {
     return '';
 };
 
-/** 动态正文剥标签但留住段落：换行和块级闭合标签换成 \n，配合 pre-line 还原微博那种多段排版。 */
-$momentText = static function (string $html): string {
+/** 正文剥标签但留住段落：换行和块级闭合标签换成 \n，配合 pre-line 还原微博那种多段排版。 */
+$blockText = static function (string $html): string {
     $html = preg_replace('#<br\s*/?>|</(?:p|div|li|h[1-6])[^>]*>#i', "\n", $html) ?? $html;
 
     return trim(preg_replace('#\n{3,}#', "\n\n", strip_tags($html)) ?? '');
@@ -46,7 +46,12 @@ $momentText = static function (string $html): string {
 $hashtagPattern = '/#([^#\s<>][^#<>]{0,30})#/u';
 $hashtagNames = [];
 foreach ($posts as $post) {
-    foreach ([$post->title, $previewSource($post)] as $raw) {
+    $scanned = [$post->title, $previewSource($post)];
+    if ($post->type === Post::TYPE_BLOG) {
+        // 没有封面的博客条目会把整段正文摆进卡片，正文里的 #话题# 也要参与匹配。
+        $scanned[] = (string) ($post->blog?->content ?? '');
+    }
+    foreach ($scanned as $raw) {
         if (preg_match_all($hashtagPattern, strip_tags((string) $raw), $matches)) {
             foreach ($matches[1] as $name) {
                 $hashtagNames[trim($name)] = true;
@@ -133,16 +138,18 @@ foreach ($posts as $post):
     $galleryImages = [];
     $blogCover = null;
     $blogCoverViewable = false;
+    $fullBody = null;
     if ($post->type === Post::TYPE_BLOG && $post->blog !== null) {
-        $blogCover = '/images/default-cover.png';
         $thumb = trim((string) $post->blog->thumb);
-        if ($thumb !== '') {
-            $thumbPath = '/' . ltrim($thumb, '/');
-            if (is_file(Yii::getAlias('@frontend/web') . $thumbPath)) {
-                // 封面列存的就是上传时生成的缩略图，站点里没有更深的原图，放大用的也是它。
-                $blogCover = $thumbPath;
-                $blogCoverViewable = true;
-            }
+        $thumbPath = '/' . ltrim($thumb, '/');
+        if ($thumb !== '' && is_file(Yii::getAlias('@frontend/web') . $thumbPath)) {
+            // 封面列存的就是上传时生成的缩略图，站点里没有更深的原图，放大用的也是它。
+            $blogCover = $thumbPath;
+            $blogCoverViewable = true;
+        } else {
+            // 没有封面就不再摆默认图：整段正文接手这个位置，正文里的插图一并展示。
+            $fullBody = (string) ($post->blog->content ?: $post->blog->summary);
+            $momentImages = $momentFeedImages($fullBody);
         }
     } elseif ($post->type === Post::TYPE_MOMENT && $post->moment !== null) {
         $momentImages = $momentFeedImages($preview);
@@ -155,9 +162,11 @@ foreach ($posts as $post):
             $galleryImages[] = ['thumb' => (string) $image->thumbnailPath, 'full' => $full];
         }
     }
-    if ($post->type === Post::TYPE_MOMENT) {
-        // 动态整段进 DOM，长文交给卡片里的展开/收起，不再截 150 字。
-        $preview = $momentText($preview);
+    // 动态整段进 DOM；博客在没有封面（且不是搜索结果）时同样整段，长文交给卡片里的展开/收起。
+    $collapses = $post->type === Post::TYPE_MOMENT
+        || ($fullBody !== null && $keyword === '');
+    if ($collapses) {
+        $preview = $blockText((string) ($fullBody ?? $preview));
     } else {
         $preview = trim(preg_replace('/\s+/u', ' ', strip_tags($preview)) ?? '');
         if ($keyword !== '') {
@@ -231,11 +240,11 @@ foreach ($posts as $post):
             <?php endif; ?>
 
             <?php if ($preview !== ''): ?>
-                <?php if ($post->type === Post::TYPE_MOMENT): ?>
-                    <?php $momentTextId = 'home-feed-moment-text-' . (int) $post->id; ?>
-                    <div class="home-feed-moment mb-3">
-                        <p class="home-feed-moment-text" id="<?= $momentTextId ?>"><?= $highlight($preview) ?></p>
-                        <button type="button" class="home-feed-toggle" aria-expanded="false" aria-controls="<?= $momentTextId ?>">
+                <?php if ($collapses): ?>
+                    <?php $collapseTextId = 'home-feed-collapse-text-' . (int) $post->id; ?>
+                    <div class="home-feed-collapse mb-3">
+                        <p class="home-feed-collapse-text" id="<?= $collapseTextId ?>"><?= $highlight($preview) ?></p>
+                        <button type="button" class="home-feed-toggle" aria-expanded="false" aria-controls="<?= $collapseTextId ?>">
                             <span class="home-feed-toggle-label">展开</span>
                             <i class="bi bi-chevron-down" aria-hidden="true"></i>
                         </button>

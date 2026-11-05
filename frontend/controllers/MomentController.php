@@ -222,7 +222,7 @@ class MomentController extends Controller
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
-                    return $this->redirect(['/moment/view', 'id' => $post->id]);
+                    return $this->redirect(['/site/index', 'type' => 'moment']);
                 } catch (\Throwable $exception) {
                     $this->deleteRichEditorImages($richImagePaths);
                     if ($transaction->isActive) {
@@ -295,7 +295,7 @@ class MomentController extends Controller
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已更新。');
 
-                    return $this->redirect(['/moment/view', 'id' => $post->id]);
+                    return $this->redirect(['/site/index', 'type' => 'moment']);
                 } catch (\Throwable $exception) {
                     $this->deleteRichEditorImages($richImagePaths);
                     if ($transaction->isActive) {
