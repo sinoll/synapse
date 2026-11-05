@@ -25,7 +25,8 @@ Thumbs.db
 
 # composer itself is not needed
 composer.phar
-composer.lock
+# composer.lock 纳入版本管理：否则服务器 composer install 会按旧 lock 装包，
+# 出现过 composer.json 已声明 symfony/mailer 而 lock/vendor 里没有它的发信故障。
 
 # Mac DS_Store Files
 .DS_Store

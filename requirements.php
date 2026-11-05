@@ -141,12 +141,12 @@ $requirements = array(
         'by' => 'Security reasons',
         'memo' => '"allow_url_include" should be disabled at php.ini',
     ),
-    'phpSmtp' => array(
-        'name' => 'PHP mail SMTP',
+    'phpOpenssl' => array(
+        'name' => 'PHP OpenSSL extension',
         'mandatory' => false,
-        'condition' => strlen(ini_get('SMTP')) > 0,
+        'condition' => extension_loaded('openssl'),
         'by' => 'Email sending',
-        'memo' => 'PHP mail SMTP server required',
+        'memo' => '发信走带鉴权的加密 SMTP，需要 openssl 扩展（cli 与 fpm 两份 php.ini 都要开）',
     ),
 );
 

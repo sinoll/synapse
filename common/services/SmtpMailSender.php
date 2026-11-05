@@ -16,9 +16,9 @@ use Yii;
 /**
  * 通过需要鉴权的 SMTP 服务投递（smtp.163.com:465/SSL 之类）。
  *
- * 与 PhpMailSender 的区别：那条路径依赖 PHP 内置 mail()，既不能鉴权也不能加密；
- * 这里用 symfony/mailer 直连 SMTP 并完成 STARTTLS/隐式 TLS + AUTH，
- * 因此可以把 host/username/password 等配置真正用起来。
+ * 这是站点唯一的投递路径：不依赖 PHP 内置 mail() 或本机 MTA，凭据与加密方式都在
+ * params['smtp.*'] 里配置（见 common/config/main.php 的映射），因此 Windows 与
+ * Linux 的行为一致。排查用 php yii mail/doctor，真发一封用 php yii mail/test。
  */
 class SmtpMailSender implements MailSenderInterface
 {
@@ -63,7 +63,7 @@ class SmtpMailSender implements MailSenderInterface
         }
 
         if ($this->host === '' || $this->username === '' || $this->password === '') {
-            throw new RuntimeException('SMTP 发信服务未配置，请检查 mailSender 的 host/username/password。');
+            throw new RuntimeException('SMTP 发信服务未配置，请补齐 params-local.php 的 smtp.host/username/password（php yii mail/doctor 可自检）。');
         }
 
         $encryption = strtolower($this->encryption);
@@ -89,7 +89,7 @@ class SmtpMailSender implements MailSenderInterface
     {
         $from = $this->fromEmail !== '' ? $this->fromEmail : $this->username;
         if (!filter_var($from, FILTER_VALIDATE_EMAIL)) {
-            throw new RuntimeException('站点发信地址未配置，请在 mailSender 中设置 fromEmail。');
+            throw new RuntimeException('站点发信地址未配置，请在 params-local.php 设置 smtp.fromEmail。');
         }
 
         if ($this->username !== '' && strcasecmp($from, $this->username) !== 0) {

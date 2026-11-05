@@ -9,15 +9,21 @@ return [
     'user.passwordResetTokenExpire' => 3600,
     'user.emailVerifyTokenExpire' => 604800,
     'user.passwordMinLength' => 8,
-    // 站点发信地址，上线前在 params-local.php 覆盖成真实域名下的地址，否则邮件基本必然进垃圾箱。
-    'mailSupportEmail' => 'noreply@example.com',
-    // Windows 下 PHP 的 mail() 只能走 php.ini 指定的 SMTP；这两项用于在 params-local.php
-    // 里覆盖成免鉴权的本机转发器（如 papercut/smtp4dev），留空则沿用 php.ini。
-    'mailSmtpHost' => '',
-    'mailSmtpPort' => '',
+    // 发信通道：唯一的投递路径，直连带鉴权的 SMTP，不依赖本机 mail() 或 MTA。
+    // 各机器只覆盖需要变的键（host/username/password/fromEmail），写在 params-local.php：
+    // 该文件 git 忽略、且 php init 会重新生成，所以 environments/* 模板里留了同名占位。
+    // encryption: ssl=465 隐式 TLS；tls=587 明文连上再 STARTTLS；留空=不加密，只用于本机联调。
+    // smtp.fromEmail 必须与 smtp.username 是同一个地址：163/QQ 之类公共邮箱会校验 MAIL FROM，不一致直接 550 退回。
+    'smtp.host' => '',
+    'smtp.port' => 465,
+    'smtp.encryption' => 'ssl',
+    'smtp.username' => '',
+    'smtp.password' => '',
+    'smtp.fromEmail' => '',
+    'smtp.fromName' => '',
     // 规范站点地址。留空时从当前请求推断；生产建议显式配置，
     // 避免伪造 Host 头时把带重置令牌的外链发往攻击者域名。
-    'siteBaseUrl' => '',
+    'siteBaseUrl' => 'sinocd.cn',
     // 内容类型，取值以 Post::TYPE_* 常量为唯一来源。
     'content.type' => [
         1 => Post::TYPE_BLOG,

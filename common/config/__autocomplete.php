@@ -22,6 +22,9 @@ class Yii
 /**
  * @property yii\rbac\DbManager $authManager
  * @property \yii\web\User|__WebUser $user
+ * @property \common\services\MailSenderInterface $mailSender
+ * @property \common\services\SmsSenderInterface $smsSender
+ * @property \services\FfmpegService $ffmpegService
  */
 class __Application
 {
