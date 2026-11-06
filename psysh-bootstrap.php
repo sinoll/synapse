@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-/***
+/*****
+ * 
  *  注意： 保存到 项目根目录下
  * 
  * windows:
@@ -16,7 +17,8 @@ declare(strict_types=1);
  *		>>> Yii::$app->components
  * 
  * 结束：  exit
- * **/
+ * 
+ * ****/
 
 defined('YII_DEBUG') or define('YII_DEBUG', true);
 defined('YII_ENV') or define('YII_ENV', 'dev');
