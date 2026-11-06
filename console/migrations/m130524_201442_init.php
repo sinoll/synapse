@@ -41,6 +41,7 @@ class m130524_201442_init extends Migration
         ], $tableOptions);
         $this->createIndex('uq_user_phone', '{{%user}}', 'phone', true);
 
+        // 数据迁移前( php yii migrate ) 请修改 用户名 default 和注册邮箱 default@localhost.invalid
         $now = time();
         $this->insert('{{%user}}', [
             'username' => 'default',
