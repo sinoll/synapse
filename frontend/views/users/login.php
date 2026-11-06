@@ -96,6 +96,11 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                         <?= Html::a('重发确认邮件', ['/users/resend-verification-email']) ?>
                     </div>
 
+                    <p class="text-body-secondary text-center small mb-0">
+                        超过 <?= max(1, (int) round(((int) Yii::$app->params['user.loginCodeAfterInactivity']) / 86400)) ?> 天未登录的账户，
+                        登录时会向注册邮箱发送验证码确认是本人。
+                    </p>
+
                 </div>
             </div>
 

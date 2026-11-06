@@ -22,6 +22,7 @@ use yii\web\IdentityInterface;
  * @property string $email
  * @property string|null $phone
  * @property int|null $phone_verified_at
+ * @property int|null $last_login_at
  * @property string|null $nickname
  * @property string|null $avatar
  * @property string|null $bio
@@ -303,6 +304,40 @@ class User extends ActiveRecord implements IdentityInterface
     public function displayName(): string
     {
         return $this->nickname ?: $this->username;
+    }
+
+    /** 脱敏邮箱，够本人认出是哪个邮箱，不够旁人补全。 */
+    public function maskedEmail(): string
+    {
+        [$name, $domain] = array_pad(explode('@', (string) $this->email, 2), 2, '');
+
+        return mb_substr($name, 0, 1) . '***' . ($domain === '' ? '' : '@' . $domain);
+    }
+
+    /**
+     * 前台登录是否需要追加一道邮箱验证码。
+     *
+     * 没有登录记录的账户第一次放行：这一列是后加起来的，NULL 只代表"无从判断"，
+     * 不代表"很久没来"，否则老账户会莫名被拦一次。
+     */
+    public function needsLoginEmailCode(): bool
+    {
+        return $this->last_login_at !== null
+            && $this->last_login_at < time() - (int) Yii::$app->params['user.loginCodeAfterInactivity'];
+    }
+
+    /**
+     * 建立会话并记下登录时间，两条路径共用：口令直接通过、以及邮箱验证码通过后的补登录。
+     */
+    public function signIn(bool $rememberMe): bool
+    {
+        if (!Yii::$app->user->login($this, $rememberMe ? 3600 * 24 * 30 : 0)) {
+            return false;
+        }
+
+        $this->updateAttributes(['last_login_at' => time()]);
+
+        return true;
     }
 
     public function getFollowingRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['follower_id' => 'id']); }    public function getFollowerRelations(): ActiveQuery { return $this->hasMany(UserFollow::class, ['following_id' => 'id']); }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace common\models;
 
-use Yii;
 use yii\base\Model;
 
 /**
@@ -15,6 +14,13 @@ class LoginForm extends Model
     public string $username = '';
     public string $password = '';
     public bool $rememberMe = true;
+    /**
+     * 是否要求"很久没登录的账户先过一次邮箱验证码"。默认关闭：后台登录复用本模型，
+     * 目前只有前台 users/login 走这一关，由控制器显式打开。
+     */
+    public bool $emailCodeEnabled = false;
+    /** @var User|null 口令正确、但需要先拿邮箱验证码的账户；[[login]] 返回 false 且它非 null 时说明卡在这一步。 */
+    public User|null $emailCodeUser = null;
     private User|null $_user = null;
     /**
      * {@inheritdoc}
@@ -66,11 +72,20 @@ class LoginForm extends Model
      */
     public function login(): bool
     {
-        if ($this->validate()) {
-            return Yii::$app->user->login($this->getUser(), $this->rememberMe ? 3600 * 24 * 30 : 0);
+        if (!$this->validate()) {
+            return false;
         }
 
-        return false;
+        $user = $this->getUser();
+        // 开关只在前台打开；走到这里口令已经校验通过，先不发会话，让控制器去发邮箱验证码。
+        // 非 null 的 [[emailCodeUser]] 就是"卡在第二步"的信号，与"密码错误"区分开。
+        if ($this->emailCodeEnabled && $user->needsLoginEmailCode()) {
+            $this->emailCodeUser = $user;
+
+            return false;
+        }
+
+        return $user->signIn($this->rememberMe);
     }
 
     /**

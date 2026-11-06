@@ -9,6 +9,11 @@ return [
     'user.passwordResetTokenExpire' => 3600,
     'user.emailVerifyTokenExpire' => 604800,
     'user.passwordMinLength' => 8,
+    // 长时间未登录的账户再登录时要过一次邮箱验证码（只在前台 users/login 生效）。
+    // 阈值按"从未记录过登录时间以外"的间隔算，存量账户第一次登录放行，见 User::needsLoginEmailCode()。
+    'user.loginCodeAfterInactivity' => 2592000,
+    // 邮箱验证码有效期，10 分钟。
+    'user.loginCodeExpire' => 600,
     // 发信通道：唯一的投递路径，直连带鉴权的 SMTP，不依赖本机 mail() 或 MTA。
     // 各机器只覆盖需要变的键（host/username/password/fromEmail），写在 params-local.php：
     // 该文件 git 忽略、且 php init 会重新生成，所以 environments/* 模板里留了同名占位。

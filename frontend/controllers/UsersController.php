@@ -7,6 +7,7 @@ namespace frontend\controllers;
 use common\models\LoginForm;
 use common\models\ChangePasswordForm;
 use common\models\VerifyPhoneForm;
+use frontend\models\LoginCodeForm;
 use frontend\models\ProfileForm;
 use frontend\models\PasswordResetRequestForm;
 use frontend\models\ResendVerificationEmailForm;
@@ -338,6 +339,9 @@ class UsersController extends Controller
     /**
      * Logs in a user.
      *
+     * 账户超过 user.loginCodeAfterInactivity 没登录时，口令校验通过后不直接建会话，
+     * 而是往注册邮箱发一个 10 分钟有效的验证码，把人交给 [[actionLoginCode]] 走第二步。
+     *
      * @return string|Response
      */
     public function actionLogin(): string|Response
@@ -347,12 +351,17 @@ class UsersController extends Controller
         }
 
         $model = new LoginForm();
+        // 后台登录复用同一个 LoginForm，这一关只在前台开。
+        $model->emailCodeEnabled = true;
 
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            if (Yii::$app->user->identity->must_change_password) {
-                return $this->redirect(['change-password']);
+        if ($model->load(Yii::$app->request->post())) {
+            if ($model->login()) {
+                return $this->afterLoginRedirect();
             }
-            return $this->goBack();
+
+            if ($model->emailCodeUser !== null) {
+                return $this->startLoginCode($model);
+            }
         }
 
         $model->password = '';
@@ -360,6 +369,100 @@ class UsersController extends Controller
         return $this->render('login', [
             'model' => $model,
         ]);
+    }
+
+    /**
+     * 登录第二步：填注册邮箱收到的验证码。
+     *
+     * 挑战挂在会话上，所以直接访问、或会话已经过期时，只能回第一步重来。
+     *
+     * @return string|Response
+     */
+    public function actionLoginCode(): string|Response
+    {
+        if (!Yii::$app->user->isGuest) {
+            return $this->goHome();
+        }
+
+        $user = LoginCodeForm::pendingUser();
+        if ($user === null) {
+            Yii::$app->session->setFlash('error', '请先输入账户和密码。');
+
+            return $this->redirect(['login']);
+        }
+
+        $model = new LoginCodeForm();
+        $post = Yii::$app->request->post();
+        // rememberMe 要在校验前取：验证通过后挑战会被清掉，那时已经读不到第一步勾的选项。
+        $rememberMe = LoginCodeForm::pendingRememberMe();
+
+        // 重发按钮是单独的小表单，不带 code 字段，所以不能先走 load()。
+        if (isset($post['resend'])) {
+            if ($this->tooManyRequests('login-code', self::MAIL_PER_IP)) {
+                Yii::warning('登录验证码重发超过来源 IP 配额', 'auth');
+                Yii::$app->session->setFlash('error', '操作过于频繁，请稍后再试。');
+
+                return $this->refresh();
+            }
+            if ($model->resend($user, $rememberMe, Yii::$app->mailSender)) {
+                Yii::$app->session->setFlash('success', '验证码已重新发送，请在 ' . LoginCodeForm::lifetimeMinutes() . ' 分钟内查收邮件。');
+            } else {
+                Yii::$app->session->setFlash('error', $model->getFirstError('code') ?: '验证码邮件发送失败，请稍后重试。');
+            }
+
+            return $this->refresh();
+        }
+
+        if ($model->load($post)) {
+            $authenticated = $model->verifyCode();
+            if ($authenticated !== null) {
+                if (!$authenticated->signIn($rememberMe)) {
+                    Yii::$app->session->setFlash('error', '登录未能完成，请重新尝试。');
+
+                    return $this->refresh();
+                }
+
+                return $this->afterLoginRedirect();
+            }
+        }
+
+        return $this->render('loginCode', [
+            'model' => $model,
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * 口令通过但需要邮箱验证码：发信并跳到第二步。
+     */
+    private function startLoginCode(LoginForm $model): Response
+    {
+        if ($this->tooManyRequests('login-code', self::MAIL_PER_IP)) {
+            Yii::warning('登录验证码发送超过来源 IP 配额', 'auth');
+            Yii::$app->session->setFlash('error', '操作过于频繁，请稍后再试。');
+
+            return $this->refresh();
+        }
+
+        $codeForm = new LoginCodeForm();
+        // 发不出去就停在这儿：这一关不能因为 SMTP 故障被静默绕过。真实原因由 MailMessage 记在 mail 日志里。
+        if (!$codeForm->start($model->emailCodeUser, $model->rememberMe, Yii::$app->mailSender)) {
+            Yii::$app->session->setFlash('error', $codeForm->getFirstError('code') ?: '验证码邮件发送失败，请稍后重试。');
+
+            return $this->refresh();
+        }
+
+        return $this->redirect(['login-code']);
+    }
+
+    /** 登录成功后的去向：还没确认过邮箱要改密码的先补密码，其余回到他们原本要去的地方。 */
+    private function afterLoginRedirect(): Response
+    {
+        if (Yii::$app->user->identity->must_change_password) {
+            return $this->redirect(['change-password']);
+        }
+
+        return $this->goBack();
     }
 
     /**
