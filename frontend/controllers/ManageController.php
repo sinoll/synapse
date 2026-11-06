@@ -8,6 +8,7 @@ use common\models\Cate;
 use common\models\User;
 use common\models\SiteSetting;
 use frontend\models\CreateUserForm;
+use frontend\models\InviteForm;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\Controller;
@@ -53,15 +54,25 @@ class ManageController extends Controller
 
     public function actionIndex(string $section = 'users'): string|Response
     {
-        if (!in_array($section, ['site-name', 'users', 'categories', 'node', 'signup'], true)) {
+        if (!in_array($section, ['site-name', 'users', 'categories', 'node', 'signup', 'invite'], true)) {
             $section = 'users';
         }
 
         $siteName = SiteSetting::read('site_name', Yii::$app->name);
         $nodeEnabled = SiteSetting::read('node_enabled', '0') === '1';
         $signupEnabled = SiteSetting::signupEnabled();
+        $inviteModel = new InviteForm();
         if (Yii::$app->request->isPost) {
-            if ($section === 'site-name') {
+            if ($section === 'invite') {
+                if ($inviteModel->load(Yii::$app->request->post()) && $inviteModel->send(Yii::$app->mailSender)) {
+                    Yii::$app->session->setFlash('success', '邀请邮件已发往 ' . $inviteModel->email . '，对方打开链接即可注册。');
+
+                    return $this->redirect(['index', 'section' => $section]);
+                }
+                if (!$inviteModel->hasErrors()) {
+                    Yii::$app->session->setFlash('error', '邀请邮件发送失败，请检查发信配置；真实原因记在日志的 mail 分类里。');
+                }
+            } elseif ($section === 'site-name') {
                 $submittedName = trim((string) Yii::$app->request->post('siteName', ''));
                 if ($submittedName === '' || mb_strlen($submittedName) > 100) {
                     Yii::$app->session->setFlash('error', '站点名称不能为空，且不能超过 100 个字符。');
@@ -100,6 +111,7 @@ class ManageController extends Controller
             'siteName' => $siteName,
             'nodeEnabled' => $nodeEnabled,
             'signupEnabled' => $signupEnabled,
+            'inviteModel' => $inviteModel,
         ]);
     }
 

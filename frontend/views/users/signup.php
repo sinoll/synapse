@@ -6,11 +6,16 @@ declare(strict_types=1);
 /** @var yii\bootstrap5\ActiveForm $form */
 /** @var \frontend\models\SignupForm $model */
 /** @var bool $signupEnabled */
+/** @var string|null $invitedEmail */
+/** @var string $inviteToken */
 
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 
-$this->title = '注册新账户';
+// 受邀时即使自助注册关着也照旧出表单：邀请链接本身就是管理员给出去的注册授权。
+$invitedEmail = is_string($invitedEmail) && $invitedEmail !== '' ? $invitedEmail : null;
+$canRegister = $signupEnabled || $invitedEmail !== null;
+$this->title = $invitedEmail === null ? '注册新账户' : '接受邀请，创建账户';
 $this->params['breadcrumbs'][] = $this->title;
 $this->params['meta_description'] = '注册拾光账户，发布博客、图集、动态和短视频。';
 $this->params['meta_keywords'] = '注册, 创建账户, 拾光';
@@ -45,21 +50,31 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                     <div class="text-center mb-4">
                         <h1 class="h3 fw-bold mb-1"><?= Html::encode($this->title) ?></h1>
                         <p class="text-body-secondary small">
-                            <?= $signupEnabled ? '填写下面的信息创建账户，再点击确认邮件里的链接激活即可登录' : '自助注册暂时关闭，请稍后再来' ?>
+                            <?php if ($invitedEmail !== null): ?>
+                                管理员已邀请 <strong><?= Html::encode($invitedEmail) ?></strong> 加入本站，填完下面的信息即可创建账户。
+                            <?php elseif ($signupEnabled): ?>
+                                填写下面的信息创建账户，再点击确认邮件里的链接激活即可登录
+                            <?php else: ?>
+                                自助注册暂时关闭，请稍后再来
+                            <?php endif; ?>
                         </p>
                     </div>
 
                     <?= $this->render('_flash') ?>
 
-                    <?php if (!$signupEnabled): ?>
+                    <?php if (!$canRegister): ?>
                         <div class="alert alert-warning mb-0" role="alert">
                             <strong class="d-block mb-1">注册暂时关闭</strong>
                             站点管理员已暂停自助注册。已有账户可以在下方直接登录；需要新账户请联系管理员开通。
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($signupEnabled): ?>
-                    <?php $form = ActiveForm::begin(['id' => 'form-signup']); ?>
+                    <?php if ($canRegister): ?>
+                    <?php $form = ActiveForm::begin([
+                        'id' => 'form-signup',
+                        // 邀请令牌挂在地址上：邮箱只读挡不住改包，服务端要靠它认出受邀身份。
+                        'action' => $inviteToken === '' ? ['signup'] : ['signup', 'invite' => $inviteToken],
+                    ]); ?>
 
                     <div class="mb-3">
                         <?= $form->field($model, 'username', [
@@ -83,8 +98,10 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                                 'placeholder' => 'name@example.com',
                                 'maxlength' => true,
                                 'autocomplete' => 'email',
-                            ],
-                        ])->textInput()->label('邮箱', $labelOptions)->hint('用于激活账户、找回密码和接收账号通知，不会公开展示。') ?>
+                            ] + ($invitedEmail === null ? [] : ['readonly' => true]),
+                        ])->textInput()->label('邮箱', $labelOptions)->hint($invitedEmail === null
+                            ? '用于激活账户、找回密码和接收账号通知，不会公开展示。'
+                            : '邀请链接已经锁定这个邮箱，不能改成别的地址。') ?>
                     </div>
 
                     <div class="mb-3">

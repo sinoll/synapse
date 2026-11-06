@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use common\models\Cate;
 use common\models\User;
+use frontend\models\InviteForm;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 use yii\bootstrap5\LinkPager;
@@ -15,15 +16,18 @@ use yii\grid\GridView;
 /** @var string $siteName */
 /** @var bool $nodeEnabled */
 /** @var bool $signupEnabled */
+/** @var InviteForm $inviteModel */
 
 $titles = [
     'site-name' => '站点名称',
     'users' => '用户管理',
     'categories' => '分类管理',
     'signup' => '用户注册设置',
+    'invite' => '邀请注册',
     'node' => '开启节点',
 ];
 $this->title = $titles[$section] ?? '系统管理';
+$inviteDays = max(1, intdiv((int) Yii::$app->params['user.inviteTokenExpire'], 86400));
 ?>
 <div class="manage-layout py-3 py-md-4">
     <div class="row g-4 align-items-start">
@@ -34,8 +38,10 @@ $this->title = $titles[$section] ?? '系统管理';
             <div class="mb-4">
                 <p class="small text-body-secondary text-uppercase mb-1">系统管理</p>
                 <h1 id="manage-title" class="h2 mb-1"><?= Html::encode($this->title) ?></h1>
-                <p class="text-body-secondary mb-0">管理站点设置、用户账号、内容分类、注册开关和节点状态。</p>
+                <p class="text-body-secondary mb-0">管理站点设置、用户账号、内容分类、注册开关、注册邀请和节点状态。</p>
             </div>
+
+            <?= $this->render('@frontend/views/users/_flash') ?>
 
             <?php if ($section === 'site-name'): ?>
                 <div class="card border-0 shadow-sm">
@@ -93,6 +99,39 @@ $this->title = $titles[$section] ?? '系统管理';
                         <?= Html::submitButton($signupEnabled ? '关闭注册' : '开启注册', [
                             'class' => $signupEnabled ? 'btn btn-outline-secondary' : 'btn btn-primary',
                         ]) ?>
+                        <?php ActiveForm::end(); ?>
+                        <?php if (!$signupEnabled): ?>
+                            <p class="text-body-secondary small mt-3 mb-0">
+                                想单独给某个人开口子，用<?= Html::a('邀请注册', ['index', 'section' => 'invite']) ?>：
+                                邀请链接不受这里的开关限制。
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php elseif ($section === 'invite'): ?>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-3 p-md-4">
+                        <h2 class="h5 mb-2">邀请注册</h2>
+                        <p class="text-body-secondary">
+                            填对方的邮箱，系统发出一封带邀请链接的信，收到的人点开链接就能在本站创建账户。
+                            链接 <?= $inviteDays ?> 天内有效；被邀请的邮箱由链接锁定，只能用来注册这一个地址。
+                        </p>
+                        <div class="alert alert-secondary small mb-4">
+                            当前自助注册<?= $signupEnabled ? '已开启' : '已关闭' ?>。无论开关处于哪一侧，邀请链接都能完成注册；
+                            关闭自助注册时，只有拿到邀请链接的人可以注册。
+                        </div>
+                        <?php $form = ActiveForm::begin(['id' => 'invite-form']); ?>
+                        <?= $form->field($inviteModel, 'email', [
+                            'inputOptions' => [
+                                'class' => 'form-control',
+                                'placeholder' => 'name@example.com',
+                                'autocomplete' => 'off',
+                                'maxlength' => 255,
+                            ],
+                        ])->textInput()->label('邮箱地址', ['class' => 'form-label fw-semibold small']) ?>
+                        <div class="d-flex justify-content-end mt-4">
+                            <?= Html::submitButton('发送邀请邮件', ['class' => 'btn btn-primary px-4']) ?>
+                        </div>
                         <?php ActiveForm::end(); ?>
                     </div>
                 </div>

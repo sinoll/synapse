@@ -19,6 +19,7 @@ use common\models\Post;
 use common\models\SiteSetting;
 use common\models\User;
 use common\models\UserFollow;
+use common\services\InviteToken;
 use Yii;
 use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;
@@ -480,6 +481,9 @@ class UsersController extends Controller
     /**
      * 自助注册：只建待激活账户，用户点确认邮件里的链接激活后才能登录。
      *
+     * 链接上带 invite 令牌时走邀请通道：即使自助注册已关闭也放行，
+     * 邮箱被令牌钉死，注册出来的只能是被邀请的那个地址。
+     *
      * @return string|Response
      */
     public function actionSignup(): string|Response
@@ -488,12 +492,28 @@ class UsersController extends Controller
             return $this->goHome();
         }
 
+        $inviteToken = Yii::$app->request->get('invite');
+        $inviteToken = is_string($inviteToken) ? $inviteToken : '';
+        $invitedEmail = $inviteToken === '' ? null : InviteToken::verify($inviteToken);
+        if ($inviteToken !== '' && $invitedEmail === null) {
+            Yii::$app->session->setFlash('error', '邀请链接无效或已过期，请联系管理员重新发送。');
+        }
+
         // 关掉开关时连表单都不再解析，直接POST绕过隐藏入口也建不出账户。
-        if (!SiteSetting::signupEnabled()) {
-            return $this->render('signup', ['model' => new SignupForm(), 'signupEnabled' => false]);
+        $signupEnabled = SiteSetting::signupEnabled();
+        if (!$signupEnabled && $invitedEmail === null) {
+            return $this->render('signup', [
+                'model' => new SignupForm(),
+                'signupEnabled' => false,
+                'invitedEmail' => null,
+                'inviteToken' => '',
+            ]);
         }
 
         $model = new SignupForm();
+        if ($invitedEmail !== null) {
+            $model->email = $invitedEmail;
+        }
         if ($model->load(Yii::$app->request->post())) {
             // 配额只统计真正的提交：注册页本身允许反复打开，否则用户试错几次就被锁在门外。
             if ($this->tooManyRequests('signup', self::SIGNUP_PER_IP)) {
@@ -501,6 +521,11 @@ class UsersController extends Controller
                 Yii::$app->session->setFlash('error', '注册过于频繁，请稍后再试。');
 
                 return $this->redirect(['login']);
+            }
+
+            if ($invitedEmail !== null) {
+                // 表单里的邮箱框只是只读，挡不住改包；服务端再钉一次。
+                $model->email = $invitedEmail;
             }
 
             $user = $model->signup();
@@ -518,7 +543,9 @@ class UsersController extends Controller
 
         return $this->render('signup', [
             'model' => $model,
-            'signupEnabled' => true,
+            'signupEnabled' => $signupEnabled,
+            'invitedEmail' => $invitedEmail,
+            'inviteToken' => $invitedEmail === null ? '' : $inviteToken,
         ]);
     }
 
