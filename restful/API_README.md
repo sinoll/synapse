@@ -1,122 +1,204 @@
-# Restful API 接口文档
+# 拾光 RESTful API（`restful/`）
 
-## 概述
+本站的对外数据接口。它和网站共用 `common/` 的模型、同一张 `newhome` 库、同一套 `uploads/`
+目录，所以接口里读到的和网站上看到的是一条内容，不是副本；写进去的东西网站上立刻能改。
 
-本目录包含 Yii2 框架的 RESTful API 接口，目前提供用户认证相关的功能。
+## 部署事实
 
-## 接口说明
+| 项目 | 值 |
+| --- | --- |
+| 入口 | Apache 虚拟主机文档根 = `restful/web` |
+| 测试地址 | `http://192.168.10.10` |
+| URL 形式 | **根相对**，`GET /blog`，不带 `/api/restful` 前缀，也不带 `index.php` |
+| 请求体 | `application/json`（已注册 `JsonParser`），`/upload` 用 `multipart/form-data` |
+| CSRF | 关闭：接口无会话、无 Cookie，不存在 CSRF 面 |
+| 路由 | `enableStrictParsing`，只认 [config/main.php](config/main.php) 里写明的规则，其余 404 |
+| 鉴权头 | `Authorization: Bearer <token>`；Apache 需 `web/.htaccess` 把该头转给 PHP（已随仓库提供） |
 
-### 1. 登录接口
+## 快速上手
 
-**路径**: `POST /api/restful/auth/login`
+```bash
+BASE=http://192.168.10.10
 
-**请求参数**:
+# 1. 看接口清单（不需要令牌）
+curl -s $BASE/
+
+# 2. 登录拿令牌
+curl -s -X POST $BASE/auth/login -H 'Content-Type: application/json' \
+     -d '{"username":"你的用户名","password":"你的密码"}'
+
+# 3. 带令牌读写
+TOKEN=...   # 上一步 data.token
+curl -s -X POST $BASE/moment -H 'Content-Type: application/json' \
+     -H "Authorization: Bearer $TOKEN" \
+     -d '{"content":"接口发的第一条动态 #试水#"}'
+
+# 4. 要附图先上传，再把返回的 path 交给内容接口
+curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
+     -F kind=moment -F file=@photo.jpg
+```
+
+## 响应封装
+
+业务成功与失败（含框架异常）都是同一形状，见 [components/ApiResponder.php](components/ApiResponder.php)
+和 [components/ApiErrorHandler.php](components/ApiErrorHandler.php)：
+
 ```json
-{
-    "username": "用户名",
-    "password": "密码"
-}
+{ "code": 200, "message": "内容已创建。", "data": { ... } }
+{ "code": 422, "message": "请求参数不合法。", "data": { "errors": { "video_type": ["video_type 只能是 1（Horizontal）、2（Vertical）。"] } } }
 ```
 
-**响应示例**:
+| HTTP | 含义 |
+| --- | --- |
+| 200 | 成功（`POST` 创建、`DELETE` 都用 200，`data` 里回显被操作的 `id`） |
+| 400 | 请求体不是合法 JSON |
+| 401 | 没带令牌 / 令牌无效或过期 / 用户名密码不正确 |
+| 403 | 动了别人的内容；账户尚未修改初始密码 |
+| 404 | 不存在、类型对不上（`/blog/13` 指向动态）、无权查看的私密内容，以及**路由里没有的动词**（如 `DELETE /blog`） |
+| 422 | 字段校验失败，明细在 `data.errors` |
+| 500 | 服务端异常；`message` 是通用文案，细节只进 `restful/runtime/logs/api.log` |
 
-成功时:
+`YII_DEBUG=true`（`web/index.php`）时错误响应额外带 `debug{type,file,line,trace}`，
+排查完请把它切回生产值。
+
+## 认证
+
+* `POST /auth/login` → `{token, token_type:"Bearer", expires_in, expires_at, user}`。
+* 令牌是**自包含**的：`base64url(用户id|过期秒)` + HMAC-SHA256，服务端不落库
+  （[services/ApiToken.php](services/ApiToken.php)，与站内邀请链接同一套路数）。
+  有效期 `params.api.tokenExpire`，默认 7 天。
+* 密钥第一次用到时随机生成，存在 `site_setting.api_token_secret`。
+  **要立即作废所有令牌**：删掉这一行，下次签发会换新密钥，旧令牌全部失效。
+* `POST /auth/logout` 只做客户端收尾——无状态令牌在到期前一直可用，返回值里写明了这一点。
+* `GET /auth/me` 回显当前令牌所属账户（不含 `password_hash`、`auth_key`、验证码哈希）。
+* 读写权限沿用前台口径：**只有作者本人**能改能删，管理员不豁免。
+* 需要先改初始密码的账户拿到的是 403 + 网站改密页地址，不会发出令牌。
+
+## 内容资源
+
+四类内容同构：`post` 主表（`type` 区分）+ 一张类型子表。URL 段就是 `post.type`：
+
+| 资源 | 子表 | 列表 | 详情 | 创建 | 更新 | 删除 | 点赞 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 博客 | `blog` | `GET /blog` | `GET /blog/{id}` | `POST /blog` | `PUT`/`PATCH /blog/{id}` | `DELETE /blog/{id}` | `POST /blog/{id}/like` |
+| 动态 | `moment` | `GET /moment` | ... | `POST /moment` | ... | ... | ... |
+| 图集 | `images`（1:N） | `GET /images` | ... | `POST /images` | ... | ... | ... |
+| 短视频 | `short_video` | `GET /short_video` | ... | `POST /short_video` | ... | ... | ... |
+
+### 列表查询参数
+
+`page`（从 1 开始）、`per_page`（默认 20，上限 100）、`sort`（`created_at|updated_at|like_count|views`）、
+`order`（`asc|desc`）、`user_id`（只看某人）、`q`（标题模糊）、`tag`（标签名或 slug，`#` 会自动剥掉）。
+返回 `{authenticated, page, per_page, total, total_pages, sort, order, items:[...]}`。
+
+### 可见性
+
+读取沿用 `Post::applyVisibilityScope()`：访客只见公开内容，带令牌后能看到「注册用户可见」和自己
+的私密内容与草稿（`status=0`）。无权查看的详情按 404 处理，避免用状态码差异暴露「它存在」。
+
+### 公共字段
+
+读（列表与详情都有）：`id`、`type`、`title`、`status`、`visibility`（0 私密 / 1 仅注册用户 / 2 公开）、
+`like_count`、`views`、`liked`、`author{id,username,nickname,avatar_url}`、`tags[]`、`cover_url`、
+`created_at`、`updated_at`（ISO-8601，带 `+08:00`）。
+
+写（四类通用）：`title`、`status`（0/1）、`visibility`（0/1/2）、`tags[]`。
+`title` 省略时由正文/说明派生；提交空串等于要求派生一次。
+
+`PUT` 与 `PATCH` 语义相同——**部分更新**，没提交的字段保持原值；`tags` 只在提交 `tags` 或话题字段时
+才整组重算，改正文不会悄悄换标签。
+
+### 类型专属字段
+
+| 资源 | 读（列表） | 读（详情多给） | 写 | 创建时必填 |
+| --- | --- | --- | --- | --- |
+| 博客 | `summary`、`thumb`、`thumb_url`、`categories[]`（`content` 为 `null`） | `content`（已净化） | `summary`、`content`、`thumb`、`cate_id` | `content` |
+| 动态 | `text`（正文纯文本截断）、`thumb`、`thumb_url` | `content` | `content`、`thumb` | `content` |
+| 图集 | `caption`、`image_count`、`images[]`（`id/title/alt_text/file_path/file_url/thumbnail_path/thumbnail_url/sort_order/created_at`） | 同左 | `caption`、`file_paths[]` | `file_paths[]` |
+| 短视频 | `video_path`、`video_url`、`cover_path`、`cover_url`、`duration_seconds`、`video_type`、`video_type_label`、`is_vertical` | `description` | `description`、`video_path`、`cover_path`、`duration_seconds`、`video_type` | `video_path` |
+
+补充口径（都与前台一致）：
+
+* 富文本写入统一过 `RichText::purify()`，白名单外的标签/属性（含 `<script>`、`onclick`）被丢弃。
+* 话题：动态从 `content`、图集从 `caption`、短视频从 `title`+`description` 抽取 `#话题#` 并入标签；
+  博客按前台口径不解析话题。
+* 图集的 `caption` 首行当每张图的 `title`，其余行当 `alt_text`（`Image::applyCaption()`）。
+  只提交 `caption` 不动 `file_paths` 时，改写文案、保留顺序。
+* 省略 `thumb` 新建博客/动态时，按正文第一张本站插图推出封面缩略图（同前台 `blogThumbnailPath()`）。
+* 短视频 `video_type`：1 横屏、2 竖屏。
+
+### 媒体字段填什么
+
+内容接口**不接收文件**，只接收 `POST /upload` 返回的站内路径，且会校验文件真实存在：
+
 ```json
-{
-    "code": 200,
-    "message": "登录成功",
-    "data": {
-        "token": "auth_token_admin_1761408000",
-        "expires_in": 604800
-    }
-}
+{ "thumb": "/uploads/blog/202611/AbC...xyz.jpg" }
 ```
 
-失败时 (用户名或密码错误):
-```json
-{
-    "code": 401,
-    "message": "用户名或密码错误"
-}
+形状必须是 `/uploads/{1~3 段目录}/{随机名}.{扩展名}`，越界路径（`../`、绝对路径、外站 URL）直接 422。
+历史数据里的 `/images/default-cover.png` 允许原样回传。
+
+各字段对空值的处理：`thumb`、`cover_path` 提交空串就是清空；`video_path` 提交空串视为「这次不换视频」
+（该列非空，清空没有意义），新建时缺它则 422；`file_paths` 必须是非空数组，想去掉某几张图就提交剩下的完整清单。
+
+## `POST /upload`
+
+`multipart/form-data`：`file` + `kind`（默认 `images`）。目录、扩展名、大小逐项对齐前台各控制器，
+见 [config/params.php](config/params.php)：
+
+| `kind` | 落盘目录 | 单文件上限 | 扩展名 | 附带生成 |
+| --- | --- | --- | --- | --- |
+| `blog` | `/uploads/blog/YYYYMM/` | 10 MB | jpg/jpeg/png/gif/webp | `/uploads/thumb/blog/` 640px 缩略图 |
+| `moment` | `/uploads/moment/YYYYMM/` | 10 MB | 同上 | `/uploads/thumb/moment/` |
+| `images` | `/uploads/images/YYYYMM/` | 10 MB | 同上 | `/uploads/thumb/images/` |
+| `cate` | `/uploads/thumb/cate/`（平铺） | 5 MB | 同上 | — |
+| `video` | `/uploads/video/YYYYMM/` | 500 MB | mp4/webm/mov/ogv/ogg | `/uploads/thumb/video/` 第 5 帧抽图 |
+
+返回 `{kind, path, url, size, thumbnail_path, thumbnail_url}`。缩略图或抽帧失败不影响上传成功，
+改为在 `warning` 里说明；此时把 `path` 交给内容接口即可（详情会按无缩略图降级渲染）。
+图片还会用 `getimagesize()` 复核内容，防止把改名的非图片当图收下来。
+
+## 删除会不会丢文件
+
+`DELETE` 只回收**这份内容独占**的文件：删之前反查 `blog.thumb`、`moment.thumb`、`images.file_path`、
+`short_video.video_path`/`cover_path` 五个媒体列，还有别处引用就留着。上传时顺带生成、没登记在库里的
+附属文件（缩略图、视频抽帧）跟着源文件一起回收——但只在源文件也确定无人引用时，避免共用同一张图的
+两个图集互相误伤。`/uploads/` 之外的静态资源（默认封面）永不删除。
+
+正文 `<img>` 里内嵌的插图**不在**回收范围内：它们没有独立的库字段可判定归属，宁可留下孤立文件，
+也不删掉别人正在引用的图。
+
+## 已知边界
+
+* 详情接口不累加 `views`。前台「同一浏览器每天算一次」靠响应里的去重 Cookie，API 客户端不存 Cookie，
+  接上去只会把访问量刷成没有意义的数字。要计数请写网站自己的页面。
+* 无状态令牌做不到「单独吊销某一台设备」。需要这个能力就在 `ApiToken::verify()` 里加一层 jti 黑名单。
+* `emailCodeEnabled`（异地登录邮箱验证码）关卡目前只对前台生效，接口这条路径不触发第二步；
+  若日后打开，`POST /auth/login` 会退回 401「登录未完成，请改用网站登录。」而不是发出无符号令牌。
+* 没有做速率限制：登录失败的暴力尝试目前只受 `LoginForm` 自带的账户锁定约束。
+
+## 代码地图
+
+```
+config/main.php        应用与路由（四类规则由一个循环生成）
+config/params.php      令牌有效期、分页默认、上传口径
+web/.htaccess          把 Authorization 头交给 PHP
+components/            ApiResponder 统一封装 · ApiErrorHandler 异常出口 · BearerAuth 取令牌
+services/ApiToken.php  HMAC 自包含令牌签发/校验
+exceptions/            ValidationException（422 + 字段明细）
+controllers/           ApiController 基类 · ContentController 四类共用 · Blog/Moment/Images/ShortVideo 只做映射
+                       AuthController 登录登出 · UploadController 上传 · SiteController 服务清单
+models/ApiResource.php 读、写、删、点赞的全部共性（可见性、事务、标签、媒体回收）
+models/{Blog,Moment,Images,ShortVideo}.php 各自的字段表与落库细节
 ```
 
----
+新增一类内容 = 新建一个 `extends ApiResource` 的模型 + 一个三行的控制器 + 在 `main.php` 的循环里加一条。
 
-### 2. 登出接口
+## 自检脚本
 
-**路径**: `POST /api/restful/auth/logout`
-
-**请求头** (可选，使用 Token 登录时需要):
-```
-Authorization: Bearer auth_token_xxx
+```powershell
+powershell -ExecutionPolicy Bypass -File restful/test_api.ps1
 ```
 
-**响应示例**:
-
-成功时:
-```json
-{
-    "code": 200,
-    "message": "登出成功"
-}
-```
-
-未登录时:
-```json
-{
-    "code": 401,
-    "message": "用户未登录，无法登出"
-}
-```
-
----
-
-## 配置说明
-
-### 启用 API 路由
-
-在 `yii-config` 中需要配置如下 URL 路由:
-
-```php
-'urlManager' => [
-    'enableStrictMode' => false,
-    'rules' => [
-        [
-            'class' => 'yii\web\GroupUrlRule',
-            'prefix' => '/api/restful/',
-            'callback' => function ($route) {
-                Yii::createInstance([
-                    'class' => \yii\web\UrlRule::class,
-                    'cacheKeyPrefix' => 'api-restful-',
-                    'pattern' => '<c:[\w]+>/<a:[^/]+>',
-                    'classMap' => [
-                        'auth/login' => 'auth/login',
-                        'auth/logout' => 'auth/logout',
-                    ],
-                ]);
-            },
-        ],
-    ],
-],
-```
-
-### 或在 urlmanager 中添加:
-
-```php
-'urlManager' => [
-    'rules' => [
-        'auth/login' => '/restful/auth/login',
-        'auth/logout' => '/restful/auth/logout',
-    ],
-],
-```
-
----
-
-## 后续扩展建议
-
-1. **Token 认证**: 使用 JWT (json-web-token) 替代简单的字符串 token
-2. **密码安全**: 使用 bcrypt 对密码进行加密存储
-3. **数据库集成**: 将用户信息从数据库查询，而不是硬编码
-4. **Rate Limiting**: 添加登录失败次数限制防止暴力破解
-5. **刷新 Token**: 实现 refresh token 机制延长登录有效期
+跑之前把脚本顶部的 `$baseUrl` 改成自己的地址；登录那一步会交互式要用户名密码（脚本里不留口令），
+没有账户时可以先只跑读接口部分。

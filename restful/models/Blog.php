@@ -1,134 +1,104 @@
 <?php
 
-namespace app\restful\models;
+declare(strict_types=1);
 
-use yii\base\Model;
+namespace restful\models;
 
-/**
- * Blog 文章模型
- */
-class Blog extends Model
+use common\models\BlogPost;
+use common\models\Cate;
+use common\models\Post;
+use restful\components\ApiResponder;
+use restful\exceptions\ValidationException;
+
+/** 博客：post(type=blog) + blog 子表，可选单值分类。 */
+final class Blog extends ApiResource
 {
-    public $id;
-    public $title;
-    public $content;
-    public $author;
-    public $tags = [];
-    public $created_at;
-    public $updated_at;
-    
-    /**
-     * 查找所有文章
-     * @return array
-     */
-    public static function findAll()
+    public static function postType(): string
     {
+        return Post::TYPE_BLOG;
+    }
+
+    public static function label(): string
+    {
+        return '博客';
+    }
+
+    protected static function childFields(): array
+    {
+        return ['summary', 'content', 'thumb'];
+    }
+
+    protected static function childRelation(): ?string
+    {
+        return 'blog';
+    }
+
+    /** 分类只有博客用，且是单值。 */
+    protected static function supportsCategory(): bool
+    {
+        return true;
+    }
+
+    /** 前台博客的标签只认显式 tags[]，不解析正文里的 #话题#，这里保持一致。 */
+    protected static function hashtagFields(): array
+    {
+        return [];
+    }
+
+    protected static function typeFields(Post $post, bool $detail): array
+    {
+        $blog = $post->blog;
+
         return [
-            [
-                'id' => 1,
-                'title' => '博客示例 1',
-                'content' => '这是第一篇博客的内容...',
-                'author' => 'admin',
-                'tags' => ['技术', '开发'],
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
+            'summary' => $blog?->summary,
+            'thumb' => $blog?->thumb,
+            'thumb_url' => ApiResponder::assetUrl($blog?->thumb),
+            'content' => $detail ? $blog?->content : null,
+            'categories' => array_map(
+                static fn (Cate $cate): array => ['id' => (int) $cate->id, 'name' => $cate->name, 'slug' => $cate->slug],
+                $post->categories
+            ),
         ];
     }
-    
-    /**
-     * 查找单篇文章
-     * @param int $id
-     * @return array
-     */
-    public static function findOne($id)
+
+    protected static function persistChild(Post $post, array $payload, bool $isCreate): void
     {
-        if (!$id) return [];
-        
-        return [
-            'id' => $id,
-            'title' => '博客标题',
-            'content' => '这是博客的内容...',
-            'author' => 'admin',
-            'tags' => ['示例'],
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
+        $blog = $isCreate ? new BlogPost() : ($post->blog ?? new BlogPost());
+        $blog->post_id = (int) $post->id;
+        // blog.title 非空且要与 post.title 同源；post.title 已由 titleFor() 定稿。
+        $blog->title = (string) $post->title;
+
+        if (array_key_exists('summary', $payload)) {
+            $blog->summary = self::trimmed($payload['summary'], 'summary', 500);
+        }
+        if (array_key_exists('content', $payload)) {
+            $blog->content = self::trimmed($payload['content'], 'content');
+        } elseif ($isCreate) {
+            throw new ValidationException(['content' => ['博客正文 content 不能为空。']]);
+        }
+        if (array_key_exists('thumb', $payload)) {
+            $blog->thumb = self::mediaArg($payload, 'thumb');
+        } elseif ($isCreate) {
+            // 与前台一致：没单独给封面时，用正文里第一张本站插图的缩略图。
+            $blog->thumb = self::thumbnailFromContent((string) $blog->content);
+        }
+
+        self::saveChildModel($blog);
     }
-    
-    /**
-     * 创建文章
-     * @param array $data
-     * @return bool
-     */
-    public static function create($data)
+
+    protected static function derivedTitle(array $payload): string
     {
-        if (empty($data['title'])) {
-            return json(['code' => 400, 'message' => '标题不能为空']);
-        }
-        
-        $id = mt_rand(100, 999);
-        
-        return [
-            'code' => 200,
-            'message' => '创建成功',
-            'data' => [
-                'id' => $id,
-                'title' => $data['title'],
-                'content' => $data['content'] ?? '',
-                'author' => $data['author'] ?? 'admin',
-                'tags' => $data['tags'] ?? [],
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
+        return self::plainText((string) ($payload['content'] ?? ''), 200) ?: '博客';
     }
-    
-    /**
-     * 更新文章
-     * @param int $id
-     * @param array $data
-     * @return bool|array
-     */
-    public static function update($id, $data)
+
+    protected static function currentMedia(Post $post): array
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '文章不存在']);
-        }
-        
-        if (empty($data['title'])) {
-            return json(['code' => 400, 'message' => '标题不能为空']);
-        }
-        
-        return [
-            'code' => 200,
-            'message' => '更新成功',
-            'data' => [
-                'id' => $id,
-                'title' => $data['title'] ?? '博客标题',
-                'content' => $data['content'] ?? '',
-                'author' => $data['author'] ?? 'admin',
-                'tags' => $data['tags'] ?? [],
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
+        return array_values(array_filter([(string) ($post->blog?->thumb ?? '')]));
     }
-    
-    /**
-     * 删除文章
-     * @param int $id
-     * @return bool|array
-     */
-    public static function delete($id)
+
+    /** thumb 里存的多半是源图，同名的那张缩略图只活在磁盘上，得跟着源文件一起回收。 */
+    protected static function derivedMedia(string $path): array
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '文章不存在']);
-        }
-        
-        return [
-            'code' => 200,
-            'message' => '删除成功',
-            'data' => ['id' => $id],
-        ];
+        return array_filter([self::blogThumbnailForPath($path)]);
     }
 }

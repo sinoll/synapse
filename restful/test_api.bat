@@ -1,40 +1,21 @@
 @echo off
 REM ============================================================================
-REM     RESTful API 接口测试脚本 - Yii2 Synapse
+REM     拾光 RESTful API 自检脚本启动器
+REM
+REM     真正的测试步骤在 test_api.ps1 里（PowerShell 才能读结构化 JSON），
+REM     这个 .bat 只是给习惯双击运行的人一个入口，参数原样透传。
+REM
+REM     用法：test_api.bat [http://192.168.10.10]
 REM ============================================================================
 
-:: 设置基础 URL
-set BASE_URL=http://localhost:8080/api/restful
+setlocal
+set PS1=%~dp0test_api.ps1
 
-:: 设置测试账号
-set USERNAME=default
-set PASSWORD=default
-
-echo ============================================================
-echo        RESTful API 接口测试套件
-echo ============================================================
-echo.
-echo 测试用户名：%USERNAME%
-echo 测试密码：隐藏
-echo.
-echo 基础 URL: %BASE_URL%
-echo.
-
-:: 函数定义
-:: 输出 JSON 响应
-define echoJson response=
-    if not defined response (
-        goto :eof
-    )
-    echo.
-    echo [JSON 响应]:
-    echo %response%
+if "%~1"=="" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1%" -BaseUrl %~1
 )
 
-:: 1. 测试登录接口
-echo ============================================================
-echo [测试 1: 用户登录]
-echo ============================================================
-
-powershell -Command "$body = @{username='%USERNAME%';password='%PASSWORD%' } | ConvertTo-Json -Compress; $url = '%BASE_URL%/auth/login'; Invoke-RestMethod -Uri $url -Method Post -Body $body -ContentType 'application/json'; echo ''" > C:\Temp\login_result.txt
+endlocal
 pause

@@ -1,164 +1,96 @@
 <?php
 
-namespace app\restful\models;
+declare(strict_types=1);
 
-use yii\base\Model;
+namespace restful\models;
+
+use common\models\Moment as MomentRecord;
+use common\models\Post;
+use restful\components\ApiResponder;
+use restful\exceptions\ValidationException;
 
 /**
- * Moment (动态) 模型
+ * 动态：post(type=moment) + moment 子表。
+ *
+ * 图片以内联 <img> 存在 content 里，不占 images 子表；话题标签从正文的 #xxx# 抽取。
  */
-class Moment extends Model
+final class Moment extends ApiResource
 {
-    public $id;
-    public $content;
-    public $user_id;
-    public $likes = [];
-    public $comments = [];
-    public $image_url;
-    public $location;
-    public $created_at;
-    public $updated_at;
-    
-    /**
-     * 查找所有动态
-     * @param int $userId 可选：筛选特定用户的动态
-     * @return array
-     */
-    public static function findAll($userId = null)
+    /** 前台把动态标题截到 16 个字，这里取创建口径。 */
+    private const TITLE_LIMIT = 16;
+
+    public static function postType(): string
     {
-        $moments = [
-            [
-                'id' => 1,
-                'content' => '今天天气真好！',
-                'user_id' => 1,
-                'likes' => [2, 3, 4],
-                'comments' => ['太棒了', '是啊'],
-                'image_url' => 'https://example.com/image1.jpg',
-                'location' => '北京',
-                'created_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
-        
-        return $userId ? array_filter($moments, fn($m) => $m['user_id'] == $userId) : $moments;
+        return Post::TYPE_MOMENT;
     }
-    
-    /**
-     * 查找单个动态
-     * @param int $id
-     * @return array
-     */
-    public static function findOne($id)
+
+    public static function label(): string
     {
-        if (!$id) return [];
-        
+        return '动态';
+    }
+
+    protected static function childFields(): array
+    {
+        return ['content', 'thumb'];
+    }
+
+    protected static function childRelation(): ?string
+    {
+        return 'moment';
+    }
+
+    protected static function hashtagFields(): array
+    {
+        return ['content'];
+    }
+
+    protected static function typeFields(Post $post, bool $detail): array
+    {
+        $moment = $post->moment;
+
         return [
-            'id' => $id,
-            'content' => '这是一个动态内容',
-            'user_id' => 1,
-            'likes' => [],
-            'comments' => [],
-            'image_url' => '',
-            'location' => '',
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
+            'content' => $detail ? $moment?->content : null,
+            'text' => self::plainText((string) ($moment?->content ?? ''), 500),
+            'thumb' => $moment?->thumb,
+            'thumb_url' => ApiResponder::assetUrl($moment?->thumb),
         ];
     }
-    
-    /**
-     * 创建动态
-     * @param array $data
-     * @return bool|array
-     */
-    public static function create($data)
+
+    protected static function persistChild(Post $post, array $payload, bool $isCreate): void
     {
-        if (empty($data['content'])) {
-            return json(['code' => 400, 'message' => '内容不能为空']);
+        $moment = $isCreate ? new MomentRecord() : ($post->moment ?? new MomentRecord());
+        $moment->post_id = (int) $post->id;
+        // 话题标签留在标题里，和前台一致：标题就是正文的截断。
+        $moment->title = (string) $post->title;
+
+        if (array_key_exists('content', $payload)) {
+            $moment->content = self::trimmed($payload['content'], 'content');
+        } elseif ($isCreate) {
+            throw new ValidationException(['content' => ['动态内容 content 不能为空。']]);
         }
-        
-        $id = mt_rand(100, 999);
-        
-        return [
-            'code' => 200,
-            'message' => '创建成功',
-            'data' => [
-                'id' => $id,
-                'content' => $data['content'],
-                'user_id' => $data['user_id'] ?? 1,
-                'likes' => [],
-                'comments' => [],
-                'image_url' => $data['image_url'] ?? '',
-                'location' => $data['location'] ?? '',
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
+        if (array_key_exists('thumb', $payload)) {
+            $moment->thumb = self::mediaArg($payload, 'thumb');
+        } elseif ($isCreate) {
+            // 前台的封面本来就是从正文第一张插图推出来的，接口新建时按同一口径补上。
+            $moment->thumb = self::thumbnailFromContent((string) $moment->content);
+        }
+
+        self::saveChildModel($moment);
     }
-    
-    /**
-     * 更新动态
-     * @param int $id
-     * @param array $data
-     * @return bool|array
-     */
-    public static function update($id, $data)
+
+    protected static function derivedTitle(array $payload): string
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '动态不存在']);
-        }
-        
-        if (empty($data['content'])) {
-            return json(['code' => 400, 'message' => '内容不能为空']);
-        }
-        
-        return [
-            'code' => 200,
-            'message' => '更新成功',
-            'data' => [
-                'id' => $id,
-                'content' => $data['content'],
-                'user_id' => $data['user_id'] ?? 1,
-                'image_url' => $data['image_url'] ?? '',
-                'location' => $data['location'] ?? '',
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
+        return self::plainText((string) ($payload['content'] ?? ''), self::TITLE_LIMIT) ?: '动态';
     }
-    
-    /**
-     * 点赞动态
-     * @param int $id
-     * @param int $userId
-     * @return bool|array
-     */
-    public static function like($id, $userId)
+
+    protected static function currentMedia(Post $post): array
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '动态不存在']);
-        }
-        
-        return [
-            'code' => 200,
-            'message' => '点赞成功',
-            'data' => ['likes_count' => 1],
-        ];
+        return array_values(array_filter([(string) ($post->moment?->thumb ?? '')]));
     }
-    
-    /**
-     * 删除动态
-     * @param int $id
-     * @return bool|array
-     */
-    public static function delete($id)
+
+    /** 与博客同理：thumb 存源图时，磁盘上那张同名缩略图没有登记在库里，要跟着源文件回收。 */
+    protected static function derivedMedia(string $path): array
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '动态不存在']);
-        }
-        
-        return [
-            'code' => 200,
-            'message' => '删除成功',
-            'data' => ['id' => $id],
-        ];
+        return array_filter([self::blogThumbnailForPath($path)]);
     }
 }

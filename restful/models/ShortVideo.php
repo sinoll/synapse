@@ -1,183 +1,139 @@
 <?php
 
-namespace app\restful\models;
+declare(strict_types=1);
 
-use yii\base\Model;
+namespace restful\models;
+
+use common\models\Post;
+use common\models\ShortVideo as ShortVideoRecord;
+use restful\components\ApiResponder;
+use restful\exceptions\ValidationException;
+use Yii;
 
 /**
- * Short Video (短视频) 模型
+ * 短视频：post(type=short_video) + short_video 子表一行。
+ *
+ * 前台是「上传视频文件、没给封面就抽第 5 帧」，API 走 POST /upload 先把文件和
+ * 抽好的封面落盘，这里只收路径，因此封面可以为空（列表与卡片都按无封面降级渲染）。
  */
-class ShortVideo extends Model
+final class ShortVideo extends ApiResource
 {
-    public $id;
-    public $title;
-    public $description;
-    public $video_url;
-    public $cover_url;
-    public $user_id;
-    public $duration;
-    public $width;
-    public $height;
-    public $likes = [];
-    public $plays;
-    public $created_at;
-    public $updated_at;
-    
-    /**
-     * 查找所有短视频
-     * @param int $userId 可选：筛选特定用户的视频
-     * @return array
-     */
-    public static function findAll($userId = null)
+    public static function postType(): string
     {
-        $videos = [
-            [
-                'id' => 1,
-                'title' => '我的第一个短视频',
-                'description' => '这是一个测试视频',
-                'video_url' => 'https://example.com/video1.mp4',
-                'cover_url' => 'https://example.com/cover1.jpg',
-                'user_id' => 1,
-                'duration' => 60,
-                'width' => 1080,
-                'height' => 1920,
-                'likes' => [2, 3, 4],
-                'plays' => 1000,
-                'created_at' => date('Y-m-d H:i:s', strtotime('-5 days')),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
-        
-        return $userId ? array_filter($videos, fn($v) => $v['user_id'] == $userId) : $videos;
+        return Post::TYPE_SHORT_VIDEO;
     }
-    
-    /**
-     * 查找单个短视频
-     * @param int $id
-     * @return array
-     */
-    public static function findOne($id)
+
+    public static function label(): string
     {
-        if (!$id) return [];
-        
+        return '短视频';
+    }
+
+    protected static function childFields(): array
+    {
+        return ['description', 'video_path', 'cover_path', 'duration_seconds', 'video_type'];
+    }
+
+    protected static function childRelation(): ?string
+    {
+        return 'shortVideo';
+    }
+
+    /** 前台从标题和简介里取 #话题#，正文是上传的文件，没有可解析的富文本。 */
+    protected static function hashtagFields(): array
+    {
+        return ['title', 'description'];
+    }
+
+    protected static function typeFields(Post $post, bool $detail): array
+    {
+        $video = $post->shortVideo;
+
         return [
-            'id' => $id,
-            'title' => '视频标题',
-            'description' => '这是视频的描述...',
-            'video_url' => 'https://example.com/video.mp4',
-            'cover_url' => 'https://example.com/cover.jpg',
-            'user_id' => 1,
-            'duration' => 30,
-            'width' => 1080,
-            'height' => 1920,
-            'likes' => [],
-            'plays' => 500,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
+            'description' => $detail ? $video?->description : null,
+            'video_path' => $video?->video_path,
+            'video_url' => ApiResponder::assetUrl($video?->video_path),
+            'cover_path' => $video?->cover_path,
+            'cover_url' => ApiResponder::assetUrl($video?->cover_path),
+            'duration_seconds' => $video === null ? null : (int) $video->duration_seconds,
+            'video_type' => $video === null ? null : (int) $video->video_type,
+            'video_type_label' => $video?->getVideoTypeLabel(),
+            'is_vertical' => $video?->isVertical(),
         ];
     }
-    
-    /**
-     * 创建短视频
-     * @param array $data
-     * @return bool|array
-     */
-    public static function create($data)
+
+    protected static function persistChild(Post $post, array $payload, bool $isCreate): void
     {
-        if (empty($data['title'])) {
-            return json(['code' => 400, 'message' => '标题不能为空']);
+        $video = $isCreate ? new ShortVideoRecord() : ($post->shortVideo ?? new ShortVideoRecord());
+        $video->post_id = (int) $post->id;
+        // short_video.title 非空且与 post.title 同源；post.title 已由 titleFor() 定稿。
+        $video->title = (string) $post->title;
+
+        if (array_key_exists('description', $payload)) {
+            $video->description = self::trimmed($payload['description'], 'description');
         }
-        
-        if (empty($data['video_url'])) {
-            return json(['code' => 400, 'message' => '视频 URL 不能为空']);
+        if (array_key_exists('video_path', $payload)) {
+            // video_path 列非空、rules 里也必填，所以只在拿到真路径时覆盖；
+            // 想换视频就提交新的 /upload 返回的路径，提交空串视为不改。
+            $video->video_path = self::mediaArg($payload, 'video_path', $isCreate) ?? $video->video_path;
+        } elseif ($isCreate) {
+            throw new ValidationException(['video_path' => ['短视频必须带上 video_path，请先用 POST /upload 上传视频。']]);
         }
-        
-        $id = mt_rand(100, 999);
-        
-        return [
-            'code' => 200,
-            'message' => '创建成功',
-            'data' => [
-                'id' => $id,
-                'title' => $data['title'],
-                'description' => $data['description'] ?? '',
-                'video_url' => $data['video_url'],
-                'cover_url' => $data['cover_url'] ?? '',
-                'user_id' => $data['user_id'] ?? 1,
-                'duration' => $data['duration'] ?? 0,
-                'width' => $data['width'] ?? 0,
-                'height' => $data['height'] ?? 0,
-                'likes' => [],
-                'plays' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
+        if (array_key_exists('cover_path', $payload)) {
+            $video->cover_path = self::mediaArg($payload, 'cover_path');
+        }
+        if (array_key_exists('duration_seconds', $payload)) {
+            $video->duration_seconds = self::intArg($payload['duration_seconds'], 'duration_seconds', 0);
+        }
+        if (array_key_exists('video_type', $payload)) {
+            $video->video_type = self::videoTypeArg($payload['video_type']);
+        }
+
+        self::saveChildModel($video);
     }
-    
-    /**
-     * 更新短视频
-     * @param int $id
-     * @param array $data
-     * @return bool|array
-     */
-    public static function update($id, $data)
+
+    protected static function derivedTitle(array $payload): string
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '视频不存在']);
-        }
-        
-        if (empty($data['title'])) {
-            return json(['code' => 400, 'message' => '标题不能为空']);
-        }
-        
-        return [
-            'code' => 200,
-            'message' => '更新成功',
-            'data' => [
-                'id' => $id,
-                'title' => $data['title'],
-                'description' => $data['description'] ?? '',
-                'cover_url' => $data['cover_url'] ?? '',
-                'updated_at' => date('Y-m-d H:i:s'),
-            ],
-        ];
+        $description = self::plainText((string) ($payload['description'] ?? ''), 200);
+
+        return $description !== '' ? $description : '短视频';
     }
-    
-    /**
-     * 点赞视频
-     * @param int $id
-     * @param int $userId
-     * @return bool|array
-     */
-    public static function like($id, $userId)
+
+    protected static function currentMedia(Post $post): array
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '视频不存在']);
-        }
-        
-        return [
-            'code' => 200,
-            'message' => '点赞成功',
-            'data' => ['likes_count' => 1],
-        ];
+        $video = $post->shortVideo;
+
+        return array_values(array_filter([
+            (string) ($video?->video_path ?? ''),
+            (string) ($video?->cover_path ?? ''),
+        ]));
     }
-    
-    /**
-     * 删除视频
-     * @param int $id
-     * @return bool|array
-     */
-    public static function delete($id)
+
+    /** 上传视频时顺带抽的那一帧封面没进库（cover_path 可能留空），删源片时一起清掉。 */
+    protected static function derivedMedia(string $path): array
     {
-        if (!$id) {
-            return json(['code' => 404, 'message' => '视频不存在']);
+        if (preg_match('#^/uploads/video/\d{6}/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', '/' . ltrim($path, '/'), $match) !== 1) {
+            return [];
         }
-        
-        return [
-            'code' => 200,
-            'message' => '删除成功',
-            'data' => ['id' => $id],
-        ];
+
+        $thumbnail = '/uploads/thumb/video/' . pathinfo($match[1], PATHINFO_FILENAME) . '.jpg';
+
+        return is_file(Yii::getAlias('@frontend/web') . $thumbnail) ? [$thumbnail] : [];
+    }
+
+    private static function videoTypeArg(mixed $value): int
+    {
+        $options = ShortVideoRecord::videoTypeOptions();
+        $type = self::intOrNull($value);
+        if ($type === null || !array_key_exists($type, $options)) {
+            throw new ValidationException(['video_type' => [
+                'video_type 只能是 ' . implode('、', array_map(
+                    static fn (int $key, string $name): string => "{$key}（{$name}）",
+                    array_keys($options),
+                    $options
+                )) . '。',
+            ]]);
+        }
+
+        return $type;
     }
 }

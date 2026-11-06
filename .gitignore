@@ -66,3 +66,6 @@ phpunit.phar
 /console/config/params-local.php
 /console/config/test.php
 /restful/config/main-local.php
+# params-local.php 里有 SMTP 明文授权码；runtime/ 是日志与缓存，都不该进版本库。
+/restful/config/params-local.php
+/restful/runtime/
