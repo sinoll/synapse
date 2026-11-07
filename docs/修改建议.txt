@@ -13,15 +13,5 @@ main.php:51
  的 rules 是空的，全靠默认路由，产出 /blog/view?id=12、/images/index?tag=slug&page=2。建议给四类详情 + 标签页 + 分类页定语义路由，并对 /site/view?id= 做 301。
 
 
-建议：footer 改做站点地图（分类总览 / 标签云 / 归档 / 关于）。
-
-
-
-；home/、backend/ 两套遗留应用；
-restful/ 五个 API 控制器未挂载；
-
-UserFollow 模型前端零使用；
-
-分类是"假多选"（syncPostCategories() 先删后插一行，视图取 categories[0]）。
-
-落地顺序建议：P0 搜索 + 视频页分页 + 清死链 → P1 语义 URL → P2 频道收敛为一个流组件 + 详情页相关模块 → P3 作者主页/关注（模型已就位）→ P4 视图目录对称化清理
+增加 分享 按钮 
+增加 @用户 功能
