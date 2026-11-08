@@ -6,7 +6,6 @@ namespace frontend\widgets;
 
 use common\models\User;
 use common\models\UserFollow;
-use frontend\assets\FollowAsset;
 use Yii;
 use yii\base\InvalidConfigException;
 use yii\base\Widget;
@@ -42,7 +41,6 @@ class FollowButton extends Widget
             throw new InvalidConfigException('FollowButton 需要设置 user。');
         }
 
-        FollowAsset::register($this->view);
     }
 
     public function run(): string

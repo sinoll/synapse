@@ -6,7 +6,7 @@ declare(strict_types=1);
 /** @var common\models\PostComment $node */
 /** @var string|null $replyToName 楼中楼里被回复者的昵称，顶级评论传 null */
 
-use common\components\Mention;
+use frontend\components\Mention;
 use frontend\widgets\FollowButton;
 use yii\helpers\Html;
 

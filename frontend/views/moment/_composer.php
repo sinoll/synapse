@@ -10,15 +10,12 @@ declare(strict_types=1);
 
 use common\components\RichText;
 use common\models\Post;
-use frontend\assets\MentionAsset;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 use yii\helpers\Url;
 
 $isUpdate = (bool) ($isUpdate ?? false);
 $contentError = $contentError ?? null;
-
-MentionAsset::register($this);
 
 $user = Yii::$app->user->identity;
 $author = $user?->nickname ?: $user?->username ?: '我';

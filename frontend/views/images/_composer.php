@@ -10,13 +10,11 @@ declare(strict_types=1);
 /** @var string|null $tagError */
 
 use common\models\Post;
-use frontend\assets\MentionAsset;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 use yii\helpers\Url;
 
 $isUpdate = (bool) ($isUpdate ?? false);
-MentionAsset::register($this);
 $selectedImageIds = $selectedImageIds ?? [];
 $tagError = $tagError ?? null;
 $visibilityOptions = [

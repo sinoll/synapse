@@ -9,7 +9,7 @@ declare(strict_types=1);
 /** @var common\models\Post|null $previousVideo */
 /** @var common\models\Post|null $nextVideo */
 
-use common\components\Mention;
+use frontend\components\Mention;
 use common\models\Post;
 use common\models\Tag;
 use frontend\widgets\FavoriteButton;

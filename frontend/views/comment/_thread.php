@@ -7,13 +7,10 @@ declare(strict_types=1);
 
 use common\models\Comment;
 use common\models\PostComment;
-use frontend\assets\MentionAsset;
 use frontend\controllers\CommentController;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\widgets\ActiveForm;
-
-MentionAsset::register($this);
 
 $identity = Yii::$app->user->identity;
 $profileName = $identity !== null ? ($identity->nickname ?: $identity->username) : '';

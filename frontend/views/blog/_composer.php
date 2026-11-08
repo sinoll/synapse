@@ -15,13 +15,11 @@ use common\components\RichText;
 use common\models\Cate;
 use common\models\Post;
 use common\models\Tag;
-use frontend\assets\MentionAsset;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 use yii\helpers\Url;
 
 $isUpdate = $isUpdate ?? false;
-MentionAsset::register($this);
 $selectedCateId = (int) ($selectedCateId ?? ($isUpdate ? (int) ($post->categories[0]->id ?? 0) : 0));
 $selectedTagNames = $selectedTagNames ?? ($isUpdate
     ? array_map(static fn (Tag $tag): string => $tag->name, $post->tags)

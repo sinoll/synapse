@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace frontend\models;
 
 use common\models\User;
-use common\services\InviteToken;
 use common\services\MailSenderInterface;
 use frontend\components\MailMessage;
+use frontend\services\InviteToken;
 use Yii;
 use yii\base\Model;
 
 /**
  * 系统管理里的邀请注册表单：管理员填一个邮箱，系统给它发一封带邀请链接的注册邀请。
  *
- * 不建账户、不记邀请：链接里自带上邮箱和过期时间，见 common\services\InviteToken。
+ * 不建账户、不记邀请：链接里自带上邮箱和过期时间，见 frontend\services\InviteToken。
  */
 class InviteForm extends Model
 {
@@ -75,7 +75,7 @@ class InviteForm extends Model
             $mailSender,
             $email,
             '邀请你注册 ' . Yii::$app->name,
-            '@common/mail/inviteSignup',
+            '@frontend/mail/inviteSignup',
             [
                 'siteName' => Yii::$app->name,
                 'inviteLink' => Yii::$app->urlManager->createAbsoluteUrl(

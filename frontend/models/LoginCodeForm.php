@@ -189,7 +189,7 @@ class LoginCodeForm extends Model
             $mailSender,
             $user->email,
             '登录验证码 - ' . Yii::$app->name,
-            '@common/mail/loginVerifyCode',
+            '@frontend/mail/loginVerifyCode',
             [
                 'user' => $user,
                 'code' => $code,

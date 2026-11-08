@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace common\assets;
+namespace frontend\assets;
 
 use yii\web\AssetBundle;
 use yii\web\View;
@@ -14,7 +14,7 @@ use yii\web\View;
  */
 class ColorModeAsset extends AssetBundle
 {
-    public $sourcePath = '@common/assets/theme';
+    public $sourcePath = '@frontend/assets/theme';
     public $css = [
         'css/color-theme.css',
     ];

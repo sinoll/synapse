@@ -11,7 +11,7 @@ use Yii;
 /**
  * API 访问令牌的签发与校验。
  *
- * 令牌自包含：base64url(用户 id|过期时间) + HMAC 签名，不落库——与 common\services\InviteToken
+ * 令牌自包含：base64url(用户 id|过期时间) + HMAC 签名，不落库。
  * 同一套路数。代价是签发后无法单独撤销：要立刻作废所有令牌，删掉 site_setting 里的
  * api_token_secret 即可，下次签发会重新生成一份，旧签名全部失效。
  */

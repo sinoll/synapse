@@ -19,7 +19,7 @@ use common\models\Post;
 use common\models\SiteSetting;
 use common\models\User;
 use common\models\UserFollow;
-use common\services\InviteToken;
+use frontend\services\InviteToken;
 use Yii;
 use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;

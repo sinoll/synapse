@@ -5,10 +5,8 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
-use common\components\Mention;
+use frontend\components\Mention;
 use common\models\Tag;
-use frontend\assets\ImageViewerAsset;
-use frontend\assets\MomentCollapseAsset;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
@@ -16,9 +14,6 @@ use frontend\widgets\ShareButton;
 use frontend\widgets\ViewCount;
 use yii\helpers\Html;
 use yii\helpers\Url;
-
-ImageViewerAsset::register($this);
-MomentCollapseAsset::register($this);
 
 $typeLabels = Post::TYPE_LABELS;
 $detailRoutes = Post::TYPE_DETAIL_ROUTES;

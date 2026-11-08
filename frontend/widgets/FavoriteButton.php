@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace frontend\widgets;
 
 use common\models\PostFavorite;
-use frontend\assets\FavoriteAsset;
 use Yii;
 use yii\base\InvalidConfigException;
 use yii\base\Widget;
@@ -39,7 +38,6 @@ class FavoriteButton extends Widget
             throw new InvalidConfigException('FavoriteButton 需要设置 postId。');
         }
 
-        FavoriteAsset::register($this->view);
     }
 
     public function run(): string

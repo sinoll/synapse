@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace frontend\widgets;
 
 use common\models\Post;
-use frontend\assets\ShareAsset;
 use yii\base\InvalidConfigException;
 use yii\base\Widget;
 use yii\helpers\Html;
@@ -34,7 +33,6 @@ class ShareButton extends Widget
             throw new InvalidConfigException('ShareButton 需要设置 post 或 url。');
         }
 
-        ShareAsset::register($this->view);
     }
 
     public function run(): string

@@ -136,7 +136,7 @@ class SignupForm extends Model
             $mailSender,
             $this->_createdUser->email,
             '激活你的账户 - ' . Yii::$app->name,
-            '@common/mail/emailVerify',
+            '@frontend/mail/emailVerify',
             ['user' => $this->_createdUser, 'verifyLink' => Yii::$app->urlManager->createAbsoluteUrl(
                 ['users/verify-email', 'token' => $this->_createdUser->emailVerifySecret],
             )],

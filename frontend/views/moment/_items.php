@@ -5,7 +5,7 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
-use common\components\Mention;
+use frontend\components\Mention;
 use common\components\RichText;
 use common\models\Tag;
 use frontend\widgets\FavoriteButton;

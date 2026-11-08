@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace frontend\assets;
 
-use common\assets\ColorModeAsset;
 use yii\bootstrap5\BootstrapAsset;
 use yii\bootstrap5\BootstrapIconAsset;
 use yii\web\AssetBundle;
@@ -21,10 +20,16 @@ use yii\web\YiiAsset;
  */
 class AppAsset extends AssetBundle
 {
-    public $basePath = '@webroot';
-    public $baseUrl = '@web';
+    public $sourcePath = '@frontend/assets';
     public $css = [
-        'css/site.css?v=20261108-share-mention',
+        'css/site.css',
+        'css/app.css',
+    ];
+    public $js = [
+        'js/app.js',
+    ];
+    public $publishOptions = [
+        'only' => ['css/site.css', 'css/app.css', 'js/app.js'],
     ];
     public $depends = [
         YiiAsset::class,

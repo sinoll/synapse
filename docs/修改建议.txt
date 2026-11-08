@@ -12,9 +12,6 @@ post 一张表 + type 判别，这是对的；但博客/动态/图集/短视频�
 main.php:51
  的 rules 是空的，全靠默认路由，产出 /blog/view?id=12、/images/index?tag=slug&page=2。建议给四类详情 + 标签页 + 分类页定语义路由，并对 /site/view?id= 做 301。
 
+优化代码
 
-<<<<<<< HEAD
-增加 分享 按钮 
-增加 @用户 功能
-=======
->>>>>>> dev
+

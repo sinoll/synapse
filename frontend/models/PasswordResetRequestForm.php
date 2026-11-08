@@ -69,7 +69,7 @@ class PasswordResetRequestForm extends Model
             $mailSender,
             $user->email,
             '重置你的密码 - ' . Yii::$app->name,
-            '@common/mail/passwordResetToken',
+            '@frontend/mail/passwordResetToken',
             [
                 'user' => $user,
                 'resetLink' => Yii::$app->urlManager->createAbsoluteUrl(

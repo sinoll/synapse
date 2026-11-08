@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace common\services;
+namespace frontend\services;
 
 use common\models\SiteSetting;
 use RuntimeException;

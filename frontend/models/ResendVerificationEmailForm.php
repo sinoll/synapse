@@ -63,7 +63,7 @@ class ResendVerificationEmailForm extends Model
             $mailSender,
             $user->email,
             '激活你的账户 - ' . Yii::$app->name,
-            '@common/mail/emailVerify',
+            '@frontend/mail/emailVerify',
             [
                 'user' => $user,
                 'verifyLink' => Yii::$app->urlManager->createAbsoluteUrl(

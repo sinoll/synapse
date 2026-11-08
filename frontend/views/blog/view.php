@@ -10,7 +10,7 @@ declare(strict_types=1);
 /** @var common\models\Post|null $next */
 /** @var array{total: int, byType: array<string, int>} $authorCounts */
 
-use common\components\Mention;
+use frontend\components\Mention;
 use common\components\RichText;
 use common\models\BlogPost;
 use yii\helpers\Html;

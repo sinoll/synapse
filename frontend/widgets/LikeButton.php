@@ -6,7 +6,6 @@ namespace frontend\widgets;
 
 use common\models\Post;
 use common\models\PostLike;
-use frontend\assets\LikeAsset;
 use Yii;
 use yii\base\InvalidConfigException;
 use yii\base\Widget;
@@ -42,7 +41,6 @@ class LikeButton extends Widget
             throw new InvalidConfigException('LikeButton 需要设置 post。');
         }
 
-        LikeAsset::register($this->view);
     }
 
     public function run(): string

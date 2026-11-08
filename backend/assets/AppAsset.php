@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 namespace backend\assets;
 
-use common\assets\ColorModeAsset;
+use frontend\assets\ColorModeAsset;
 use yii\bootstrap5\BootstrapAsset;
 use yii\web\AssetBundle;
 use yii\web\YiiAsset;

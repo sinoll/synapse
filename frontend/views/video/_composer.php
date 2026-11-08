@@ -10,13 +10,11 @@ declare(strict_types=1);
 
 use common\models\Post;
 use common\models\ShortVideo;
-use frontend\assets\MentionAsset;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
 use yii\helpers\Url;
 
 $isUpdate = (bool) ($isUpdate ?? false);
-MentionAsset::register($this);
 $tagError = $tagError ?? null;
 // A failed create leaves the pending placeholder in the model, so only edit
 // views may point the previews at stored media.

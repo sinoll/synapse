@@ -9,7 +9,7 @@ return [
     'user.passwordResetTokenExpire' => 3600,
     // 3天
     'user.emailVerifyTokenExpire' => 259200,
-    // 管理员发出的注册邀请链接有效期，7 天。见 common\services\InviteToken。
+    // 管理员发出的注册邀请链接有效期，7 天。见 frontend\services\InviteToken。
     'user.inviteTokenExpire' => 604800,
     'user.passwordMinLength' => 8,
     // 长时间未登录的账户再登录时要过一次邮箱验证码（只在前台 users/login 生效）。

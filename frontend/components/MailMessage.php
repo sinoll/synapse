@@ -9,7 +9,7 @@ use Throwable;
 use Yii;
 
 /**
- * 渲染 @common/mail 下的 *-html / *-text 模板并交给 mailSender 投递。
+ * 渲染 @frontend/mail 下的 *-html / *-text 模板并交给 mailSender 投递。
  *
  * 站点没有装 yii2 邮件扩展（没有 mailer 组件），模板直接用 view 组件渲染成信件正文片段；
  * 投递失败统一返回 false，由调用方决定怎么提示用户，真实原因在日志 mail 分类里查。
