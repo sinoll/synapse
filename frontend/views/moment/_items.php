@@ -5,11 +5,13 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
+use common\components\Mention;
 use common\components\RichText;
 use common\models\Tag;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
+use frontend\widgets\ShareButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -77,7 +79,7 @@ foreach ($posts as $post):
 
     $contentHtml = RichText::purify((string) $moment->content);
     $inlineHashtags = Tag::extractHashtags($contentHtml);
-    $contentHtml = Tag::linkifyHashtags($contentHtml);
+    $contentHtml = Mention::linkify(Tag::linkifyHashtags($contentHtml));
     $images = $momentContentImages($contentHtml);
     $textHtml = (string) preg_replace('#<img\b[^>]*>#i', '', $contentHtml);
     $textHtml = (string) preg_replace('#<p>\s*(?:<br\s*/?>)?\s*</p>#i', '', $textHtml);
@@ -139,6 +141,7 @@ foreach ($posts as $post):
                 <div class="d-flex align-items-center gap-3">
                     <?= LikeButton::widget(['post' => $post]) ?>
                     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
+                    <?= ShareButton::widget(['post' => $post, 'iconOnly' => true]) ?>
                     <?= Html::a('阅读更多', $detailUrl, ['class' => 'btn btn-sm btn-outline-success']) ?>
                 </div>
             </footer>

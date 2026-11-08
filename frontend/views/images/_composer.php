@@ -10,10 +10,13 @@ declare(strict_types=1);
 /** @var string|null $tagError */
 
 use common\models\Post;
+use frontend\assets\MentionAsset;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
+use yii\helpers\Url;
 
 $isUpdate = (bool) ($isUpdate ?? false);
+MentionAsset::register($this);
 $selectedImageIds = $selectedImageIds ?? [];
 $tagError = $tagError ?? null;
 $visibilityOptions = [
@@ -121,8 +124,10 @@ JS);
                         'rows' => 4,
                         'placeholder' => "图片标题（第一行）\n补充图片说明… 输入 #话题# 添加标签",
                         'aria-label' => '图片标题与说明',
+                        'data-mention' => '',
+                        'data-mention-url' => Url::to(['/users/suggest']),
                     ]) ?>
-                    <div class="form-text">第一行作为标题，其余内容作为图片说明；#话题# 会自动识别为标签。</div>
+                    <div class="form-text">第一行作为标题，其余内容作为图片说明；#话题# 会自动识别为标签，@ 可提及用户。</div>
                     <?php foreach ($captionErrors as $captionError): ?>
                         <div class="text-danger small mt-1"><?= Html::encode($captionError) ?></div>
                     <?php endforeach; ?>

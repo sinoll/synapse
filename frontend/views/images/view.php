@@ -10,6 +10,7 @@ declare(strict_types=1);
 /** @var common\models\Post|null $next */
 /** @var array{total: int, byType: array<string, int>} $authorCounts */
 
+use common\components\Mention;
 use yii\helpers\Html;
 
 $this->title = $post->title;
@@ -34,7 +35,7 @@ $formatFileSize = static function (int $bytes): string {
                     <?= $this->render('@frontend/views/site/_view_header', ['post' => $post, 'displayTitle' => $post->title, 'authorCounts' => $authorCounts]) ?>
 
                     <?php if ($galleryDescription !== ''): ?>
-                        <p class="text-center text-body-secondary mb-4"><?= Html::encode($galleryDescription) ?></p>
+                        <p class="text-center text-body-secondary mb-4"><?= Mention::linkify(Html::encode($galleryDescription)) ?></p>
                     <?php endif; ?>
 
                     <div class="image-gallery d-flex flex-column gap-4">

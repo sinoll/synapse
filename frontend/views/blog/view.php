@@ -10,6 +10,7 @@ declare(strict_types=1);
 /** @var common\models\Post|null $next */
 /** @var array{total: int, byType: array<string, int>} $authorCounts */
 
+use common\components\Mention;
 use common\components\RichText;
 use common\models\BlogPost;
 use yii\helpers\Html;
@@ -22,6 +23,7 @@ CSS);
 
 // 锚点在净化之后注入，因此 HTML.Allowed 不必放开 h2[id]。
 [$contentHtml, $headings] = BlogPost::withHeadingAnchors(RichText::purify((string) $blog->content));
+$contentHtml = Mention::linkify($contentHtml);
 ?>
 <div class="row justify-content-center">
     <div class="col-12">

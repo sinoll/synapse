@@ -10,11 +10,15 @@ declare(strict_types=1);
 
 use common\components\RichText;
 use common\models\Post;
+use frontend\assets\MentionAsset;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
+use yii\helpers\Url;
 
 $isUpdate = (bool) ($isUpdate ?? false);
 $contentError = $contentError ?? null;
+
+MentionAsset::register($this);
 
 $user = Yii::$app->user->identity;
 $author = $user?->nickname ?: $user?->username ?: '我';
@@ -143,7 +147,7 @@ JS);
                 <div class="flex-grow-1 min-width-0">
                     <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
                         <span class="fw-semibold"><?= $isUpdate ? '编辑动态' : '发布动态' ?></span>
-                        <span class="text-body-secondary small text-nowrap">输入 #话题# 添加话题</span>
+                        <span class="text-body-secondary small text-nowrap">输入 #话题# 添加话题，@ 提及用户</span>
                     </div>
 
                     <?php
@@ -157,6 +161,7 @@ JS);
                     <div class="moment-editor text-break" contenteditable="true" role="textbox" aria-multiline="true"
                          aria-label="动态内容" aria-required="true" data-rich-editor
                          data-source="<?= Html::encode($contentInputId) ?>"
+                         data-mention data-mention-url="<?= Html::encode(Url::to(['/users/suggest'])) ?>"
                          data-placeholder="分享新鲜事……"><?= $purifiedContent ?></div>
 
                     <?= Html::error($model, 'content', ['class' => 'text-danger small mt-2']) ?>

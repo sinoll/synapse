@@ -9,6 +9,7 @@ declare(strict_types=1);
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
+use frontend\widgets\ShareButton;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -52,6 +53,7 @@ $publishedLabel = Yii::$app->formatter->asRelativeTime((int) $post->created_at);
         </div>
         <?= LikeButton::widget(['post' => $post, 'iconOnly' => true, 'buttonClass' => 'ms-auto align-self-start']) ?>
         <?= FavoriteButton::widget(['postId' => (int) $post->id, 'iconOnly' => true, 'buttonClass' => 'align-self-start']) ?>
+        <?= ShareButton::widget(['post' => $post, 'iconOnly' => true, 'buttonClass' => 'align-self-start']) ?>
         <?= $post->user !== null ? FollowButton::widget(['user' => $post->user, 'iconOnly' => true, 'buttonClass' => 'align-self-start']) : '' ?>
     </div>
 </article>

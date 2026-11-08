@@ -7,10 +7,13 @@ declare(strict_types=1);
 
 use common\models\Comment;
 use common\models\PostComment;
+use frontend\assets\MentionAsset;
 use frontend\controllers\CommentController;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\widgets\ActiveForm;
+
+MentionAsset::register($this);
 
 $identity = Yii::$app->user->identity;
 $profileName = $identity !== null ? ($identity->nickname ?: $identity->username) : '';
@@ -85,8 +88,10 @@ $createAction = Url::to(['/comment/create']);
                     'class' => 'form-control',
                     'rows' => 2,
                     'maxlength' => Comment::MAX_LENGTH,
-                    'placeholder' => '友善地说两句…',
+                    'placeholder' => '友善地说两句… @ 可提及用户',
                     'aria-label' => '评论内容',
+                    'data-mention' => '',
+                    'data-mention-url' => Url::to(['/users/suggest']),
                 ]) ?>
             </div>
             <div class="d-flex justify-content-end">
@@ -106,6 +111,8 @@ $createAction = Url::to(['/comment/create']);
                     'maxlength' => Comment::MAX_LENGTH,
                     'placeholder' => '回复内容…',
                     'aria-label' => '回复内容',
+                    'data-mention' => '',
+                    'data-mention-url' => Url::to(['/users/suggest']),
                 ]) ?>
                 <div class="d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-comment-action="reply-cancel">取消</button>
