@@ -19,6 +19,7 @@ class SignupForm extends Model
     use PasswordRulesTrait;
 
     public string $username = '';
+    public string $nickname = '';
     public string $email = '';
     public string $password = '';
     public string $confirmPassword = '';
@@ -37,7 +38,7 @@ class SignupForm extends Model
     public function rules(): array
     {
         return [
-            [['username', 'email', 'password', 'confirmPassword'], 'trim'],
+            [['username', 'nickname', 'email', 'password', 'confirmPassword'], 'trim'],
             ['username', 'required'],
             ['username', 'string', 'min' => 2, 'max' => 24],
             [
@@ -48,6 +49,7 @@ class SignupForm extends Model
             ],
             ['username', 'validateReservedUsername'],
             ['username', 'unique', 'targetClass' => User::class, 'message' => '该用户名已被占用。'],
+            ['nickname', 'string', 'max' => 80],
 
             ['email', 'required'],
             ['email', 'email'],
@@ -69,6 +71,7 @@ class SignupForm extends Model
     {
         return [
             'username' => '用户名',
+            'nickname' => '昵称',
             'email' => '邮箱',
             'password' => '密码',
             'confirmPassword' => '确认密码',
@@ -95,6 +98,7 @@ class SignupForm extends Model
 
         $user = new User();
         $user->username = $this->username;
+        $user->nickname = $this->nickname === '' ? null : $this->nickname;
         $user->email = $this->email;
         // 账户要等用户点击确认邮件里的链接才激活，见 VerifyEmailForm::verifyEmail()。
         $user->status = User::STATUS_INACTIVE;

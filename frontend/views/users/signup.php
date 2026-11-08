@@ -86,7 +86,20 @@ $labelOptions = ['class' => 'form-label fw-semibold small'];
                                 'placeholder' => '用户名',
                                 'maxlength' => true,
                             ],
-                        ])->textInput()->label('用户名', $labelOptions)->hint('2–24 个字符，可用中英文、数字与点、下划线、短横线。') ?>
+                        ])->textInput()->label('用户名', $labelOptions)->hint('2–24 个字符，可用中英文、数字与点、下划线、短横线。推荐英文，登录时使用，注册后不可修改。') ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <?= $form->field($model, 'nickname', [
+                            'options' => ['class' => 'mb-0'],
+                            'template' => sprintf($htmlIcon, '&#128172;'),
+                            'inputOptions' => [
+                                'class' => 'form-control',
+                                'placeholder' => '昵称',
+                                'maxlength' => true,
+                                'autocomplete' => 'nickname',
+                            ],
+                        ])->textInput()->label('昵称', $labelOptions)->hint('最多 80 个字符，前台显示，可修改，推荐使用中文。') ?>
                     </div>
 
                     <div class="mb-3">
