@@ -6,6 +6,7 @@ declare(strict_types=1);
 /** @var common\models\PostComment $node */
 /** @var string|null $replyToName 楼中楼里被回复者的昵称，顶级评论传 null */
 
+use common\components\Mention;
 use frontend\widgets\FollowButton;
 use yii\helpers\Html;
 
@@ -36,7 +37,7 @@ $canManage = $node->canManage($identity);
         <?php endif; ?>
 
         <?php if ($node->isVisible()): ?>
-            <div class="comment-text"><?= Html::encode((string) $node->comment->content) ?></div>
+            <div class="comment-text"><?= Mention::linkify(Html::encode((string) $node->comment->content)) ?></div>
         <?php else: ?>
             <div class="comment-text comment-text-hidden">该评论已被隐藏。</div>
         <?php endif; ?>

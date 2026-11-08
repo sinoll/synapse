@@ -9,11 +9,13 @@ declare(strict_types=1);
 /** @var common\models\Post|null $previousVideo */
 /** @var common\models\Post|null $nextVideo */
 
+use common\components\Mention;
 use common\models\Post;
 use common\models\Tag;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\LikeButton;
 use frontend\widgets\FollowButton;
+use frontend\widgets\ShareButton;
 use frontend\widgets\ViewCount;
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -84,7 +86,7 @@ $durationOf = static function (?Post $item): ?string {
                         </div>
                         <div class="video-shorts-title"><?= Html::encode($displayTitle) ?></div>
                         <?php if ($description !== ''): ?>
-                            <p class="video-shorts-desc"><?= Tag::linkifyHashtags(Html::encode($description)) ?></p>
+                            <p class="video-shorts-desc"><?= Mention::linkify(Tag::linkifyHashtags(Html::encode($description))) ?></p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -114,9 +116,7 @@ $durationOf = static function (?Post $item): ?string {
                     <button type="button" class="video-shorts-action" data-short-mute aria-label="静音">
                         <i class="bi bi-volume-up-fill" aria-hidden="true"></i><span>有声</span>
                     </button>
-                    <button type="button" class="video-shorts-action" data-video-share>
-                        <i class="bi bi-share-fill" aria-hidden="true"></i><span data-share-label>分享</span>
-                    </button>
+                    <?= ShareButton::widget(['post' => $post]) ?>
                     <?= $author !== null ? FollowButton::widget(['user' => $author]) : '' ?>
                     <?= LikeButton::widget(['post' => $post]) ?>
                     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
@@ -186,9 +186,7 @@ $durationOf = static function (?Post $item): ?string {
                         <?= $author !== null ? FollowButton::widget(['user' => $author, 'showCount' => true]) : '' ?>
                         <?= LikeButton::widget(['post' => $post]) ?>
                         <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-video-share>
-                            <i class="bi bi-share me-1" aria-hidden="true"></i><span data-share-label>分享</span>
-                        </button>
+                        <?= ShareButton::widget(['post' => $post]) ?>
                         <?= Html::a('<i class="bi bi-grid me-1" aria-hidden="true"></i>视频频道', ['/video/index'], ['class' => 'btn btn-outline-secondary btn-sm', 'encode' => false]) ?>
                         <?php if ($canManage): ?>
                             <?= Html::a('<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>编辑', ['/video/update', 'id' => $post->id], ['class' => 'btn btn-primary btn-sm', 'encode' => false]) ?>
@@ -197,7 +195,7 @@ $durationOf = static function (?Post $item): ?string {
                 </div>
 
                 <div class="video-watch-description">
-                    <p class="video-watch-description-text mb-0"><?= Tag::linkifyHashtags(Html::encode($description !== '' ? $description : '这个视频还没有简介。')) ?></p>
+                    <p class="video-watch-description-text mb-0"><?= Mention::linkify(Tag::linkifyHashtags(Html::encode($description !== '' ? $description : '这个视频还没有简介。'))) ?></p>
                     <?php if (!empty($post->tags)): ?>
                         <div class="video-tag-list mt-3">
                             <?php foreach ($post->tags as $tag): ?>
@@ -253,31 +251,6 @@ $durationOf = static function (?Post $item): ?string {
 
 <?php
 $this->registerJs(<<<'JS'
-document.querySelectorAll('[data-video-share]').forEach(function (button) {
-    button.addEventListener('click', function () {
-        const label = button.querySelector('[data-share-label]');
-        const done = function () {
-            if (!label) return;
-            const original = label.textContent;
-            label.textContent = '已复制';
-            window.setTimeout(function () { label.textContent = original; }, 1600);
-        };
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(window.location.href).then(done).catch(function () {});
-            return;
-        }
-        const helper = document.createElement('textarea');
-        helper.value = window.location.href;
-        helper.setAttribute('readonly', '');
-        helper.style.position = 'fixed';
-        helper.style.opacity = '0';
-        document.body.appendChild(helper);
-        helper.select();
-        try { document.execCommand('copy'); done(); } catch (error) {}
-        helper.remove();
-    });
-});
-
 (function () {
     const video = document.querySelector('[data-short-video]');
     const toggle = document.querySelector('[data-short-toggle]');

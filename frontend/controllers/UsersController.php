@@ -26,6 +26,7 @@ use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\base\InvalidArgumentException;
 use yii\db\ActiveQuery;
+use yii\helpers\Url;
 use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\web\ErrorAction;
@@ -72,10 +73,10 @@ class UsersController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['index', 'logout', 'favorite', 'like', 'followers', 'following'],
+                'only' => ['index', 'logout', 'favorite', 'like', 'followers', 'following', 'suggest'],
                 'rules' => [
                     [
-                        'actions' => ['index', 'logout', 'favorite', 'like', 'followers', 'following'],
+                        'actions' => ['index', 'logout', 'favorite', 'like', 'followers', 'following', 'suggest'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -85,6 +86,7 @@ class UsersController extends Controller
                 'class' => VerbFilter::class,
                 'actions' => [
                     'logout' => ['post'],
+                    'suggest' => ['get'],
                 ],
             ],
         ];
@@ -134,6 +136,40 @@ class UsersController extends Controller
             'definitions' => $definitions,
             'selectedType' => $type,
         ]);        
+    }
+
+    /**
+     * @ 提及的候选用户联想：按用户名或昵称模糊匹配，返回少量活跃用户。
+     */
+    public function actionSuggest(string $q = ''): Response
+    {
+        $q = trim($q);
+        if (mb_strlen($q) > 80) {
+            $q = mb_substr($q, 0, 80);
+        }
+
+        $query = User::find()
+            ->select(['id', 'username', 'nickname', 'avatar'])
+            ->where(['status' => User::STATUS_ACTIVE])
+            ->andWhere(['!=', 'id', (int) Yii::$app->user->id])
+            ->orderBy(['id' => SORT_ASC])
+            ->limit(8);
+        if ($q !== '') {
+            $query->andWhere(['or', ['like', 'username', $q], ['like', 'nickname', $q]]);
+        }
+
+        $users = [];
+        foreach ($query->all() as $user) {
+            $users[] = [
+                'id' => (int) $user->id,
+                'username' => (string) $user->username,
+                'name' => (string) ($user->nickname ?: $user->username),
+                'avatar' => (string) $user->avatar,
+                'url' => Url::to(['/users/profile', 'id' => (int) $user->id]),
+            ];
+        }
+
+        return $this->asJson(['users' => $users]);
     }
 
     /**

@@ -15,10 +15,13 @@ use common\components\RichText;
 use common\models\Cate;
 use common\models\Post;
 use common\models\Tag;
+use frontend\assets\MentionAsset;
 use yii\bootstrap5\ActiveForm;
 use yii\bootstrap5\Html;
+use yii\helpers\Url;
 
 $isUpdate = $isUpdate ?? false;
+MentionAsset::register($this);
 $selectedCateId = (int) ($selectedCateId ?? ($isUpdate ? (int) ($post->categories[0]->id ?? 0) : 0));
 $selectedTagNames = $selectedTagNames ?? ($isUpdate
     ? array_map(static fn (Tag $tag): string => $tag->name, $post->tags)
@@ -475,6 +478,7 @@ JS);
                 <div class="rich-editor-surface" contenteditable="true" role="textbox" aria-multiline="true"
                      aria-label="正文"
                      data-rich-editor data-source="<?= Html::encode($contentInputId) ?>"
+                     data-mention data-mention-url="<?= Html::encode(Url::to(['/users/suggest'])) ?>"
                      data-placeholder="从这里开始撰写正文……"><?= RichText::purify((string) $model->getAttribute('content')) ?></div>
                 <div class="rich-editor-help text-body-secondary mt-2">支持加粗、斜体、标题、引用、列表、链接，以及段落对齐、字号和文字颜色；工具栏在正文滚动时吸附在顶栏下方，随时可用。</div>
             </div>

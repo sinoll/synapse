@@ -10,6 +10,7 @@ declare(strict_types=1);
 /** @var common\models\Post|null $next */
 /** @var array{total: int, byType: array<string, int>} $authorCounts */
 
+use common\components\Mention;
 use common\components\RichText;
 use common\models\Tag;
 
@@ -32,7 +33,7 @@ CSS);
 
                     <div class="border rounded-4 p-3 p-md-4 card">
                         <div class="rich-content text-break">
-                            <?= Tag::linkifyHashtags(RichText::purify((string) $moment->content)) ?>
+                            <?= Mention::linkify(Tag::linkifyHashtags(RichText::purify((string) $moment->content))) ?>
                         </div>
                     </div>
 

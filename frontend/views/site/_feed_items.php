@@ -5,12 +5,14 @@ declare(strict_types=1);
 /** @var common\models\Post[] $posts */
 
 use common\models\Post;
+use common\components\Mention;
 use common\models\Tag;
 use frontend\assets\ImageViewerAsset;
 use frontend\assets\MomentCollapseAsset;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
+use frontend\widgets\ShareButton;
 use frontend\widgets\ViewCount;
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -67,25 +69,29 @@ if ($hashtagNames !== []) {
     }
 }
 
-/** 返回已转义的 HTML，关键词用 <mark> 包裹；$linkHashtags 时 #标签# 变成话题链接。标题本身已是链接时不能再嵌 <a>。 */
+/** 返回已转义的 HTML，关键词用 <mark> 包裹；$linkHashtags 时 #标签# 变成话题链接、@名称 变成用户链接。标题本身已是链接时不能再嵌 <a>。 */
 $highlight = static function (string $text, bool $linkHashtags = true) use ($keyword, $hashtagPattern, $hashtagSlugs): string {
     $encoded = Html::encode($text);
     if ($keyword !== '') {
         $pattern = '/(' . preg_quote(Html::encode($keyword), '/') . ')/iu';
         $encoded = preg_replace($pattern, '<mark>$1</mark>', $encoded) ?? $encoded;
     }
-    if (!$linkHashtags || $hashtagSlugs === []) {
+    if (!$linkHashtags) {
         return $encoded;
     }
 
-    return preg_replace_callback($hashtagPattern, static function (array $matches) use ($hashtagSlugs): string {
-        $name = html_entity_decode(trim($matches[1]), ENT_QUOTES, 'UTF-8');
-        if (!isset($hashtagSlugs[$name])) {
-            return $matches[0];
-        }
+    if ($hashtagSlugs !== []) {
+        $encoded = preg_replace_callback($hashtagPattern, static function (array $matches) use ($hashtagSlugs): string {
+            $name = html_entity_decode(trim($matches[1]), ENT_QUOTES, 'UTF-8');
+            if (!isset($hashtagSlugs[$name])) {
+                return $matches[0];
+            }
 
-        return '<a class="home-feed-hashtag" href="' . Html::encode(Url::to(['/site/tag', 'slug' => $hashtagSlugs[$name]])) . '">' . $matches[0] . '</a>';
-    }, $encoded) ?? $encoded;
+            return '<a class="home-feed-hashtag" href="' . Html::encode(Url::to(['/site/tag', 'slug' => $hashtagSlugs[$name]])) . '">' . $matches[0] . '</a>';
+        }, $encoded) ?? $encoded;
+    }
+
+    return Mention::linkify($encoded);
 };
 
 $momentFeedImages = static function (string $html): array {
@@ -291,6 +297,7 @@ foreach ($posts as $post):
             <div class="home-feed-card-footer d-flex align-items-center gap-4 flex-wrap">
                 <?= LikeButton::widget(['post' => $post]) ?>
                 <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
+                <?= ShareButton::widget(['post' => $post, 'iconOnly' => true]) ?>
                 <?php if ($post->type === Post::TYPE_IMAGES): ?>
                     <span class="home-feed-media-count small text-body-secondary"><?= count($post->images) ?> 张图片</span>
                 <?php endif; ?>

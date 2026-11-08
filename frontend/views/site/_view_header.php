@@ -11,6 +11,7 @@ use common\models\Post;
 use frontend\widgets\FavoriteButton;
 use frontend\widgets\FollowButton;
 use frontend\widgets\LikeButton;
+use frontend\widgets\ShareButton;
 use frontend\widgets\ViewCount;
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -89,6 +90,7 @@ CSS);
     <?= ViewCount::widget(['post' => $post]) ?>
     <?= LikeButton::widget(['post' => $post]) ?>
     <?= FavoriteButton::widget(['postId' => (int) $post->id]) ?>
+    <?= ShareButton::widget(['post' => $post]) ?>
 </div>
 
 <?php if (!empty($post->categories) || !empty($post->tags)): ?>
