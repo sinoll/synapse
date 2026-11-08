@@ -46,3 +46,12 @@ git push origin main
 ### 合并完成后，如果 dev 不再需要，可以删除：
 git branch -d dev              # 删除本地
 git push origin --delete dev   # 删除远程
+
+
+## 如果本地代码 改 乱套了。 要让本地完全和远程一致(丢弃所有本地修改和提交)
+
+git fetch origin
+git reset --hard origin/dev
+git clean -fd
+
+git pull origin dev
