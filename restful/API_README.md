@@ -56,6 +56,7 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 | 403 | 动了别人的内容；账户尚未修改初始密码 |
 | 404 | 不存在、类型对不上（`/blog/13` 指向动态）、无权查看的私密内容，以及**路由里没有的动词**（如 `DELETE /blog`） |
 | 422 | 字段校验失败，明细在 `data.errors` |
+| 429 | 认证接口超过来源 IP 频率限制 |
 | 500 | 服务端异常；`message` 是通用文案，细节只进 `restful/runtime/logs/api.log` |
 
 `YII_DEBUG=true`（`web/index.php`）时错误响应额外带 `debug{type,file,line,trace}`，
@@ -73,6 +74,75 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 * `GET /auth/me` 回显当前令牌所属账户（不含 `password_hash`、`auth_key`、验证码哈希）。
 * 读写权限沿用前台口径：**只有作者本人**能改能删，管理员不豁免。
 * 需要先改初始密码的账户拿到的是 403 + 网站改密页地址，不会发出令牌。
+
+### 注册、邮箱验证与 找回密码
+
+认证请求均使用 `Content-Type: application/json`，响应仍为统一的 `{code,message,data}` 格式。站点部署入口为虚拟主机根目录时，接口 URL 如下；如果部署在子路径下，请在下文 URL 前加部署前缀。
+
+#### 申请注册验证码 `POST /auth/register/code`
+
+```json
+{ "email": "alice@example.com" }
+```
+
+邮箱格式有效、站点开放注册且该邮箱未出现在用户表中时，系统才会发送 6 位数字验证码；邮箱已注册返回 422，并在 `data.errors.email` 中说明。验证码 10 分钟内有效，最多可尝试 3 次。相同邮箱 60 秒内不能重复发送。
+
+#### 提交注册 `POST /auth/register`
+
+```json
+{
+  "username": "alice",
+  "nickname": "Alice",
+  "email": "alice@example.com",
+  "code": "012345",
+  "password": "Example123",
+  "confirmPassword": "Example123"
+}
+```
+
+`nickname` 可省略。用户名要求 2–24 个字符，只能包含中英文、数字、点、下划线和短横线，且不能使用保留名称；密码要求 8–64 个字符，必须同时包含英文字母和数字。注册入口服从站点 `signup_enabled` 设置；关闭公开注册时返回 403。只有邮箱验证码及所有注册字段均通过校验后，账户才会写入用户表，并直接设为已激活状态。
+
+#### 登录 `POST /auth/login`
+
+```json
+{ "username": "alice", "password": "Example123" }
+```
+
+登录成功返回 `{token,token_type,expires_in,expires_at,user}`。后续受保护接口发送 `Authorization: Bearer <token>`。无效的用户名或密码返回 401，字段缺失或格式错误返回 422。已注册但尚未验证邮箱的账户不能登录。
+
+#### 请求密码重置 `POST /auth/forgot-password`
+
+```json
+{ "email": "alice@example.com" }
+```
+
+邮箱格式错误、邮箱未注册，或账户未激活/已停用时返回 422，并在 `data.errors.email` 中说明原因。只有邮箱对应已激活账户时才发送 6 位数字验证码；验证码 10 分钟有效、最多尝试 3 次。此接口会区分账户状态，请客户端按响应提示处理。
+
+#### 确认新密码 `POST /auth/reset-password`
+
+使用邮件中的验证码提交邮箱和新密码：
+
+```json
+{
+  "email": "alice@example.com",
+  "code": "012345",
+  "password": "NewExample456",
+  "confirmPassword": "NewExample456"
+}
+```
+
+`code` 推荐作为字符串提交，以保留前导零；如果客户端以 JSON 整数提交，接口会自动补齐为 6 位数字。验证码只能使用一次。错误达到 3 次或验证码过期后，需重新申请验证码；成功后需用新密码重新登录。
+密码重置会使站内登录凭据失效，但已签发的无状态 API 令牌仍可使用至过期；如需立即失效，必须轮换 `site_setting.api_token_secret`，这会同时注销所有 API 用户。
+
+以上代码已 人工审核
+
+#### 频率限制与邮件配置
+
+* 注册：每个来源 IP 每小时最多 10 次。
+* 登录、找回密码和重置密码：每个来源 IP 每小时最多 20 次；超过限制返回 429。
+* 同一邮箱的同类验证码每 60 秒最多发送一次。
+* 验证码哈希和尝试次数存入现有应用缓存，不创建验证码数据表。多台 API 实例部署时，应配置所有实例共享的缓存后端。
+* 邮件由现有 SMTP 发信器投递。部署时须配置 SMTP 参数。
 
 ## 内容资源
 
@@ -94,7 +164,7 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 ### 可见性
 
 读取沿用 `Post::applyVisibilityScope()`：访客只见公开内容，带令牌后能看到「注册用户可见」和自己
-的私密内容与草稿（`status=0`）。无权查看的详情按 404 处理，避免用状态码差异暴露「它存在」。
+的私密内容（`status=0`）。无权查看的详情按 404 处理，避免用状态码差异暴露「它存在」。
 
 ### 公共字段
 
@@ -173,9 +243,8 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 * 详情接口不累加 `views`。前台「同一浏览器每天算一次」靠响应里的去重 Cookie，API 客户端不存 Cookie，
   接上去只会把访问量刷成没有意义的数字。要计数请写网站自己的页面。
 * 无状态令牌做不到「单独吊销某一台设备」。需要这个能力就在 `ApiToken::verify()` 里加一层 jti 黑名单。
-* `emailCodeEnabled`（异地登录邮箱验证码）关卡目前只对前台生效，接口这条路径不触发第二步；
-  若日后打开，`POST /auth/login` 会退回 401「登录未完成，请改用网站登录。」而不是发出无符号令牌。
-* 没有做速率限制：登录失败的暴力尝试目前只受 `LoginForm` 自带的账户锁定约束。
+* RESTful 注册验证和找回密码使用 API 自己的一次性邮件验证码；前台注册/重置密码的邮件链接流程保持不变。
+* 认证接口有来源 IP 和邮箱级频率限制；生产环境应使用可供前端与 RESTful 应用共享的缓存服务，避免多进程分别计数。
 
 ## 代码地图
 

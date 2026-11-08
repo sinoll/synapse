@@ -43,7 +43,12 @@ final class SiteController extends ApiController
 
         return ApiResponder::ok([
             'auth' => [
+                'register_code' => 'POST /auth/register/code，提交 email 后发送注册验证码',
+                'register' => 'POST /auth/register，提交 username、email、code、password、confirmPassword'
+                    . '，可选 nickname；验证码通过后直接激活账户',
                 'login' => 'POST /auth/login，body: {"username":"...","password":"..."}',
+                'forgot_password' => 'POST /auth/forgot-password，body: {"email":"..."}；发送密码重置验证码',
+                'reset_password' => 'POST /auth/reset-password，提交 email、code、password、confirmPassword',
                 'header' => 'Authorization: Bearer <token>',
                 'expires_in' => ApiToken::lifetime(),
                 'stateless' => '令牌自包含：没有会话，服务端不保存也不逐个吊销。',

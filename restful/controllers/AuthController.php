@@ -4,35 +4,109 @@ declare(strict_types=1);
 
 namespace restful\controllers;
 
-use common\models\LoginForm;
+use common\models\SiteSetting;
 use common\models\User as UserRecord;
 use restful\components\ApiResponder;
 use restful\exceptions\ValidationException;
+use restful\models\LoginForm;
+use restful\models\PasswordResetForm;
+use restful\models\PasswordResetRequestForm;
+use restful\models\RegistrationCodeRequestForm;
+use restful\models\RegistrationForm;
 use restful\services\ApiToken;
+use RuntimeException;
 use Yii;
+use yii\web\ForbiddenHttpException;
 use yii\web\UnauthorizedHttpException;
 
 /**
- * 令牌签发：POST /auth/login、/auth/logout、GET /auth/me。
+ * 账户生命周期与令牌签发：注册、登录、找回密码、登出和当前账户。
  *
- * 口令校验完全复用 common\models\LoginForm，包括「账户未激活」的提示口径。
- * 前台那道「久未登录要先过邮箱验证码」的关卡这里刻意不开启：验证码邮件里的链接指向网站，
- * 无状态的接口客户端拿不到也确认不了会话（见 LoginForm::$emailCodeEnabled 的默认值）。
+ * RESTful 登录使用无状态专用表单；注册和密码找回使用一次性邮箱验证码。
  */
 final class AuthController extends ApiController
 {
     protected function publicActions(): array
     {
-        return ['login'];
+        return [
+            'register-code',
+            'register',
+            'login',
+            'forgot-password',
+            'reset-password',
+        ];
+    }
+
+    public function actionRegister(): array
+    {
+        if ($limited = self::rateLimit('register', 10)) {
+            return $limited;
+        }
+        if (!SiteSetting::signupEnabled()) {
+            throw new ForbiddenHttpException('当前站点暂未开放注册。');
+        }
+
+        $payload = $this->payload();
+        $form = new RegistrationForm();
+        $form->username = self::stringField($payload, 'username');
+        $form->nickname = self::stringField($payload, 'nickname', false);
+        $form->email = self::stringField($payload, 'email');
+        $form->code = self::codeField($payload, 'code');
+        $form->password = self::stringField($payload, 'password');
+        $form->confirmPassword = self::stringField($payload, 'confirmPassword');
+
+        $user = $form->register();
+        if ($user === null) {
+            $errors = $form->getErrors();
+            if ($errors === []) {
+                throw new RuntimeException('注册账户保存失败。');
+            }
+            throw new ValidationException($errors, '注册信息不合法。');
+        }
+
+        return ApiResponder::ok([
+            'user' => self::profile($user),
+        ], '注册成功，账户已激活。');
+    }
+
+    public function actionRegisterCode(): array
+    {
+        if ($limited = self::rateLimit('register-code', 10)) {
+            return $limited;
+        }
+        if (!SiteSetting::signupEnabled()) {
+            throw new ForbiddenHttpException('当前站点暂未开放注册。');
+        }
+
+        $form = new RegistrationCodeRequestForm();
+        $form->email = trim(self::stringField($this->payload(), 'email'));
+        if (!$form->validate()) {
+            throw new ValidationException($form->getErrors(), '邮箱格式不正确。');
+        }
+
+        $sent = $form->sendCode();
+        if ($form->hasErrors()) {
+            throw new ValidationException($form->getErrors(), '该邮箱不能用于注册。');
+        }
+        if ($sent === false) {
+            return ApiResponder::fail(503, '验证码邮件发送失败，请稍后重试。');
+        }
+
+        return ApiResponder::ok(
+            null,
+            '如果该邮箱可用于注册，验证码将发送至该邮箱，请在 10 分钟内查收。',
+        );
     }
 
     public function actionLogin(): array
     {
+        if ($limited = self::rateLimit('login', 20)) {
+            return $limited;
+        }
         $payload = $this->payload();
-        $username = self::credential($payload, 'username');
-        $password = self::credential($payload, 'password');
-        // 先把「没填」和「填错了」分开：前者是请求写错了(422)，后者是凭据不对(401)，
-        // 而且 LoginForm 的必填文案是英文的，接口不该照抄。
+        $username = trim(self::stringField($payload, 'username'));
+        $password = self::stringField($payload, 'password');
+        // 先把「没填」和「填错了」分开：前者是请求写错了(422)，后者是凭据不对(401)。
         $missing = [];
         foreach (['username' => $username, 'password' => $password] as $field => $value) {
             if ($value === '') {
@@ -46,27 +120,19 @@ final class AuthController extends ApiController
         $form = new LoginForm();
         $form->username = $username;
         $form->password = $password;
-        // 不读 remember_me：接口不写会话，「记住我」在这里没有可延长的东西。
-        if (!$form->validate()) {
+        // API 专用表单只校验凭据，不建立网站会话或写 Cookie。
+        $identity = $form->validateCredentials();
+        if ($identity === null) {
             $errors = $form->getErrors();
-            // 口令错误的文案在 LoginForm 里是英文的，接口统一给中文；
-            // username 上的错误是「账户尚未激活」，本来就是给人看的中文，原样返回。
+            // username 上的错误是「账户尚未激活」，直接返回；密码错误统一避免暴露账户状态。
             $message = isset($errors['password'])
                 ? '用户名或密码不正确。'
                 : (string) ($errors['username'][0] ?? '登录失败，请重试。');
 
             return ApiResponder::fail(401, $message);
         }
-        if (!$form->login()) {
-            // 走到这里口令已经校验通过，唯一能让它失败的是被关掉的邮箱验证码关卡；
-            // 留着这层兜底，免得将来打开开关时接口直接吐出无符号的令牌。
-            throw new UnauthorizedHttpException('登录未完成，请改用网站登录。');
-        }
 
-        $identity = Yii::$app->user->getIdentity();
-        if (!$identity instanceof UserRecord) {
-            throw new UnauthorizedHttpException('登录状态异常，请重试。');
-        }
+        $identity->updateAttributes(['last_login_at' => time()]);
         if ((int) $identity->must_change_password === 1) {
             return ApiResponder::fail(403, '该账户还需要先修改初始密码，请到网站的「修改密码」页面（/users/change-password）完成后再调用本接口。');
         }
@@ -80,6 +146,52 @@ final class AuthController extends ApiController
             'expires_at' => ApiResponder::timestamp(time() + $lifetime),
             'user' => self::profile($identity),
         ], '登录成功。');
+    }
+
+    public function actionForgotPassword(): array
+    {
+        if ($limited = self::rateLimit('password-reset', 20)) {
+            return $limited;
+        }
+
+        $form = new PasswordResetRequestForm();
+        $form->email = trim(self::stringField($this->payload(), 'email'));
+        if (!$form->validate()) {
+            throw new ValidationException($form->getErrors(), '邮箱格式不正确。');
+        }
+
+        $sent = $form->sendCode();
+        if ($form->hasErrors()) {
+            throw new ValidationException($form->getErrors(), '该邮箱无法用于密码重置。');
+        }
+        if ($sent === false) {
+            return ApiResponder::fail(503, '验证码邮件发送失败，请稍后重试。');
+        }
+
+        return ApiResponder::ok(null, '验证码已发送至该邮箱，请在 10 分钟内查收。');
+    }
+
+    public function actionResetPassword(): array
+    {
+        if ($limited = self::rateLimit('reset-password', 20)) {
+            return $limited;
+        }
+
+        $payload = $this->payload();
+        $form = new PasswordResetForm();
+        $form->email = trim(self::stringField($payload, 'email'));
+        $form->code = self::codeField($payload, 'code');
+        $form->password = self::stringField($payload, 'password');
+        $form->confirmPassword = self::stringField($payload, 'confirmPassword');
+        if (!$form->resetPassword()) {
+            $errors = $form->getErrors();
+            if ($errors === []) {
+                throw new RuntimeException('密码重置保存失败。');
+            }
+            throw new ValidationException($errors, '验证码无效或新密码不符合要求。');
+        }
+
+        return ApiResponder::ok(null, '密码已重置，请使用新密码登录。');
     }
 
     /**
@@ -101,14 +213,69 @@ final class AuthController extends ApiController
         return ApiResponder::ok(['user' => self::profile($identity)]);
     }
 
-    private static function credential(array $payload, string $field): string
+    private static function stringField(array $payload, string $field, bool $required = true): string
     {
         $value = $payload[$field] ?? null;
-        if ($value !== null && !is_string($value) && !is_numeric($value)) {
+        if ($value === null) {
+            if (!$required) {
+                return '';
+            }
+            throw new ValidationException([$field => [$field . ' 不能为空。']]);
+        }
+        if (!is_string($value)) {
             throw new ValidationException([$field => [$field . ' 必须是字符串。']]);
         }
+        if ($required && $value === '') {
+            throw new ValidationException([$field => [$field . ' 不能为空。']]);
+        }
 
-        return trim((string) $value);
+        return $value;
+    }
+
+    /**
+     * JSON clients sometimes encode the six-digit OTP as an integer, which strips leading zeroes.
+     * Normalize non-negative integers back to six digits; keep string validation strict otherwise.
+     */
+    private static function codeField(array $payload, string $field): string
+    {
+        $value = $payload[$field] ?? null;
+        if ($value === null) {
+            throw new ValidationException([$field => [$field . ' 不能为空。']]);
+        }
+        if (is_int($value)) {
+            if ($value < 0 || $value > 999999) {
+                throw new ValidationException([$field => [$field . ' 必须是 6 位数字验证码。']]);
+            }
+
+            return str_pad((string) $value, 6, '0', STR_PAD_LEFT);
+        }
+        if (!is_string($value)) {
+            throw new ValidationException([$field => [$field . ' 必须是字符串或整数验证码。']]);
+        }
+        if ($value === '') {
+            throw new ValidationException([$field => [$field . ' 不能为空。']]);
+        }
+
+        return $value;
+    }
+
+    /** 来源 IP 固定窗口配额，避免公开认证入口被暴力请求或邮件轰炸。 */
+    private static function rateLimit(string $scope, int $limit): array|null
+    {
+        $bucket = intdiv(time(), 3600);
+        $key = 'auth-rate/' . $scope . '/' . $bucket . '/'
+            . hash('sha256', (string) Yii::$app->request->userIP);
+        $count = (int) Yii::$app->cache->get($key) + 1;
+        if (!Yii::$app->cache->set($key, $count, 3600)) {
+            throw new RuntimeException('认证接口限流缓存不可用。');
+        }
+        if ($count <= $limit) {
+            return null;
+        }
+
+        Yii::warning('认证接口请求超过来源 IP 配额：' . $scope, 'auth');
+
+        return ApiResponder::fail(429, '操作过于频繁，请稍后再试。');
     }
 
     /** @return array 对外可见的账户字段：不含 password_hash、auth_key 与各类验证码哈希。 */

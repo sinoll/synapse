@@ -80,7 +80,11 @@ return [
             // 注意属性名是 enableStrictParsing，写成 enableStrictMode 会在初始化时抛 UnknownPropertyException。
             'enableStrictParsing' => true,
             'rules' => $resourceRules + [
+                'POST auth/register/code' => 'auth/register-code',
+                'POST auth/register' => 'auth/register',
                 'POST auth/login' => 'auth/login',
+                'POST auth/forgot-password' => 'auth/forgot-password',
+                'POST auth/reset-password' => 'auth/reset-password',
                 'POST auth/logout' => 'auth/logout',
                 'GET auth/me' => 'auth/me',
                 'POST upload' => 'upload/create',

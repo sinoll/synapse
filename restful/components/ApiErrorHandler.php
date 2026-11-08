@@ -31,6 +31,6 @@ final class ApiErrorHandler extends ErrorHandler
             return $exception->statusCode;
         }
 
-        return $exception instanceof UserException ? Response::STATUS_BAD_REQUEST : Response::STATUS_INTERNAL_SERVER_ERROR;
+        return $exception instanceof UserException ? 400 : 500;
     }
 }
