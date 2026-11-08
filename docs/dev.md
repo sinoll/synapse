@@ -17,6 +17,10 @@ git push -u origin dev 之后你就可以在 dev 分支上开发了。
 ### 查看当前所有分支（本地 + 远程）
 git branch -va
 
+git branch -r                   # 只看远程分支
+git branch -a                   # 本地 + 远程分支
+
+
 ### 切换到 dev
 git checkout dev
 
@@ -24,5 +28,21 @@ git checkout dev
 git pull origin dev
 
 ### 开发完推送
-git push
+git push origin dev
 
+
+
+## 如何 把 dev 代码 合并到 main 中
+git checkout main 			# 切换到main分支
+git pull origin main       	# 先同步远程 main，避免冲突
+git merge dev				# 合并 本地 dev 到 main
+git push origin main 		#  推送到 远程 main
+
+### 如果有重读
+git add .
+git commit -m "merge dev to main"                # 完成合并提交
+git push origin main
+
+### 合并完成后，如果 dev 不再需要，可以删除：
+git branch -d dev              # 删除本地
+git push origin --delete dev   # 删除远程
