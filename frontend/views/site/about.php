@@ -22,7 +22,9 @@ $this->params['meta_keywords'] = '拾光, 家庭内容中心';
         <h1 class="display-6 fw-semibold mb-4">关于拾光</h1>
 
         <p class="lead text-body-secondary mb-4">
-            拾光，拾取生活中的光。这里记录技术笔记、生活随想以及值得留下的瞬间，
+            <b>拾光</b>，拾取生活中的光。
+            <br />
+            这里记录技术笔记、生活随想以及值得留下的瞬间，
             内容涵盖博客、图片、动态与短视频。 
         </p>
         
@@ -30,10 +32,17 @@ $this->params['meta_keywords'] = '拾光, 家庭内容中心';
         <h2 class="h4 mb-3">开发方式</h2>
         <p class="mb-2">
             本站使用
-            <a href="https://qoder.com.cn/" target="_blank" rel="noopener"><strong>Qoder CN</strong></a>
+            <a href="#" target="_blank" rel="noopener"><strong>Qoder CN</strong></a>
             作为 AI 编程助手完成开发与维护——从数据库迁移、页面重构到响应式布局调整，
             均由 Qoder 智能体使用 <strong>Qwen3.8-Flash</strong>和<strong>DeepSeek-Flash</strong> 大模型 <strong>免费版</strong> 协作实现。
         </p>        
 
+        <br />
+        <h2 class="h4 mb-3">后续</h2>
+        <p class="mb-2">
+            正在使用
+            <a href="#" target="_blank" rel="noopener"><strong>Visual Studio Code</strong></a>
+            作为 AI 编程助手完成 <strong>restful</strong>接口 以及 <strong>Android App</strong> 的开发。
+        </p>
     </div>
 </div>

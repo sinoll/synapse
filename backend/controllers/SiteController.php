@@ -6,7 +6,6 @@ namespace backend\controllers;
 
 use common\models\LoginForm;
 use common\models\ChangePasswordForm;
-use common\models\VerifyPhoneForm;
 use Yii;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
@@ -35,11 +34,6 @@ class SiteController extends Controller
             $this->redirect(['change-password']);
             return false;
         }
-        if ($user !== null && $user->phone_verified_at === null && !in_array($actionId, ['changepassword', 'verifyphone', 'logout'], true)) {
-            $this->redirect(['verify-phone']);
-            return false;
-        }
-
         return true;
     }
 
@@ -57,7 +51,7 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index', 'change-password', 'verify-phone'],
+                        'actions' => ['logout', 'index', 'change-password'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -154,26 +148,4 @@ class SiteController extends Controller
         return $this->render('changePassword', compact('model'));
     }
 
-    public function actionVerifyPhone(): string|Response
-    {
-        if (Yii::$app->user->isGuest) {
-            return $this->redirect(['login']);
-        }
-        if (Yii::$app->user->identity->must_change_password) {
-            return $this->redirect(['change-password']);
-        }
-
-        $model = new VerifyPhoneForm(['phone' => Yii::$app->user->identity->phone ?? '']);
-        $post = Yii::$app->request->post();
-        if ($model->load($post)) {
-            if (isset($post['sendCode']) && $model->sendCode(Yii::$app->smsSender)) {
-                Yii::$app->session->setFlash('success', '验证码已发送。');
-            } elseif (isset($post['verifyCode']) && $model->verify()) {
-                Yii::$app->session->setFlash('success', '手机号验证完成。');
-                return $this->goHome();
-            }
-        }
-
-        return $this->render('verifyPhone', compact('model'));
-    }
 }

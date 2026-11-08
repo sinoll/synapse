@@ -27,14 +27,9 @@ class m130524_201442_init extends Migration
             'avatar' => $this->string(500)->null(),
             'bio' => $this->string(500)->null(),
             'phone' => $this->string(32)->null(),
-            'phone_verified_at' => $this->integer()->null(),
-            // 长时间没登录要验证码需要一个判定基准；updated_at 会被改资料、改密码刷写，不能当登录时间用。
+            // 长时间未登录需要邮箱验证码时使用；updated_at 会被改资料、改密码刷写，不能当登录时间用。
             // 存量账户留 NULL，代表"没有历史可依"，第一次登录放行、之后才纳入阈值判断。
             'last_login_at' => $this->integer()->null()->comment('最近一次登录成功时间；NULL 表示启用统计前从未登录过'),
-            'sms_code_hash' => $this->string(255)->null(),
-            'sms_code_expires_at' => $this->integer()->null(),
-            'sms_code_sent_at' => $this->integer()->null(),
-            'sms_code_attempts' => $this->smallInteger()->notNull()->defaultValue(0),
             'must_change_password' => $this->boolean()->notNull()->defaultValue(1),
             'is_admin' => $this->boolean()->notNull()->defaultValue(0),
 

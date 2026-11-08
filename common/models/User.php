@@ -21,7 +21,6 @@ use yii\web\IdentityInterface;
  * @property string $verification_token
  * @property string $email
  * @property string|null $phone
- * @property int|null $phone_verified_at
  * @property int|null $last_login_at
  * @property string|null $nickname
  * @property string|null $avatar

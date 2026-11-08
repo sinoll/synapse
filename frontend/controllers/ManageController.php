@@ -43,12 +43,6 @@ class ManageController extends Controller
             Yii::$app->response->redirect(['/users/change-password']);
             return false;
         }
-        /***
-        if (Yii::$app->user->identity->phone_verified_at === null) {
-            Yii::$app->response->redirect(['/users/verify-phone']);
-            return false;
-        }
-        ***/
         return true;
     }
 
@@ -119,7 +113,7 @@ class ManageController extends Controller
     {
         $model = new CreateUserForm();
         if ($model->load(Yii::$app->request->post()) && $model->create()) {
-            Yii::$app->session->setFlash('success', '用户已创建，首次登录需要修改密码并完成手机号验证。');
+            Yii::$app->session->setFlash('success', '用户已创建，首次登录需要修改密码。');
             return $this->redirect(['index']);
         }
 

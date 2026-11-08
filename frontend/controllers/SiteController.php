@@ -8,7 +8,6 @@ use common\models\ChangePasswordForm;
 use common\models\Cate;
 use common\models\Post;
 use common\models\Tag;
-use common\models\VerifyPhoneForm;
 use frontend\components\ListPagination;
 use Yii;
 use yii\captcha\CaptchaAction;

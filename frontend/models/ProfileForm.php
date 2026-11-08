@@ -13,6 +13,7 @@ use yii\web\UploadedFile;
 class ProfileForm extends Model
 {
     public string $nickname = '';
+    public string $phone = '';
     public ?UploadedFile $avatarFile = null;
 
     /** Keep the posted file input's empty scalar out of the typed upload property. */
@@ -39,6 +40,9 @@ class ProfileForm extends Model
             ['nickname', 'trim'],
             ['nickname', 'required'],
             ['nickname', 'string', 'max' => 80],
+            ['phone', 'trim'],
+            ['phone', 'string', 'max' => 32],
+            ['phone', 'unique', 'targetClass' => User::class],
             ['avatarFile', 'file', 'extensions' => ['png', 'jpg', 'jpeg', 'gif', 'webp'], 'mimeTypes' => ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], 'maxSize' => 5 * 1024 * 1024],
             ['avatarFile', 'validateImageContent'],
         ];
@@ -60,10 +64,12 @@ class ProfileForm extends Model
         /** @var User $user */
         $user = Yii::$app->user->identity;
         $oldNickname = $user->nickname;
+        $oldPhone = $user->phone;
         $oldAvatar = $user->avatar;
         $directory = Yii::getAlias('@frontend/web/uploads/avatars');
         $user->nickname = $this->nickname;
-        $attributes = ['nickname', 'updated_at'];
+        $user->phone = $this->phone === '' ? null : $this->phone;
+        $attributes = ['nickname', 'phone', 'updated_at'];
         if ($this->avatarFile !== null) {
             FileHelper::createDirectory($directory, 0755, true);
             $filename = Yii::$app->security->generateRandomString(32) . '.' . strtolower($this->avatarFile->extension);
@@ -77,6 +83,7 @@ class ProfileForm extends Model
 
         if (!$user->save(false, $attributes)) {
             $user->nickname = $oldNickname;
+            $user->phone = $oldPhone;
             $user->avatar = $oldAvatar;
             if ($this->avatarFile !== null && is_file($directory . DIRECTORY_SEPARATOR . $filename)) {
                 @unlink($directory . DIRECTORY_SEPARATOR . $filename);

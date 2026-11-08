@@ -43,6 +43,7 @@ $typeIcons = ['blog' => 'bi-journal-text', 'moment' => 'bi-chat-square-text', 'i
                     <li><?= Html::a('<i class="bi bi-tags" aria-hidden="true"></i><span>标签云</span>', ['/site/tag'], ['encode' => false]) ?></li>
                     <li><?= Html::a('<i class="bi bi-calendar3" aria-hidden="true"></i><span>时间归档</span>', ['/site/archive'], ['encode' => false]) ?></li>
                     <li><?= Html::a('<i class="bi bi-search" aria-hidden="true"></i><span>搜索</span>', ['/search/index'], ['encode' => false]) ?></li>
+                    <li><?= Html::a('<i class="bi bi-cloud" aria-hidden="true"></i><span>云盘</span>', 'https://home.sinocd.cn/', ['encode' => false, 'target' => '_blank']) ?></li>
                 </ul>
             </nav>
 

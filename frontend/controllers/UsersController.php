@@ -6,7 +6,6 @@ namespace frontend\controllers;
 
 use common\models\LoginForm;
 use common\models\ChangePasswordForm;
-use common\models\VerifyPhoneForm;
 use frontend\models\LoginCodeForm;
 use frontend\models\ProfileForm;
 use frontend\models\PasswordResetRequestForm;
@@ -56,12 +55,6 @@ class UsersController extends Controller
             $this->redirect(['change-password']);
             return false;
         }
-        /***
-        if ($user !== null && $user->phone_verified_at === null && !in_array($actionId, ['changepassword', 'verifyphone', 'logout'], true)) {
-            $this->redirect(['verify-phone']);
-            return false;
-        }
-        ***/
         return true;
     }
 
@@ -733,36 +726,16 @@ class UsersController extends Controller
             return $this->redirect(['login']);
         }
 
-        $profile = new ProfileForm(['nickname' => Yii::$app->user->identity->nickname ?? '']);
+        $profile = new ProfileForm([
+            'nickname' => Yii::$app->user->identity->nickname ?? '',
+            'phone' => Yii::$app->user->identity->phone ?? '',
+        ]);
         if ($profile->load(Yii::$app->request->post()) && $profile->save()) {
             Yii::$app->session->setFlash('success', '个人资料已更新。');
             return $this->refresh();
         }
 
         return $this->render('settings', compact('profile'));
-    }
-
-    public function actionVerifyPhone(): string|Response
-    {
-        if (Yii::$app->user->isGuest) {
-            return $this->redirect(['login']);
-        }
-        if (Yii::$app->user->identity->must_change_password) {
-            return $this->redirect(['change-password']);
-        }
-
-        $model = new VerifyPhoneForm(['phone' => Yii::$app->user->identity->phone ?? '']);
-        $post = Yii::$app->request->post();
-        if ($model->load($post)) {
-            if (isset($post['sendCode']) && $model->sendCode(Yii::$app->smsSender)) {
-                Yii::$app->session->setFlash('success', '验证码已发送。');
-            } elseif (isset($post['verifyCode']) && $model->verify()) {
-                Yii::$app->session->setFlash('success', '手机号验证完成。');
-                return $this->goHome();
-            }
-        }
-
-        return $this->render('verifyPhone', compact('model'));
     }
 
     /**

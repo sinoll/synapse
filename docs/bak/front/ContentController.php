@@ -30,12 +30,6 @@ class ContentController extends Controller
             Yii::$app->response->redirect(['/users/change-password']);
             return false;
         }
-        /***
-        if ($user !== null && $user->phone_verified_at === null) {
-            Yii::$app->response->redirect(['/users/verify-phone']);
-            return false;
-        }
-        ***/
         return true;
     }
 
