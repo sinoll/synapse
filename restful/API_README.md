@@ -226,7 +226,7 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 
 返回 `{kind, path, url, size, thumbnail_path, thumbnail_url}`。缩略图或抽帧失败不影响上传成功，
 改为在 `warning` 里说明；此时把 `path` 交给内容接口即可（详情会按无缩略图降级渲染）。
-图片还会用 `getimagesize()` 复核内容，防止把改名的非图片当图收下来。
+图片还会用 `getimagesize()` 复核内容，视频会由 FFmpeg 校验视频流并解码首帧；内容无效的文件会以 422 拒绝，不会保存到站点。
 
 ## 删除会不会丢文件
 

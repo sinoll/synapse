@@ -93,6 +93,10 @@ final class UploadController extends ApiController
         if ($config['thumb_from'] !== 'video' && @getimagesize($file->tempName) === false) {
             throw new ValidationException(['file' => ['文件不是有效的图片。']]);
         }
+        if ($config['thumb_from'] === 'video'
+            && !Yii::$app->get('ffmpegService')->isPlayableVideo($file->tempName, (string) $file->extension)) {
+            throw new ValidationException(['file' => ['文件不是有效的视频，或视频内容无法解码播放。']]);
+        }
     }
 
     /** @param array<string, mixed> $config 形如 /uploads/images/202611；dated=false 的分类图不带年月分层。 */

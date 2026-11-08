@@ -12,8 +12,5 @@ post 一张表 + type 判别，这是对的；但博客/动态/图集/短视频�
 main.php:51
  的 rules 是空的，全靠默认路由，产出 /blog/view?id=12、/images/index?tag=slug&page=2。建议给四类详情 + 标签页 + 分类页定语义路由，并对 /site/view?id= 做 301。
 
-优化代码
 
 
-restful 接口
-视频上传只按扩展名检查，没有验证文件确实是可播放的视频：UploadController.php。内容无效时仍可能上传成功，只返回缩略图生成警告，客户端之后可能无法播放。

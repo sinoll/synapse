@@ -258,6 +258,8 @@ class VideoController extends Controller
                 $model->addError('video_path', '仅支持 MP4、WebM、MOV 或 OGG 视频。');
             } elseif ($uploadedVideo->size > 500 * 1024 * 1024) {
                 $model->addError('video_path', '视频文件不能超过 500 MB。');
+            } elseif (!Yii::$app->get('ffmpegService')->isPlayableVideo($uploadedVideo->tempName, (string) $uploadedVideo->extension)) {
+                $model->addError('video_path', '文件不是有效的视频，或视频内容无法解码播放。');
             }
             if ($uploadedCover !== null) {
                 if ($uploadedCover->error !== UPLOAD_ERR_OK) {
@@ -364,6 +366,8 @@ class VideoController extends Controller
                     $model->addError('video_path', '仅支持 MP4、WebM、MOV 或 OGG 视频。');
                 } elseif ($uploadedVideo->size > 500 * 1024 * 1024) {
                     $model->addError('video_path', '视频文件不能超过 500 MB。');
+                } elseif (!Yii::$app->get('ffmpegService')->isPlayableVideo($uploadedVideo->tempName, (string) $uploadedVideo->extension)) {
+                    $model->addError('video_path', '文件不是有效的视频，或视频内容无法解码播放。');
                 } else {
                     $replaceVideo = true;
                 }

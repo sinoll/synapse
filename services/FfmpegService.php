@@ -90,6 +90,47 @@ class FfmpegService
     }
 
     /**
+     * Verify that the input contains a decodable video stream.
+     */
+    public function isPlayableVideo(string $videoPath, string $extension): bool
+    {
+        if (!is_file($videoPath)) {
+            throw new RuntimeException('Video file does not exist: ' . $videoPath);
+        }
+        if (!function_exists('proc_open')) {
+            throw new RuntimeException('proc_open is disabled; FFmpeg cannot be started.');
+        }
+
+        $inputFormat = match (strtolower($extension)) {
+            'mp4', 'mov' => 'mov',
+            'webm' => 'matroska',
+            'ogv', 'ogg' => 'ogg',
+            default => throw new RuntimeException('Unsupported video extension: ' . $extension),
+        };
+        $ffmpeg = $this->getBinaryPath();
+        try {
+            $process = @proc_open(
+                [$ffmpeg, '-nostdin', '-v', 'error', '-f', $inputFormat, '-i', $videoPath, '-map', '0:v:0', '-frames:v', '1', '-f', 'null', '-'],
+                [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes,
+            );
+        } catch (\Throwable $exception) {
+            throw new RuntimeException('Unable to start FFmpeg: ' . $exception->getMessage(), 0, $exception);
+        }
+
+        if (!is_resource($process)) {
+            throw new RuntimeException('Unable to start FFmpeg.');
+        }
+        fclose($pipes[0]);
+        stream_get_contents($pipes[1]);
+        stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        return proc_close($process) === 0;
+    }
+
+    /**
      * Extract a frame from a video. Frame numbering is one-based for callers.
      * Falls back to the first frame when the requested frame does not exist.
      */
