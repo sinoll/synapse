@@ -18,6 +18,7 @@ use common\models\Post;
 use common\models\SiteSetting;
 use common\models\User;
 use common\models\UserFollow;
+use frontend\components\MailMessage;
 use frontend\services\InviteToken;
 use Yii;
 use yii\captcha\CaptchaAction;
@@ -701,7 +702,7 @@ class UsersController extends Controller
 
     /***
      * 
-     * 两个刚注册  需要修改密码 和 电话号码 实名认证
+     * 两个刚注册  需要修改密码 
      * 
     ***/
 
@@ -713,7 +714,23 @@ class UsersController extends Controller
 
         $model = new ChangePasswordForm();
         if ($model->load(Yii::$app->request->post()) && $model->changePassword()) {
+            $user = Yii::$app->user->identity;
+            $mailSent = MailMessage::send(
+                Yii::$app->mailSender,
+                $user->email,
+                '账户密码已更改 - ' . Yii::$app->name,
+                '@frontend/mail/passwordChanged',
+                [
+                    'user' => $user,
+                    'changedAt' => Yii::$app->formatter->asDatetime(time()),
+                ],
+            );
             Yii::$app->session->setFlash('success', '密码已更新。');
+            /*** 如果发送失败 不要给用户提示  邮件投递成功与否都不 在 当前页面通知用户 确保安全。
+            if (!$mailSent) {
+                Yii::$app->session->setFlash('warning', '密码已更新，但安全通知邮件发送失败，请稍后检查邮箱或联系管理员。');
+            }
+            ***/
             return $this->goHome();
         }
 
