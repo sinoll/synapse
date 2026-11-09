@@ -134,8 +134,6 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 `code` 推荐作为字符串提交，以保留前导零；如果客户端以 JSON 整数提交，接口会自动补齐为 6 位数字。验证码只能使用一次。错误达到 3 次或验证码过期后，需重新申请验证码；成功后需用新密码重新登录。
 密码重置会使站内登录凭据失效，但已签发的无状态 API 令牌仍可使用至过期；如需立即失效，必须轮换 `site_setting.api_token_secret`，这会同时注销所有 API 用户。
 
-以上代码已 人工审核
-
 #### 频率限制与邮件配置
 
 * 注册：每个来源 IP 每小时最多 10 次。
@@ -161,10 +159,13 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 `order`（`asc|desc`）、`user_id`（只看某人）、`q`（标题模糊）、`tag`（标签名或 slug，`#` 会自动剥掉）。
 返回 `{authenticated, page, per_page, total, total_pages, sort, order, items:[...]}`。
 
-### 可见性
+### 状态与可见性
 
-读取沿用 `Post::applyVisibilityScope()`：访客只见公开内容，带令牌后能看到「注册用户可见」和自己
-的私密内容（`status=0`）。无权查看的详情按 404 处理，避免用状态码差异暴露「它存在」。
+`status` 和 `visibility` 是两个不同字段：
+
+* `status=0` 草稿、`status=1` 已发布。访客和其他用户看不到草稿；作者带令牌时可在列表和详情中看到自己的草稿。
+* `visibility=0` 私密、`visibility=1` 注册用户可见、`visibility=2` 公开。访客只看公开内容；带令牌的用户可看注册用户可见内容；私密内容仅作者可见。
+* 已发布的内容也受 `visibility` 控制。列表和详情使用同一可见性规则；无权查看的详情按 404 处理，避免通过状态码暴露「它存在」。
 
 ### 公共字段
 
@@ -210,6 +211,228 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 
 各字段对空值的处理：`thumb`、`cover_path` 提交空串就是清空；`video_path` 提交空串视为「这次不换视频」
 （该列非空，清空没有意义），新建时缺它则 422；`file_paths` 必须是非空数组，想去掉某几张图就提交剩下的完整清单。
+
+## 发布博客、动态、图集与短视频
+
+所有写接口都要先登录，并在每个请求中发送 `Authorization: Bearer <token>`。先将本机文件上传到站点，
+再把上传响应里的 `path` 或 `thumbnail_path` 作为 JSON 路径提交；内容接口不接收文件本身。以下示例使用 Bash，
+上传后请将响应中的路径复制到对应请求体。
+
+### 发布博客
+
+先上传封面图片（`kind=blog`，图片不能超过 10 MB）：
+
+```bash
+curl -sS -X POST "$BASE/upload" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "kind=blog" \
+  -F "file=@cover.jpg"
+```
+
+成功响应中的 `data.thumbnail_path` 是生成的 640px 缩略图路径；如果缩略图生成失败则为 `null`，可改用
+`data.path`。将其中一个值填入博客的 `thumb`，再提交 JSON：
+
+```bash
+curl -sS -X POST "$BASE/blog" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "第一次用 REST API 发布博客",
+    "summary": "一段简短摘要",
+    "content": "<p>博客正文，支持经过净化的 HTML。</p>",
+    "thumb": "/uploads/thumb/blog/替换为上传响应中的文件名.jpg",
+    "cate_id": 0,
+    "tags": ["API", "开发"],
+    "status": 1,
+    "visibility": 2
+  }'
+```
+
+`content` 必填；`title`、`summary`、`thumb`、`cate_id`、`tags`、`status` 和 `visibility` 可按需提交。
+省略 `title` 时由正文生成标题；省略 `thumb` 时会尝试从正文第一张本站博客/动态插图生成封面。
+`cate_id` 使用现有分类 ID，`0` 表示不挂分类。发布成功返回 `data.id`，可用 `GET /blog/{id}` 查看完整正文。
+
+### 发布动态
+
+动态正文必填；可直接发文字，也可先上传图片，再把图片路径作为 HTML 图片嵌入 `content`。图片用 `kind=moment`
+上传，生成的缩略图路径也可选作动态封面：
+
+```bash
+curl -sS -X POST "$BASE/upload" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "kind=moment" \
+  -F "file=@moment.jpg"
+```
+
+```bash
+curl -sS -X POST "$BASE/moment" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "<p>今天的随手记录 #日常#</p><p><img src=\"/uploads/moment/YYYYMM/替换为上传响应中的文件名.jpg\" alt=\"随手拍\"></p>",
+    "thumb": "/uploads/thumb/moment/替换为上传响应中的文件名.jpg",
+    "status": 1,
+    "visibility": 2
+  }'
+```
+
+`content` 必填；`thumb` 可省略，省略时接口会尝试从正文第一张本站博客/动态图片推导封面。
+`title` 可省略（由正文纯文本生成），`#话题#` 会自动写入标签。成功响应返回 `data.id`；
+用 `GET /moment/{id}` 查看完整正文。
+
+### 发布图集
+
+先对每张图片分别调用 `POST /upload`，使用 `kind=images`，每张不超过 10 MB。把每次上传响应里的 `data.path`
+按展示顺序放入 `file_paths`：
+
+```bash
+curl -sS -X POST "$BASE/upload" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "kind=images" \
+  -F "file=@photo-1.jpg"
+
+curl -sS -X POST "$BASE/upload" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "kind=images" \
+  -F "file=@photo-2.jpg"
+```
+
+```bash
+curl -sS -X POST "$BASE/images" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "caption": "周末旅行\n湖边和山间的风景 #旅行#",
+    "file_paths": [
+      "/uploads/images/YYYYMM/替换为第一张上传响应中的文件名.jpg",
+      "/uploads/images/YYYYMM/替换为第二张上传响应中的文件名.jpg"
+    ],
+    "status": 1,
+    "visibility": 2
+  }'
+```
+
+`file_paths` 必须是至少包含一张图片的数组，顺序就是图集展示顺序。`caption` 第一行作为每张图片的标题，
+其余行作为图片说明；`caption` 可省略，但建议提供。成功响应返回 `data.id` 和 `data.images`；
+用 `GET /images/{id}` 查看图集详情。
+
+### 发布短视频
+
+上传视频（`kind=video`，最大 500 MB；服务器须能调用 FFmpeg 验证并抽帧）：
+
+```bash
+curl -sS -X POST "$BASE/upload" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "kind=video" \
+  -F "file=@clip.mp4"
+```
+
+使用响应中的 `data.path` 作为必填 `video_path`；抽帧成功时，将 `data.thumbnail_path` 填入 `cover_path`。
+若 `thumbnail_path` 为 `null`，可省略 `cover_path`，也可使用自备封面先以 `kind=images` 上传再填其路径。
+
+```bash
+curl -sS -X POST "$BASE/short_video" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "周末散步",
+    "description": "记录周末的风景 #生活#",
+    "video_path": "/uploads/video/YYYYMM/替换为实际文件名.mp4",
+    "cover_path": "/uploads/thumb/video/替换为上传响应中的文件名.jpg",
+    "duration_seconds": 18,
+    "video_type": 2,
+    "tags": ["周末"],
+    "status": 1,
+    "visibility": 2
+  }'
+```
+
+`video_path` 必填；`title` 省略时由简介生成。`video_type` 为整数：`1` 横屏、`2` 竖屏。
+`duration_seconds`、`cover_path` 和 `tags` 可省略。成功后用 `GET /short_video/{id}` 查看详情。
+短视频列表会返回视频/封面路径和 URL；`description` 在详情响应中提供。
+
+## 修改内容（四类资源）
+
+修改需要登录，且只能修改自己创建的内容。对相应资源的 `/{id}` 使用 `PATCH` 或 `PUT`，两者都是**部分更新**：
+请求中未出现的字段保持不变。以下示例用 `PATCH`；其中 `123` 替换为创建接口返回的 `data.id`。JSON 字段的详细含义、
+媒体路径格式以及空值行为见上文。
+
+修改博客标题、摘要或正文：
+
+```bash
+curl -sS -X PATCH "$BASE/blog/123" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"更新后的博客标题","summary":"更新摘要","content":"<p>更新后的正文</p>"}'
+```
+
+替换博客封面时，先上传图片，再传新返回的路径；传 `"thumb": ""` 可清空封面。
+
+修改动态正文或封面：
+
+```bash
+curl -sS -X PATCH "$BASE/moment/123" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"<p>更新后的动态 #近况#</p>","thumb":"/uploads/thumb/moment/YYYYMM/替换为新图片名.jpg"}'
+```
+
+动态正文变化时会重新提取正文中的话题标签；若不提交 `thumb`，原封面保持不变。
+
+修改图集说明或图片清单：
+
+```bash
+curl -sS -X PATCH "$BASE/images/123" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "caption": "更新后的图集标题\n更新后的图片说明",
+    "file_paths": [
+      "/uploads/images/YYYYMM/保留的图片路径.jpg",
+      "/uploads/images/YYYYMM/新增的图片路径.jpg"
+    ]
+  }'
+```
+
+`file_paths` 是**完整的新清单**而非增量：清单外的图片记录会被移除，展示顺序按数组顺序更新；
+只改 `caption` 而不提交 `file_paths` 会保留图片及顺序。新增图片路径对应的新图片记录默认使用当前图集标题、
+空说明；如果要自定义标题和说明，可提交 `title` 与 `alt_text`。接口删除无其他内容引用的旧媒体文件。
+
+修改短视频简介、方向或替换视频：
+
+```bash
+curl -sS -X PATCH "$BASE/short_video/123" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "更新后的视频标题",
+    "description": "更新后的视频简介 #旅行#",
+    "video_type": 2,
+    "duration_seconds": 24
+  }'
+```
+
+替换视频时，先以 `kind=video` 上传新文件，再提交新的 `video_path`；要换封面时提交新的 `cover_path`，
+传 `"cover_path": ""` 可清除封面。`video_path` 传空串不会清除或替换现有视频。更新标题、简介或话题字段
+时会同步更新自动提取的话题标签。
+
+任一资源都可以用以下请求更新发布状态、可见范围或标签；`tags` 是整体替换，空数组可清空显式标签
+。动态、图集和短视频会从本次请求中提交的正文/简介/标题字段提取话题；如果只传 `tags: []`，不会自动把数据库里
+原来的正文再读出来，已有话题也会一并清除。要保留或重算话题，请同时提交对应字段（动态 `content`、图集 `caption`、
+短视频 `title` 或 `description`）：
+
+```bash
+curl -sS -X PATCH "$BASE/blog/123" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":1,"visibility":2,"tags":["更新后的标签"]}'
+```
+
+### 草稿与私密发布
+
+新建内容默认 `status=1`、`visibility=2`。创建草稿可提交 `"status": 0`；创建私密内容可提交
+`"visibility": 0`。作者带令牌读取自己的草稿/私密内容；访客和其他用户不能读取。要发布草稿，可对
+`/{resource}/{id}` 发 `PATCH` 并提交 `{"status":1}`。
 
 ## `POST /upload`
 

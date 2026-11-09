@@ -92,17 +92,18 @@ final class Images extends ApiResource
 
         foreach ($paths as $index => $path) {
             $image = $existing[$path] ?? new ImageRecord();
+            $isNewImage = $image->getIsNewRecord();
             $image->post_id = (int) $post->id;
             $image->file_path = $path;
             $image->sort_order = $index;
             if ($title !== null) {
                 $image->title = $title;
-            } elseif ($isCreate) {
+            } elseif ($isNewImage) {
                 $image->title = (string) $post->title;
             }
             if ($altText !== null) {
                 $image->alt_text = $altText;
-            } elseif ($isCreate) {
+            } elseif ($isNewImage) {
                 $image->alt_text = '';
             }
             self::saveChildModel($image);

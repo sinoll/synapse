@@ -112,7 +112,20 @@ abstract class ApiResource
         [$sort, $order] = self::sorting($query);
 
         $criteria = Post::find()->alias('p')
-            ->where(['p.type' => static::postType(), 'p.status' => Post::STATUS_PUBLISHED]);
+            ->where(['p.type' => static::postType()]);
+        if ($viewerId === null) {
+            $criteria->andWhere(['p.status' => Post::STATUS_PUBLISHED]);
+        } else {
+            $criteria->andWhere([
+                'or',
+                ['p.status' => Post::STATUS_PUBLISHED],
+                [
+                    'and',
+                    ['p.status' => Post::STATUS_DRAFT],
+                    ['p.user_id' => $viewerId],
+                ],
+            ]);
+        }
         Post::applyVisibilityScope($criteria, $viewerId);
 
         if (filter_var($query['user_id'] ?? null, FILTER_VALIDATE_INT) !== false) {
