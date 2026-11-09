@@ -246,22 +246,8 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 * RESTful 注册验证和找回密码使用 API 自己的一次性邮件验证码；前台注册/重置密码的邮件链接流程保持不变。
 * 认证接口有来源 IP 和邮箱级频率限制；生产环境应使用可供前端与 RESTful 应用共享的缓存服务，避免多进程分别计数。
 
-## 代码地图
 
-```
-config/main.php        应用与路由（四类规则由一个循环生成）
-config/params.php      令牌有效期、分页默认、上传口径
-web/.htaccess          把 Authorization 头交给 PHP
-components/            ApiResponder 统一封装 · ApiErrorHandler 异常出口 · BearerAuth 取令牌
-services/ApiToken.php  HMAC 自包含令牌签发/校验
-exceptions/            ValidationException（422 + 字段明细）
-controllers/           ApiController 基类 · ContentController 四类共用 · Blog/Moment/Images/ShortVideo 只做映射
-                       AuthController 登录登出 · UploadController 上传 · SiteController 服务清单
-models/ApiResource.php 读、写、删、点赞的全部共性（可见性、事务、标签、媒体回收）
-models/{Blog,Moment,Images,ShortVideo}.php 各自的字段表与落库细节
-```
 
-新增一类内容 = 新建一个 `extends ApiResource` 的模型 + 一个三行的控制器 + 在 `main.php` 的循环里加一条。
 
 ## 自检脚本
 
