@@ -17,11 +17,44 @@ $this->title = '拾光';
 $currentPage = $pagination->getPage() + 1;
 $pageCount = max(1, $pagination->getPageCount());
 $hasMore = $currentPage < $pageCount;
-$displayName = Yii::$app->user->identity?->nickname ?: Yii::$app->user->identity?->username;
+
+$displayName = '拾光';
+$profileInitial = '拾';
+$identity = null;
+if (!Yii::$app->user->isGuest) {
+    $identity = Yii::$app->user->identity;
+    $displayName = $identity->nickname ?? $identity->username;
+    $profileInitial = mb_substr($displayName, 0, 1, 'UTF-8');
+}
 ?>
 
 <div class="home-layout py-3 py-md-4">
     <div class="home-feed">
+        <div class="home-feed-list card-body p-3">
+            <div class="d-flex align-items-center gap-3">
+                <?php if ($identity !== null): ?>
+                    <?php if ($identity->avatar): ?>
+                        <img class="moment-avatar" src="<?= Html::encode($identity->avatar) ?>" alt="<?= Html::encode($displayName) ?>">
+                    <?php else: ?>
+                        <span class="moment-avatar moment-avatar-fallback" aria-hidden="true"><?= Html::encode($profileInitial) ?></span>
+                    <?php endif; ?>
+                    <?= Html::a('分享此刻的想法…', ['/moment/create'], ['class' => 'moment-composer-input flex-grow-1']) ?>
+                    <?= Html::a('<i class="bi bi-pencil-square" aria-hidden="true"></i><span class="d-none d-sm-inline ms-1">写动态</span>', ['/moment/create'], ['class' => 'btn btn-primary btn-sm flex-shrink-0', 'encode' => false]) ?>
+                <?php else: ?>
+                    <span class="moment-avatar moment-avatar-fallback" aria-hidden="true"><?= Html::encode($profileInitial) ?></span>
+                    <?= Html::a('登录后即可发布动态', ['/users/login'], ['class' => 'moment-composer-input flex-grow-1']) ?>
+                    <?= Html::a('登录', ['/users/login'], ['class' => 'btn btn-primary btn-sm flex-shrink-0']) ?>
+                <?php endif; ?>
+            </div>
+            <?php if ($identity !== null): ?>
+                <div class="moment-composer-actions d-flex flex-wrap align-items-center gap-3 mt-3 ps-sm-5">
+                    <?= Html::a('<i class="bi bi-image me-1" aria-hidden="true"></i>图片', ['/images/create'], ['encode' => false]) ?>
+                    <?= Html::a('<i class="bi bi-camera-video me-1" aria-hidden="true"></i>视频', ['/video/create'], ['encode' => false]) ?>
+                    <?= Html::a('<i class="bi bi-journal-text me-1" aria-hidden="true"></i>博客', ['/blog/create'], ['encode' => false]) ?>
+                    <span class="ms-auto text-body-secondary small d-none d-md-inline">正文中输入 #话题# 自动生成标签</span>
+                </div>
+            <?php endif; ?>
+        </div>
         <div id="home-feed-list" class="home-feed-list" data-next-page="<?= $currentPage + 1 ?>" data-has-more="<?= $hasMore ? '1' : '0' ?>">
             <?= $this->render('_feed_items', ['posts' => $posts]) ?>
         </div>
