@@ -170,6 +170,7 @@ class MomentController extends Controller
     {
         $model = new Moment();
         $post = new Post();
+        $post->visibility = Post::VISIBILITY_REGISTERED_USERS;
         $contentError = null;
 
         if ($this->loadContentModel($model) && $this->loadVisibility($post)) {
