@@ -37,7 +37,7 @@ $currentAvatar = Yii::$app->user->identity->avatar;
                 </div>
                 <?= $form->field($profile, 'nickname')->textInput(['maxlength' => true, 'autocomplete' => 'nickname'])->label('昵称') ?>
                 <?= $form->field($profile, 'phone')->textInput(['maxlength' => 32, 'autocomplete' => 'tel', 'inputmode' => 'tel'])->label('手机号') ?>
-                <?= $form->field($profile, 'avatarFile')->fileInput(['accept' => 'image/png,image/jpeg,image/gif,image/webp'])->label('更换头像')->hint('支持 PNG、JPG、GIF、WebP，最大 5 MB。') ?>
+                <?= $form->field($profile, 'avatarFile')->fileInput(['accept' => 'image/png,image/jpeg,image/gif,image/webp'])->label('更换头像')->hint('支持 PNG、JPG、GIF、WebP，最大 20 MB。') ?>
                 <div class="d-grid d-sm-flex justify-content-sm-end mt-3">
                     <?= Html::submitButton('保存资料', ['class' => 'btn btn-primary px-4']) ?>
                 </div>

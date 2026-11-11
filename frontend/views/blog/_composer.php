@@ -471,7 +471,7 @@ JS);
                     <label class="btn btn-sm btn-outline-primary mb-0" for="<?= Html::encode($editorImagesId) ?>">插入图片</label>
                 </div>
                 <input type="file" class="d-none" id="<?= Html::encode($editorImagesId) ?>" name="editor_images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-rich-image-input>
-                <div class="form-text mt-2">可一次选择单张或多张图片（每张不超过 10 MB）；图片会插入正文光标位置。</div>
+                <div class="form-text mt-2">可一次选择单张或多张图片（每张不超过 20 MB）；图片会插入正文光标位置。</div>
                 <div class="rich-editor-image-preview" data-rich-image-preview aria-live="polite"></div>
                 <div class="rich-editor-surface" contenteditable="true" role="textbox" aria-multiline="true"
                      aria-label="正文"

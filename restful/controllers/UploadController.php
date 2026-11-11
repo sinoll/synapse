@@ -84,8 +84,8 @@ final class UploadController extends ApiController
             throw new ValidationException(['file' => [$kind . ' 只接受 ' . implode('、', $extensions) . ' 文件。']]);
         }
 
-        $maxMb = max(1, (int) round(((int) $config['max_size']) / 1048576));
-        if ($file->size > (int) $config['max_size']) {
+        if (isset($config['max_size']) && $file->size > (int) $config['max_size']) {
+            $maxMb = max(1, (int) round(((int) $config['max_size']) / 1048576));
             throw new ValidationException(['file' => ["$kind 的文件不能超过 $maxMb MB。"]]);
         }
 

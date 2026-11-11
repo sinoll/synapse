@@ -42,8 +42,8 @@ $currentThumb = trim((string) $model->thumb);
                             </div>
                             <?= $form->field($model, 'thumb')->fileInput(['accept' => 'image/png,image/jpeg,image/gif,image/webp'])
                                 ->hint($isNew
-                                    ? '可选，支持 JPG、PNG、GIF、WebP，最大 5 MB，保存至 uploads/thumb/cate/ 目录。'
-                                    : '支持 JPG、PNG、GIF、WebP，最大 5 MB，保存至 uploads/thumb/cate/ 目录；留空则继续使用当前缩略图。') ?>
+                                    ? '可选，支持 JPG、PNG、GIF、WebP，最大 20 MB，保存至 uploads/thumb/cate/ 目录。'
+                                    : '支持 JPG、PNG、GIF、WebP，最大 20 MB，保存至 uploads/thumb/cate/ 目录；留空则继续使用当前缩略图。') ?>
                             <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
                                 <?= Html::submitButton($isNew ? '创建分类' : '保存修改', ['class' => 'btn btn-primary px-4']) ?>
                                 <?= Html::a('返回分类列表', ['index', 'section' => 'categories'], ['class' => 'btn btn-outline-secondary px-4']) ?>

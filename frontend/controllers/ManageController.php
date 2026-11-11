@@ -210,9 +210,9 @@ class ManageController extends Controller
         }
         if ($file->error !== UPLOAD_ERR_OK
             || !in_array(strtolower((string) $file->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
-            || $file->size > 5 * 1024 * 1024
+            || $file->size > 20 * 1024 * 1024
             || @getimagesize($file->tempName) === false) {
-            $model->addError('thumb', '请选择有效的缩略图图片（JPG、PNG、GIF、WebP），且不超过 5 MB。');
+            $model->addError('thumb', '请选择有效的缩略图图片（JPG、PNG、GIF、WebP），且不超过 20 MB。');
             return null;
         }
 

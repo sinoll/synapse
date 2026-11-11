@@ -220,7 +220,7 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 
 ### 发布博客
 
-先上传封面图片（`kind=blog`，图片不能超过 10 MB）：
+先上传封面图片（`kind=blog`，图片不能超过 20 MB）：
 
 ```bash
 curl -sS -X POST "$BASE/upload" \
@@ -282,7 +282,7 @@ curl -sS -X POST "$BASE/moment" \
 
 ### 发布图集
 
-先对每张图片分别调用 `POST /upload`，使用 `kind=images`，每张不超过 10 MB。把每次上传响应里的 `data.path`
+先对每张图片分别调用 `POST /upload`，使用 `kind=images`，每张不超过 20 MB。把每次上传响应里的 `data.path`
 按展示顺序放入 `file_paths`：
 
 ```bash
@@ -318,7 +318,7 @@ curl -sS -X POST "$BASE/images" \
 
 ### 发布短视频
 
-上传视频（`kind=video`，最大 500 MB；服务器须能调用 FFmpeg 验证并抽帧）：
+上传视频（`kind=video`，文件大小由服务器 PHP 的 `upload_max_filesize` 与 `post_max_size` 配置决定；服务器须能调用 FFmpeg 验证并抽帧）：
 
 ```bash
 curl -sS -X POST "$BASE/upload" \
@@ -441,11 +441,11 @@ curl -sS -X PATCH "$BASE/blog/123" \
 
 | `kind` | 落盘目录 | 单文件上限 | 扩展名 | 附带生成 |
 | --- | --- | --- | --- | --- |
-| `blog` | `/uploads/blog/YYYYMM/` | 10 MB | jpg/jpeg/png/gif/webp | `/uploads/thumb/blog/` 640px 缩略图 |
-| `moment` | `/uploads/moment/YYYYMM/` | 10 MB | 同上 | `/uploads/thumb/moment/` |
-| `images` | `/uploads/images/YYYYMM/` | 10 MB | 同上 | `/uploads/thumb/images/` |
-| `cate` | `/uploads/thumb/cate/`（平铺） | 5 MB | 同上 | — |
-| `video` | `/uploads/video/YYYYMM/` | 500 MB | mp4/webm/mov/ogv/ogg | `/uploads/thumb/video/` 第 5 帧抽图 |
+| `blog` | `/uploads/blog/YYYYMM/` | 20 MB | jpg/jpeg/png/gif/webp | `/uploads/thumb/blog/` 640px 缩略图 |
+| `moment` | `/uploads/moment/YYYYMM/` | 20 MB | 同上 | `/uploads/thumb/moment/` |
+| `images` | `/uploads/images/YYYYMM/` | 20 MB | 同上 | `/uploads/thumb/images/` |
+| `cate` | `/uploads/thumb/cate/`（平铺） | 20 MB | 同上 | — |
+| `video` | `/uploads/video/YYYYMM/` | 由服务器 PHP 配置决定 | mp4/webm/mov/ogv/ogg | `/uploads/thumb/video/` 第 5 帧抽图 |
 
 返回 `{kind, path, url, size, thumbnail_path, thumbnail_url}`。缩略图或抽帧失败不影响上传成功，
 改为在 `warning` 里说明；此时把 `path` 交给内容接口即可（详情会按无缩略图降级渲染）。

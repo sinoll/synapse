@@ -43,7 +43,7 @@ class ProfileForm extends Model
             ['phone', 'trim'],
             ['phone', 'string', 'max' => 32],
             ['phone', 'unique', 'targetClass' => User::class],
-            ['avatarFile', 'file', 'extensions' => ['png', 'jpg', 'jpeg', 'gif', 'webp'], 'mimeTypes' => ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], 'maxSize' => 5 * 1024 * 1024],
+            ['avatarFile', 'file', 'extensions' => ['png', 'jpg', 'jpeg', 'gif', 'webp'], 'mimeTypes' => ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], 'maxSize' => 20 * 1024 * 1024],
             ['avatarFile', 'validateImageContent'],
         ];
     }

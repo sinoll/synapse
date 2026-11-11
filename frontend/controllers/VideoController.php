@@ -256,8 +256,6 @@ class VideoController extends Controller
                 $model->addError('video_path', '视频上传失败，请重新选择。');
             } elseif (!in_array(strtolower($uploadedVideo->extension), ['mp4', 'webm', 'mov', 'ogv', 'ogg'], true)) {
                 $model->addError('video_path', '仅支持 MP4、WebM、MOV 或 OGG 视频。');
-            } elseif ($uploadedVideo->size > 500 * 1024 * 1024) {
-                $model->addError('video_path', '视频文件不能超过 500 MB。');
             } elseif (!Yii::$app->get('ffmpegService')->isPlayableVideo($uploadedVideo->tempName, (string) $uploadedVideo->extension)) {
                 $model->addError('video_path', '文件不是有效的视频，或视频内容无法解码播放。');
             }
@@ -265,9 +263,9 @@ class VideoController extends Controller
                 if ($uploadedCover->error !== UPLOAD_ERR_OK) {
                     $model->addError('cover_path', '封面上传失败，请重新选择。');
                 } elseif (!in_array(strtolower($uploadedCover->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
-                    || $uploadedCover->size > 10 * 1024 * 1024
+                    || $uploadedCover->size > 20 * 1024 * 1024
                     || @getimagesize($uploadedCover->tempName) === false) {
-                    $model->addError('cover_path', '封面必须是有效的图片，且不超过 10 MB。');
+                    $model->addError('cover_path', '封面必须是有效的图片，且不超过 20 MB。');
                 }
             }
 
@@ -364,8 +362,6 @@ class VideoController extends Controller
                     $model->addError('video_path', '视频上传失败，请重新选择。');
                 } elseif (!in_array(strtolower($uploadedVideo->extension), ['mp4', 'webm', 'mov', 'ogv', 'ogg'], true)) {
                     $model->addError('video_path', '仅支持 MP4、WebM、MOV 或 OGG 视频。');
-                } elseif ($uploadedVideo->size > 500 * 1024 * 1024) {
-                    $model->addError('video_path', '视频文件不能超过 500 MB。');
                 } elseif (!Yii::$app->get('ffmpegService')->isPlayableVideo($uploadedVideo->tempName, (string) $uploadedVideo->extension)) {
                     $model->addError('video_path', '文件不是有效的视频，或视频内容无法解码播放。');
                 } else {
@@ -378,9 +374,9 @@ class VideoController extends Controller
                 if ($uploadedCover->error !== UPLOAD_ERR_OK) {
                     $model->addError('cover_path', '封面上传失败，请重新选择。');
                 } elseif (!in_array(strtolower($uploadedCover->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
-                    || $uploadedCover->size > 10 * 1024 * 1024
+                    || $uploadedCover->size > 20 * 1024 * 1024
                     || @getimagesize($uploadedCover->tempName) === false) {
-                    $model->addError('cover_path', '封面必须是有效的图片，且不超过 10 MB。');
+                    $model->addError('cover_path', '封面必须是有效的图片，且不超过 20 MB。');
                 } else {
                     $replaceCover = true;
                 }

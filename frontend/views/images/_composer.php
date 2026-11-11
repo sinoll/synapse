@@ -160,7 +160,7 @@ JS);
                               data-empty-text="<?= Html::encode($isUpdate ? '追加图片' : '选择图片') ?>">
                             <?= Html::encode($isUpdate ? '追加图片' : '选择图片') ?>
                         </span>
-                        <span class="small">JPG / PNG / GIF / WebP · 单张最大 10 MB · 可多选</span>
+                        <span class="small">JPG / PNG / GIF / WebP · 单张最大 20 MB · 可多选</span>
                     </label>
                     <?= $form->field($model, 'file_path', ['options' => ['class' => 'mb-0']])->fileInput([
                         // PHP only preserves every selected file when a multiple

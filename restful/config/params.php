@@ -10,7 +10,7 @@ return [
 
     // POST /upload 的 kind → 落盘位置与校验口径，逐项对着前台各控制器的现行规则写：
     // 原图 uploads/{kind}/YYYYMM/ 分层、缩略图 uploads/thumb/{kind}/ 平铺，分类图本身就是缩略图所以不分级。
-    // 同一个文件走网站还是走接口，得到的目录、扩展名与大小限制都相同。
+    // 图片大小在应用内限制；视频大小由 PHP upload_max_filesize 与 post_max_size 配置控制。
     'api.uploadKinds' => [
         'blog' => [
             'dir' => '/uploads/blog',
@@ -18,7 +18,7 @@ return [
             'thumb' => '/uploads/thumb/blog',
             'thumb_from' => 'image',
             'extensions' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-            'max_size' => 10 * 1024 * 1024,
+            'max_size' => 20 * 1024 * 1024,
         ],
         'moment' => [
             'dir' => '/uploads/moment',
@@ -26,7 +26,7 @@ return [
             'thumb' => '/uploads/thumb/moment',
             'thumb_from' => 'image',
             'extensions' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-            'max_size' => 10 * 1024 * 1024,
+            'max_size' => 20 * 1024 * 1024,
         ],
         'images' => [
             'dir' => '/uploads/images',
@@ -34,7 +34,7 @@ return [
             'thumb' => '/uploads/thumb/images',
             'thumb_from' => 'image',
             'extensions' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-            'max_size' => 10 * 1024 * 1024,
+            'max_size' => 20 * 1024 * 1024,
         ],
         'cate' => [
             'dir' => '/uploads/thumb/cate',
@@ -42,7 +42,7 @@ return [
             'thumb' => null,
             'thumb_from' => null,
             'extensions' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-            'max_size' => 5 * 1024 * 1024,
+            'max_size' => 20 * 1024 * 1024,
         ],
         'video' => [
             'dir' => '/uploads/video',
@@ -50,7 +50,6 @@ return [
             'thumb' => '/uploads/thumb/video',
             'thumb_from' => 'video',
             'extensions' => ['mp4', 'webm', 'mov', 'ogv', 'ogg'],
-            'max_size' => 500 * 1024 * 1024,
         ],
     ],
 ];

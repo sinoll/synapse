@@ -170,7 +170,7 @@ JS);
                     <label class="video-drop" for="<?= Html::encode($videoInputId) ?>">
                         <i class="bi bi-camera-video video-drop-icon" aria-hidden="true"></i>
                         <span class="fw-semibold video-drop-name" data-video-name><?= $isUpdate && $existingVideoPath !== '' ? '重新选择视频' : '选择视频文件' ?></span>
-                        <span class="small">MP4 / WebM / MOV / OGG · 最大 500 MB</span>
+                        <span class="small">MP4 / WebM / MOV / OGG · 文件大小由服务器 PHP 配置决定</span>
                     </label>
                     <?= $form->field($model, 'video_path', [
                         'options' => ['class' => 'mb-0'],

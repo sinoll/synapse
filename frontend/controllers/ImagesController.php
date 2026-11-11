@@ -132,8 +132,8 @@ class ImagesController extends Controller
                     $model->addError('file_path', '图片上传失败，请重新选择。');
                 } elseif (!in_array(strtolower($uploadedImage->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
                     $model->addError('file_path', '仅支持 JPG、PNG、GIF 或 WebP 图片。');
-                } elseif ($uploadedImage->size > 10 * 1024 * 1024) {
-                    $model->addError('file_path', '单张图片不能超过 10 MB。');
+                } elseif ($uploadedImage->size > 20 * 1024 * 1024) {
+                    $model->addError('file_path', '单张图片不能超过 20 MB。');
                 } elseif (@getimagesize($uploadedImage->tempName) === false) {
                     $model->addError('file_path', '所选文件不是有效的图片。');
                 }
@@ -242,8 +242,8 @@ class ImagesController extends Controller
                     $model->addError('file_path', '图片上传失败，请重新选择。');
                 } elseif (!in_array(strtolower($uploadedImage->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
                     $model->addError('file_path', '仅支持 JPG、PNG、GIF 或 WebP 图片。');
-                } elseif ($uploadedImage->size > 10 * 1024 * 1024) {
-                    $model->addError('file_path', '单张图片不能超过 10 MB。');
+                } elseif ($uploadedImage->size > 20 * 1024 * 1024) {
+                    $model->addError('file_path', '单张图片不能超过 20 MB。');
                 } elseif (@getimagesize($uploadedImage->tempName) === false) {
                     $model->addError('file_path', '所选文件不是有效的图片。');
                 }

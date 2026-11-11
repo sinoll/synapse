@@ -498,9 +498,9 @@ class BlogController extends Controller
         foreach ($files as $file) {
             if ($file->error !== UPLOAD_ERR_OK
                 || !in_array(strtolower($file->extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
-                || $file->size > 10 * 1024 * 1024
+                || $file->size > 20 * 1024 * 1024
                 || @getimagesize($file->tempName) === false) {
-                $model->addError('content', '插入的图片必须是有效的 JPG、PNG、GIF 或 WebP 图片，且不超过 10 MB。');
+                $model->addError('content', '插入的图片必须是有效的 JPG、PNG、GIF 或 WebP 图片，且不超过 20 MB。');
             }
         }
     }
