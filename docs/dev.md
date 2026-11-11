@@ -15,10 +15,8 @@ git push -u origin dev 之后你就可以在 dev 分支上开发了。
 
 ## 常用后续 命令
 ### 查看当前所有分支（本地 + 远程）
-git branch -va
-
-git branch -r                   # 只看远程分支
-git branch -a                   # 本地 + 远程分支
+git branch -vr                   # 只看远程分支
+git branch -va                   # 本地 + 远程分支
 
 
 ### 切换到 dev
@@ -29,7 +27,6 @@ git pull origin dev
 
 ### 开发完推送
 git push origin dev
-
 
 
 ## 如何 把 dev 代码 合并到 main 中
@@ -55,3 +52,19 @@ git reset --hard origin/dev
 git clean -fd
 
 git pull origin dev
+
+
+## 回退本地代码
+### 查看与同步
+同步远程仓库的标签信息
+git fetch --tags origin
+
+查看远程 main 分支的最近提交记录
+git log -n 10 origin/main --oneline
+
+
+### 强制回退本地到 d633522
+git reset --hard d633522
+
+### 强制推送到远程仓库
+git push --force origin main
