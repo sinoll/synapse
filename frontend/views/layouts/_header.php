@@ -5,12 +5,14 @@ declare(strict_types=1);
 /** @var yii\web\View $this */
 
 use common\models\SiteSetting;
+use common\models\UserMessage;
 use yii\bootstrap5\Nav;
 use yii\bootstrap5\NavBar;
 use yii\helpers\Html;
 
 // 定义下拉子菜单
 $identity = Yii::$app->user->identity;
+$unreadMessageCount = $identity === null ? 0 : UserMessage::unreadCount((int) $identity->id);
 $searchKeyword = Yii::$app->request->get('q');
 $searchKeyword = is_string($searchKeyword) ? $searchKeyword : '';
 $accountItems = [
@@ -36,6 +38,19 @@ $menuItems = [
         'url' => ['/site/about'],
     ],    
 ];
+
+if ($identity !== null) {
+    $messageLabel = '消息';
+    if ($unreadMessageCount > 0) {
+        $messageLabel .= ' <span class="badge rounded-pill text-bg-danger">'
+            . ($unreadMessageCount > 99 ? '99+' : $unreadMessageCount)
+            . '<span class="visually-hidden">条未读</span></span>';
+    }
+    $menuItems[] = [
+        'label' => $messageLabel,
+        'url' => ['/users/message'],
+    ];
+}
 
 if ($identity === null) {
     $accountMenu = [
