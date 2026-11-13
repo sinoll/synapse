@@ -54,8 +54,8 @@ final class Images extends ApiResource
                 'alt_text' => $image->alt_text,
                 'file_path' => $image->file_path,
                 'file_url' => ApiResponder::assetUrl($image->file_path),
-                'thumbnail_path' => $image->getThumbnailPath(),
-                'thumbnail_url' => ApiResponder::assetUrl($image->getThumbnailPath()),
+                'thumbnail_path' => self::thumbnailPath((string) $image->file_path) ?? $image->file_path,
+                'thumbnail_url' => ApiResponder::assetUrl(self::thumbnailPath((string) $image->file_path) ?? $image->file_path),
                 'sort_order' => (int) $image->sort_order,
                 'created_at' => ApiResponder::timestamp((int) $image->created_at),
             ], $post->images),
@@ -137,7 +137,18 @@ final class Images extends ApiResource
     /** 缩略图按约定从源文件名推导、不在库里登记，所以只能在源文件确定被删时跟着一起回收。 */
     protected static function derivedMedia(string $path): array
     {
-        return array_filter([ImageRecord::thumbnailForPath($path)]);
+        return array_filter([self::thumbnailPath($path)]);
+    }
+
+    private static function thumbnailPath(string $imagePath): ?string
+    {
+        if (!preg_match('#^/uploads/images/(?:\d{6}/)?([A-Za-z0-9_-]+)\.[A-Za-z0-9]+$#', $imagePath, $match)) {
+            return null;
+        }
+
+        $thumbnail = '/uploads/thumb/images/' . $match[1] . '.jpg';
+
+        return is_file(self::mediaAbsolutePath($thumbnail)) ? $thumbnail : null;
     }
 
     /** @return array{0: string|null, 1: string|null} [标题, 说明]；null 表示这次不改 */

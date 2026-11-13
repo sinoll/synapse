@@ -7,6 +7,7 @@ return [
     'api.tokenExpire' => 7 * 24 * 3600,
     'api.pageSizeDefault' => 20,
     'api.pageSizeMax' => 100,
+    'api.assetBaseUrl' => 'http://192.168.8.10',
 
     // POST /upload 的 kind → 落盘位置与校验口径，逐项对着前台各控制器的现行规则写：
     // 原图 uploads/{kind}/YYYYMM/ 分层、缩略图 uploads/thumb/{kind}/ 平铺，分类图本身就是缩略图所以不分级。

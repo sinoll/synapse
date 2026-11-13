@@ -84,7 +84,19 @@ final class ApiResponder
             return $path;
         }
 
-        return self::baseUrl() . '/' . ltrim($path, '/');
+        $normalized = '/' . ltrim($path, '/');
+        $baseUrl = self::baseUrl();
+        if (
+            str_starts_with($normalized, '/uploads/')
+            && !str_starts_with($normalized, '/uploads/avatars/')
+        ) {
+            $apiBaseUrl = trim((string) (Yii::$app->params['api.assetBaseUrl'] ?? ''));
+            if ($apiBaseUrl !== '') {
+                $baseUrl = rtrim($apiBaseUrl, '/');
+            }
+        }
+
+        return $baseUrl . $normalized;
     }
 
     public static function baseUrl(): string

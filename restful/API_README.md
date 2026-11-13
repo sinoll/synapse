@@ -217,6 +217,7 @@ curl -sS "$BASE/cate/3"
 * 省略 `thumb` 新建博客/动态时，按正文第一张本站插图推出封面缩略图（同前台 `blogThumbnailPath()`）。
 * 短视频请求中的 `thumbnail_path` 映射到数据库 `cover_path`；读取短视频时仍返回 `cover_path`、`cover_url`。旧请求字段 `cover_path` 暂时兼容。
 * 短视频 `video_type`：1 横屏、2 竖屏。
+* 通过 API `POST /upload` 上传的图片和视频均保存在 REST 应用的 `restful/web/uploads/` 对应子目录。
 
 ### 媒体字段填什么
 
@@ -371,6 +372,7 @@ curl -sS -X POST "$BASE/upload" \
 视频上传成功后，响应直接包含可供内容接口使用的 `video_path` 和 `thumbnail_path`，并自动探测
 `duration_seconds`（四舍五入到秒）及 `video_type`（1 横屏、2 竖屏）。若抽帧失败，`thumbnail_path` 为
 `null`，此时请求短视频接口可省略 `thumbnail_path`，也可使用自备封面先以 `kind=images` 上传再填其路径。
+视频文件与抽取的封面图也保存在 API 应用的 `restful/web/uploads/` 对应子目录下。
 
 ```json
 {

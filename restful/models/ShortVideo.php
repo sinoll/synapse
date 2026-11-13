@@ -123,7 +123,7 @@ final class ShortVideo extends ApiResource
 
         $thumbnail = '/uploads/thumb/video/' . pathinfo($match[1], PATHINFO_FILENAME) . '.jpg';
 
-        return is_file(Yii::getAlias('@frontend/web') . $thumbnail) ? [$thumbnail] : [];
+        return is_file(self::mediaAbsolutePath($thumbnail)) ? [$thumbnail] : [];
     }
 
     private static function videoTypeArg(mixed $value): int

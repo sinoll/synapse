@@ -48,7 +48,8 @@ final class UploadController extends ApiController
         $videoMetadata = $kind === 'video'
             ? Yii::$app->get('ffmpegService')->getVideoMetadata($firstFile->tempName)
             : null;
-        $directory = self::makeDirectory(Yii::getAlias('@frontend/web') . self::sourceDirectory($config));
+        $webRoot = Yii::getAlias('@restful/web');
+        $directory = self::makeDirectory($webRoot . self::sourceDirectory($config));
         $paths = [];
         $images = [];
         $storedFiles = [];
@@ -195,7 +196,8 @@ final class UploadController extends ApiController
             return [null, null];
         }
 
-        $directory = self::makeDirectory(Yii::getAlias('@frontend/web') . $thumbDirectory);
+        $webRoot = Yii::getAlias('@restful/web');
+        $directory = self::makeDirectory($webRoot . $thumbDirectory);
         // 缩略图一律平铺成 <原名>.jpg：Image::thumbnailForPath() 与前台的封面解析都按这个名字找。
         $thumbnail = $directory . DIRECTORY_SEPARATOR . pathinfo($path, PATHINFO_FILENAME) . '.jpg';
         $generated = false;

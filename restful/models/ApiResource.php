@@ -599,7 +599,7 @@ abstract class ApiResource
                 $field . ' 必须是本站 /upload 返回的路径，形如 /uploads/images/202611/xxxx.jpg。',
             ]]);
         }
-        if (!is_file(Yii::getAlias('@frontend/web') . $path)) {
+        if (!is_file(self::mediaAbsolutePath($path))) {
             throw new ValidationException([$field => [$field . ' 指向的文件不存在，请先用 POST /upload 上传。']]);
         }
 
@@ -659,13 +659,12 @@ abstract class ApiResource
         if (preg_match('#^/uploads/(?:blog|moment)/(?:\d{4}/(?:\d{2}/)?|\d{6}/)([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$#', '/' . ltrim($imagePath, '/'), $match) !== 1) {
             return null;
         }
-        $webRoot = Yii::getAlias('@frontend/web');
         $base = pathinfo($match[1], PATHINFO_FILENAME);
 
         // thumb/blog 平铺，源图却分过 YYYY/、YYYY/MM/ 两种目录，扩展名也未必归一成 jpg。
         foreach (['/uploads/thumb/blog/', '/uploads/thumb/moment/'] as $prefix) {
             foreach ([$match[1], $base . '.jpg'] as $candidate) {
-                if (is_file($webRoot . '/' . $prefix . $candidate)) {
+                if (is_file(self::mediaAbsolutePath($prefix . $candidate))) {
                     return $prefix . $candidate;
                 }
             }
@@ -727,7 +726,6 @@ abstract class ApiResource
     /** 提交后被替换掉的文件：只有库里已无人引用才删，同路径可能被别的内容复用。 */
     private static function purgeUnreferenced(array $paths): void
     {
-        $webRoot = Yii::getAlias('@frontend/web');
         foreach (array_unique(array_filter($paths)) as $path) {
             $normalized = '/' . ltrim((string) $path, '/');
             // 只回收上传目录：默认封面这类随程序发布的静态图被内容引用着，删掉会波及全站。
@@ -735,12 +733,19 @@ abstract class ApiResource
                 continue;
             }
             foreach (array_merge([$path], static::derivedMedia((string) $path)) as $file) {
-                $absolute = $webRoot . '/' . ltrim((string) $file, '/');
+                $absolute = self::mediaAbsolutePath((string) $file);
                 if (is_file($absolute)) {
                     @unlink($absolute);
                 }
             }
         }
+    }
+
+    protected static function mediaAbsolutePath(string $path): string
+    {
+        $normalized = '/' . ltrim($path, '/');
+
+        return Yii::getAlias('@restful/web') . $normalized;
     }
 
     private static function mediaInUse(string $path): bool
