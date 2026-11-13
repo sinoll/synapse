@@ -163,7 +163,8 @@ curl -sS "$BASE/cate/3"
 
 列表成功时 `data` 的形状为 `{items: [...], total: 分类总数}`；详情的 `data` 直接返回单个分类对象。
 分类字段为 `id`、`name`、`slug`、`description`、`thumb`、`thumb_url`、`created_at` 和 `updated_at`。
-`thumb` 是存储路径，`thumb_url` 是完整 URL；没有封面时两者均为 `null`。列表不分页。
+`thumb` 和 `thumb_url` 均为根相对路径（例如 `/uploads/thumb/cate/example.jpg`），没有封面时两者均为 `null`。
+列表不分页。
 
 | 资源 | 子表 | 列表 | 详情 | 创建 | 更新 | 删除 | 点赞 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -191,6 +192,10 @@ curl -sS "$BASE/cate/3"
 读（列表与详情都有）：`id`、`type`、`title`、`status`、`visibility`（0 私密 / 1 仅注册用户 / 2 公开）、
 `like_count`、`views`、`liked`、`author{id,username,nickname,avatar_url}`、`tags[]`、`cover_url`、
 `created_at`、`updated_at`（ISO-8601，带 `+08:00`）。
+
+所有媒体路径字段及 `avatar_url`、`cover_url`、`file_url`、`thumbnail_url`、`video_url` 等 URL 字段
+均只返回根相对路径（如 `/uploads/example.jpg`），不包含主机名。客户端可按自身配置使用
+`api.assetBaseUrl` 拼接主机名。
 
 写（四类通用）：`title`、`status`（0/1）、`visibility`（0/1/2）、`tags[]`。
 `title` 省略时由正文/说明派生；提交空串等于要求派生一次。

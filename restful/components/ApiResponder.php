@@ -68,37 +68,32 @@ final class ApiResponder
         return $body;
     }
 
-    /**
-     * 库里存的媒体路径转成绝对地址。
-     *
-     * 站点根用 params['siteBaseUrl']，留空才回落到请求的 Host——
-     * 重置/验证类邮件链接同理，不该由可伪造的 Host 头决定。
-     */
+    /** 媒体字段统一返回根相对路径；历史数据若存了绝对 URL，也去掉主机名。 */
     public static function assetUrl(string|null $path): string|null
     {
         $path = trim((string) $path);
         if ($path === '') {
             return null;
         }
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
 
-        $normalized = '/' . ltrim($path, '/');
-        $baseUrl = self::baseUrl();
-        if (
-            str_starts_with($normalized, '/uploads/')
-            && !str_starts_with($normalized, '/uploads/avatars/')
-        ) {
-            $apiBaseUrl = trim((string) (Yii::$app->params['api.assetBaseUrl'] ?? ''));
-            if ($apiBaseUrl !== '') {
-                $baseUrl = rtrim($apiBaseUrl, '/');
+        if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $path) === 1) {
+            $urlPath = parse_url($path, PHP_URL_PATH);
+            if (!is_string($urlPath) || $urlPath === '') {
+                return null;
             }
+            $path = $urlPath;
+        } elseif (str_starts_with($path, '//')) {
+            $urlPath = parse_url('https:' . $path, PHP_URL_PATH);
+            if (!is_string($urlPath) || $urlPath === '') {
+                return null;
+            }
+            $path = $urlPath;
         }
 
-        return $baseUrl . $normalized;
+        return '/' . ltrim($path, '/');
     }
 
+    /** 站点根用于生成邮件等站点链接；不能依赖可伪造的 Host 头。 */
     public static function baseUrl(): string
     {
         $configured = trim((string) (Yii::$app->params['siteBaseUrl'] ?? ''));

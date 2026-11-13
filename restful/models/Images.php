@@ -52,9 +52,11 @@ final class Images extends ApiResource
                 'id' => (int) $image->id,
                 'title' => $image->title,
                 'alt_text' => $image->alt_text,
-                'file_path' => $image->file_path,
+                'file_path' => ApiResponder::assetUrl($image->file_path),
                 'file_url' => ApiResponder::assetUrl($image->file_path),
-                'thumbnail_path' => self::thumbnailPath((string) $image->file_path) ?? $image->file_path,
+                'thumbnail_path' => ApiResponder::assetUrl(
+                    self::thumbnailPath((string) $image->file_path) ?? $image->file_path
+                ),
                 'thumbnail_url' => ApiResponder::assetUrl(self::thumbnailPath((string) $image->file_path) ?? $image->file_path),
                 'sort_order' => (int) $image->sort_order,
                 'created_at' => ApiResponder::timestamp((int) $image->created_at),

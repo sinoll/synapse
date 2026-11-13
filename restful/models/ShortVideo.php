@@ -50,9 +50,9 @@ final class ShortVideo extends ApiResource
 
         return [
             'description' => $detail ? $video?->description : null,
-            'video_path' => $video?->video_path,
+            'video_path' => ApiResponder::assetUrl($video?->video_path),
             'video_url' => ApiResponder::assetUrl($video?->video_path),
-            'cover_path' => $video?->cover_path,
+            'cover_path' => ApiResponder::assetUrl($video?->cover_path),
             'cover_url' => ApiResponder::assetUrl($video?->cover_path),
             'duration_seconds' => $video === null ? null : (int) $video->duration_seconds,
             'video_type' => $video === null ? null : (int) $video->video_type,

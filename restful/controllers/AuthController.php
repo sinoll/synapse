@@ -287,7 +287,7 @@ final class AuthController extends ApiController
             'nickname' => $user->nickname,
             'email' => $user->email,
             'bio' => $user->bio,
-            'avatar' => $user->avatar,
+            'avatar' => ApiResponder::assetUrl($user->avatar),
             'avatar_url' => ApiResponder::assetUrl($user->avatar),
             'is_admin' => (bool) $user->is_admin,
             'status' => (int) $user->status,

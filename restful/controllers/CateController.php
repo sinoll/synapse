@@ -45,7 +45,7 @@ final class CateController extends ApiController
             'name' => $category->name,
             'slug' => $category->slug,
             'description' => $category->description,
-            'thumb' => $category->thumb,
+            'thumb' => ApiResponder::assetUrl($category->thumb),
             'thumb_url' => ApiResponder::assetUrl($category->thumb),
             'created_at' => ApiResponder::timestamp((int) $category->created_at),
             'updated_at' => ApiResponder::timestamp((int) $category->updated_at),
