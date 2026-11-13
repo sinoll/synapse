@@ -80,6 +80,8 @@ return [
             // 注意属性名是 enableStrictParsing，写成 enableStrictMode 会在初始化时抛 UnknownPropertyException。
             'enableStrictParsing' => true,
             'rules' => $resourceRules + [
+                'GET cate' => 'cate/index',
+                'GET cate/<id:\d+>' => 'cate/view',
                 'POST auth/register/code' => 'auth/register-code',
                 'POST auth/register' => 'auth/register',
                 'POST auth/login' => 'auth/login',
