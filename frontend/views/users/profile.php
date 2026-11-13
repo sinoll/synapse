@@ -46,6 +46,9 @@ $joinedAt = $author->created_at > 0 ? date('Y 年 n 月', (int) $author->created
                     </p>
                 </div>
                 <?= FollowButton::widget(['user' => $author, 'showCount' => true]) ?>
+                <?php if (!Yii::$app->user->isGuest && (int) Yii::$app->user->id !== (int) $author->id): ?>
+                    <?= Html::a('发私信', ['/message/send', 'to' => (int) $author->id], ['class' => 'btn btn-outline-primary']) ?>
+                <?php endif; ?>
             </div>
 
             <nav class="author-profile-chips mt-3" aria-label="内容类型筛选">

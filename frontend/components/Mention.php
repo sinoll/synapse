@@ -28,13 +28,13 @@ final class Mention
             return $html;
         }
 
-        $segments = preg_split('/(<[^>]*>)/u', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $segments = self::segments($html);
         if ($segments === false) {
             return $html;
         }
 
-        $names = [];
         $insideAnchor = false;
+        $names = [];
         foreach ($segments as $segment) {
             if ($segment === '') {
                 continue;
@@ -96,6 +96,47 @@ final class Mention
     }
 
     /**
+     * @return int[] Active user IDs mentioned in the supplied HTML/text.
+     */
+    public static function mentionedUserIds(string $html): array
+    {
+        if (!str_contains($html, '@')) {
+            return [];
+        }
+
+        $segments = self::segments($html);
+        if ($segments === false) {
+            return [];
+        }
+
+        $names = [];
+        $insideAnchor = false;
+        foreach ($segments as $segment) {
+            if ($segment === '') {
+                continue;
+            }
+            if (str_starts_with($segment, '<')) {
+                if (preg_match('/^<a\b/i', $segment)) {
+                    $insideAnchor = true;
+                } elseif (preg_match('/^<\/a\s*>$/i', $segment)) {
+                    $insideAnchor = false;
+                }
+                continue;
+            }
+            if (!$insideAnchor && preg_match_all(self::PATTERN, $segment, $matches)) {
+                foreach ($matches[1] as $rawName) {
+                    $names[] = self::decodeName($rawName);
+                }
+            }
+        }
+
+        return array_values(array_unique(array_map(
+            'intval',
+            self::resolve($names)
+        )));
+    }
+
+    /**
      * @param string[] $names
      * @return array<string,int> 小写名称 => 用户 ID
      */
@@ -137,6 +178,12 @@ final class Mention
         }
 
         return $map;
+    }
+
+    /** @return string[]|false */
+    private static function segments(string $html): array|false
+    {
+        return preg_split('/(<[^>]*>)/u', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
     }
 
     /** 文本段可能已经过 Html::encode，查库前先还原实体。 */

@@ -13,6 +13,7 @@ $displayName = $isGuest ? '游客' : ($user->nickname ?: $user->username);
 
 $navigation = [
     ['key' => 'index', 'label' => '用户首页', 'description' => '查看账号概览', 'icon' => 'bi-house-door', 'url' => ['/users/index']],
+    ['key' => 'message', 'label' => '我的消息', 'description' => '私信与提及提醒', 'icon' => 'bi-envelope', 'url' => ['/users/message']],
     ['key' => 'favorite', 'label' => '我的收藏', 'description' => '回看收藏的内容', 'icon' => 'bi-star', 'url' => ['/users/favorite']],
     ['key' => 'like', 'label' => '我的点赞', 'description' => '回看点过赞的内容', 'icon' => 'bi-heart', 'url' => ['/users/like']],
     ['key' => 'followers', 'label' => '我的粉丝', 'description' => '关注你的人', 'icon' => 'bi-people', 'url' => ['/users/followers']],

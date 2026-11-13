@@ -8,6 +8,7 @@ use common\models\Image;
 use common\models\Post;
 use common\models\Tag;
 use frontend\components\ListPagination;
+use frontend\components\MentionNotifier;
 use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -171,6 +172,7 @@ class ImagesController extends Controller
                     }
 
                     $this->syncPostTags($post, $selectedTagNames);
+                    MentionNotifier::notify($model->buildCaption(), $post);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
@@ -313,6 +315,7 @@ class ImagesController extends Controller
                     }
 
                     $this->syncPostTags($post, $selectedTagNames);
+                    MentionNotifier::notify($model->buildCaption(), $post);
                     $transaction->commit();
                     foreach (array_unique($removedImagePaths) as $removedImagePath) {
                         if (!Image::find()->where(['file_path' => $removedImagePath])->exists()) {

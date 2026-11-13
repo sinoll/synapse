@@ -25,9 +25,9 @@ class m261016_000002_create_post_table extends Migration
             'user_id' => $this->integer()->notNull(),
             'type' => $this->string(32)->notNull(),
             'title' => $this->string(200)->null(),
-            'status' => $this->smallInteger()->notNull()->defaultValue(1),
+            'status' => $this->smallInteger()->notNull()->defaultValue(1)->comment('0草稿，1已发布'),
             // 0: owner only, 1: authenticated users, 2: public, 3: selected users (shared files only)
-            'visibility' => $this->smallInteger()->notNull()->defaultValue(0),
+            'visibility' => $this->smallInteger()->notNull()->defaultValue(0)->comment('0仅作者可见，1登录用户可见，3公开'),
             'like_count' => $this->integer()->notNull()->defaultValue(0)->comment('点赞数，由 post_like 增删同步维护'),
             'views' => $this->integer()->notNull()->defaultValue(0)->comment('浏览数，同一浏览器对同一条内容按天去重累计'),
             'created_at' => $this->integer()->notNull(),

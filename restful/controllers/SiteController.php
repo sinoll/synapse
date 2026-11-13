@@ -59,6 +59,12 @@ final class SiteController extends ApiController
             ],
             'list_query' => ['page', 'per_page', 'sort（created_at|updated_at|like_count|views）', 'order（asc|desc）', 'user_id', 'q', 'tag'],
             'resources' => $resources,
+            'categories' => [
+                'list' => 'GET /cate',
+                'detail' => 'GET /cate/{id}',
+                'fields' => ['id', 'name', 'slug', 'description', 'thumb', 'thumb_url', 'created_at', 'updated_at'],
+                'read_only' => '分类由站点管理后台维护；博客发布时通过 cate_id 关联。',
+            ],
             'rules' => [
                 '写操作需要令牌；列表与详情游客可读，带令牌时能看到自己可见的私密与草稿内容，并附带 liked 状态。',
                 '只有作者本人能更新或删除，管理员不豁免。',

@@ -7,7 +7,7 @@ namespace restful\controllers;
 use restful\components\ApiResponder;
 use restful\exceptions\ValidationException;
 use Yii;
-use yii\web\ServerErrorException;
+use yii\web\ServerErrorHttpException;
 use yii\web\UploadedFile;
 
 /**
@@ -113,7 +113,7 @@ final class UploadController extends ApiController
             return rtrim($absoluteDirectory, DIRECTORY_SEPARATOR);
         }
         if (!mkdir($absoluteDirectory, 0775, true) && !is_dir($absoluteDirectory)) {
-            throw new ServerErrorException('目录创建失败，请检查 uploads 的写入权限。');
+            throw new ServerErrorHttpException('目录创建失败，请检查 uploads 的写入权限。');
         }
 
         return $absoluteDirectory;

@@ -142,8 +142,12 @@ abstract class ApiResource
         }
 
         $total = (int) (clone $criteria)->count();
+        $relations = ['user', 'tags', static::childRelation() ?? 'images'];
+        if (static::supportsCategory()) {
+            $relations[] = 'categories';
+        }
         $posts = (clone $criteria)
-            ->with(array_values(array_unique(['user', 'tags', static::childRelation() ?? 'images'])))
+            ->with(array_values(array_unique($relations)))
             ->orderBy(["p.$sort" => $order, 'p.id' => $order])
             ->offset(($page - 1) * $perPage)
             ->limit($perPage)
@@ -502,7 +506,12 @@ abstract class ApiResource
     /** 博客的分类是单值；没给 cate_id 时按 0 处理（不挂分类）。 */
     private static function syncCategory(Post $post, array $payload): void
     {
-        $cateId = self::intOrNull($payload['cate_id'] ?? null) ?? 0;
+        $cateId = array_key_exists('cate_id', $payload)
+            ? self::intOrNull($payload['cate_id'])
+            : 0;
+        if ($cateId === null || $cateId < 0) {
+            throw new ValidationException(['cate_id' => ['cate_id 必须是 0 或已存在的正整数分类 ID。']]);
+        }
         if ($cateId > 0 && !Cate::find()->where(['id' => $cateId])->exists()) {
             throw new ValidationException(['cate_id' => ['分类不存在。']]);
         }
@@ -687,7 +696,7 @@ abstract class ApiResource
         $int = self::intOrNull($value);
         if ($int === null || ($min !== null && $int < $min) || ($max !== null && $int > $max)) {
             $range = $min !== null && $max !== null ? "$min 到 $max" : ($min !== null ? "不小于 $min" : "不大于 $max");
-            throw new ValidationException([$field => ["$field 必须是整数且 $range。"]]);
+            throw new ValidationException([$field => [$field . ' 必须是整数且 ' . $range . '。']]);
         }
 
         return $int;

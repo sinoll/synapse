@@ -18,10 +18,12 @@ use common\models\Post;
 use common\models\SiteSetting;
 use common\models\User;
 use common\models\UserFollow;
+use common\models\UserMessage;
 use frontend\components\MailMessage;
 use frontend\services\InviteToken;
 use Yii;
 use yii\captcha\CaptchaAction;
+use yii\data\ActiveDataProvider;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\base\InvalidArgumentException;
@@ -67,10 +69,10 @@ class UsersController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['index', 'logout', 'favorite', 'like', 'followers', 'following', 'suggest'],
+                'only' => ['index', 'message', 'logout', 'favorite', 'like', 'followers', 'following', 'suggest'],
                 'rules' => [
                     [
-                        'actions' => ['index', 'logout', 'favorite', 'like', 'followers', 'following', 'suggest'],
+                        'actions' => ['index', 'message', 'logout', 'favorite', 'like', 'followers', 'following', 'suggest'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -130,6 +132,22 @@ class UsersController extends Controller
             'definitions' => $definitions,
             'selectedType' => $type,
         ]);        
+    }
+
+    public function actionMessage(): string
+    {
+        $userId = (int) Yii::$app->user->id;
+        $query = UserMessage::find()
+            ->with(['sender', 'recipient'])
+            ->where(['or', ['sender_id' => $userId], ['recipient_id' => $userId]])
+            ->orderBy(['created_at' => SORT_DESC, 'id' => SORT_DESC]);
+
+        return $this->render('message', [
+            'dataProvider' => new ActiveDataProvider([
+                'query' => $query,
+                'pagination' => ['pageSize' => 20],
+            ]),
+        ]);
     }
 
     /**

@@ -9,6 +9,7 @@ use common\models\Moment;
 use common\models\Post;
 use common\models\Tag;
 use frontend\components\ListPagination;
+use frontend\components\MentionNotifier;
 use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -221,6 +222,7 @@ class MomentController extends Controller
                     }
 
                     $this->syncPostTags($post, $tagNames);
+                    MentionNotifier::notify((string) $model->content, $post);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已发布。');
 
@@ -294,6 +296,7 @@ class MomentController extends Controller
                     }
 
                     $this->syncPostTags($post, $tagNames);
+                    MentionNotifier::notify((string) $model->content, $post);
                     $transaction->commit();
                     Yii::$app->session->setFlash('success', '内容已更新。');
 
