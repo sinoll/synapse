@@ -30,7 +30,7 @@ final class ShortVideo extends ApiResource
 
     protected static function childFields(): array
     {
-        return ['description', 'video_path', 'cover_path', 'duration_seconds', 'video_type'];
+        return ['description', 'video_path', 'thumbnail_path', 'cover_path', 'duration_seconds', 'video_type'];
     }
 
     protected static function childRelation(): ?string
@@ -78,7 +78,13 @@ final class ShortVideo extends ApiResource
         } elseif ($isCreate) {
             throw new ValidationException(['video_path' => ['短视频必须带上 video_path，请先用 POST /upload 上传视频。']]);
         }
-        if (array_key_exists('cover_path', $payload)) {
+        if (array_key_exists('thumbnail_path', $payload) && array_key_exists('cover_path', $payload)) {
+            throw new ValidationException(['thumbnail_path' => ['thumbnail_path 与 cover_path 不能同时提交，请使用 thumbnail_path。']]);
+        }
+        if (array_key_exists('thumbnail_path', $payload)) {
+            // The public write field follows /upload; the existing database and read field remain cover_path.
+            $video->cover_path = self::mediaArg($payload, 'thumbnail_path');
+        } elseif (array_key_exists('cover_path', $payload)) {
             $video->cover_path = self::mediaArg($payload, 'cover_path');
         }
         if (array_key_exists('duration_seconds', $payload)) {

@@ -45,6 +45,9 @@ return [
         ShortVideo::ORIENTATION_HORIZONTAL => 'Horizontal',
         ShortVideo::ORIENTATION_VERTICAL => 'Vertical',
     ],
+    // 网站和 RESTful 共用的缩略图画布尺寸。
+    'thumbnail.width' => 460,
+    'thumbnail.height' => 260,
     // 其他已有参数保留
     'ffmpegPath' => PHP_OS_FAMILY === 'Windows'  ? 'A:/greenSoft/ffmpeg/bin/ffmpeg.exe'  : '/usr/bin/ffmpeg',
 ];

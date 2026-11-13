@@ -521,7 +521,7 @@ class ImagesController extends Controller
         $thumbnail = $directory . DIRECTORY_SEPARATOR . pathinfo($fileName, PATHINFO_FILENAME) . '.jpg';
         $generated = false;
         try {
-            $generated = Yii::$app->get('ffmpegService')->createThumbnail($sourceFile, $thumbnail, 640, 640);
+            $generated = Yii::$app->get('ffmpegService')->createThumbnail($sourceFile, $thumbnail);
         } catch (\Throwable $exception) {
             Yii::warning('Gallery thumbnail generation failed: ' . $exception->getMessage(), __METHOD__);
         }

@@ -55,7 +55,7 @@ final class SiteController extends ApiController
             ],
             'media' => [
                 'upload' => 'POST /upload（multipart/form-data：file + kind，kind ∈ blog、moment、images、cate、video）',
-                'usage' => '把返回的 path 填进内容接口的 thumb / file_paths / video_path / cover_path 字段。',
+                'usage' => '把返回的 path 填进内容接口的 thumb / file_paths / video_path / thumbnail_path 字段。',
             ],
             'list_query' => ['page', 'per_page', 'sort（created_at|updated_at|like_count|views）', 'order（asc|desc）', 'user_id', 'q', 'tag'],
             'resources' => $resources,

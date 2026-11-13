@@ -47,10 +47,8 @@ class FfmpegService
         return $output;
     }
 
-    /**
-     * Generate a proportional thumbnail that fits inside the given dimensions.
-     */
-    public function createThumbnail(string $imagePath, string $outputPath, int $maxWidth = 460, int $maxHeight = 260): bool
+    /** Generate a fixed-size thumbnail, preserving the source aspect ratio with padding. */
+    public function createThumbnail(string $imagePath, string $outputPath): bool
     {
         if (!is_file($imagePath)) {
             throw new RuntimeException('Image file does not exist: ' . $imagePath);
@@ -60,11 +58,8 @@ class FfmpegService
         }
 
         $ffmpeg = $this->getBinaryPath();
-        $filter = sprintf(
-            "scale=w='min(%d,iw)':h='min(%d,ih)':force_original_aspect_ratio=decrease",
-            max(1, $maxWidth),
-            max(1, $maxHeight)
-        );
+        [$width, $height] = $this->thumbnailDimensions();
+        $filter = $this->thumbnailFilter($width, $height);
 
         try {
             $process = @proc_open(
@@ -86,7 +81,7 @@ class FfmpegService
         fclose($pipes[2]);
         $exitCode = proc_close($process);
 
-        return $exitCode === 0 && is_file($outputPath) && @getimagesize($outputPath) !== false;
+        return $exitCode === 0 && $this->hasThumbnailDimensions($outputPath, $width, $height);
     }
 
     /**
@@ -131,6 +126,100 @@ class FfmpegService
     }
 
     /**
+     * Read the video duration and display dimensions using FFprobe.
+     *
+     * @return array{duration_seconds: int, width: int, height: int}
+     */
+    public function getVideoMetadata(string $videoPath): array
+    {
+        if (!is_file($videoPath)) {
+            throw new RuntimeException('Video file does not exist: ' . $videoPath);
+        }
+        if (!function_exists('proc_open')) {
+            throw new RuntimeException('proc_open is disabled; FFprobe cannot be started.');
+        }
+
+        $ffmpeg = $this->getBinaryPath();
+        $ffprobe = dirname($ffmpeg) . DIRECTORY_SEPARATOR
+            . (PHP_OS_FAMILY === 'Windows' ? 'ffprobe.exe' : 'ffprobe');
+        if (!is_file($ffprobe)) {
+            throw new RuntimeException('FFprobe does not exist next to FFmpeg: ' . $ffprobe);
+        }
+
+        try {
+            $process = @proc_open(
+                [
+                    $ffprobe,
+                    '-v',
+                    'error',
+                    '-select_streams',
+                    'v:0',
+                    '-show_entries',
+                    'format=duration:stream=width,height,duration:stream_tags=rotate:stream_side_data=rotation',
+                    '-of',
+                    'json',
+                    $videoPath,
+                ],
+                [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes,
+            );
+        } catch (\Throwable $exception) {
+            throw new RuntimeException('Unable to start FFprobe: ' . $exception->getMessage(), 0, $exception);
+        }
+
+        if (!is_resource($process)) {
+            throw new RuntimeException('Unable to start FFprobe.');
+        }
+        fclose($pipes[0]);
+        $output = stream_get_contents($pipes[1]);
+        $errorOutput = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+
+        if ($exitCode !== 0) {
+            throw new RuntimeException('FFprobe failed: ' . trim((string) $errorOutput));
+        }
+
+        try {
+            $metadata = json_decode((string) $output, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $exception) {
+            throw new RuntimeException('FFprobe returned invalid metadata.', 0, $exception);
+        }
+
+        if (!is_array($metadata)) {
+            throw new RuntimeException('FFprobe returned invalid metadata.');
+        }
+        $stream = $metadata['streams'][0] ?? null;
+        if (!is_array($stream)) {
+            throw new RuntimeException('FFprobe could not determine the video duration and dimensions.');
+        }
+        $duration = $metadata['format']['duration'] ?? $stream['duration'] ?? null;
+        $width = (int) ($stream['width'] ?? 0);
+        $height = (int) ($stream['height'] ?? 0);
+        if (!is_numeric($duration) || !is_finite((float) $duration) || $width <= 0 || $height <= 0) {
+            throw new RuntimeException('FFprobe could not determine the video duration and dimensions.');
+        }
+
+        $rotation = $stream['tags']['rotate'] ?? null;
+        foreach ($stream['side_data_list'] ?? [] as $sideData) {
+            if (isset($sideData['rotation']) && is_numeric($sideData['rotation'])) {
+                $rotation = $sideData['rotation'];
+                break;
+            }
+        }
+        if (is_numeric($rotation) && abs((int) round((float) $rotation)) % 180 === 90) {
+            [$width, $height] = [$height, $width];
+        }
+
+        return [
+            'duration_seconds' => max(0, (int) round((float) $duration)),
+            'width' => $width,
+            'height' => $height,
+        ];
+    }
+
+    /**
      * Extract a frame from a video. Frame numbering is one-based for callers.
      * Falls back to the first frame when the requested frame does not exist.
      */
@@ -144,9 +233,10 @@ class FfmpegService
         }
 
         $ffmpeg = $this->getBinaryPath();
+        [$width, $height] = $this->thumbnailDimensions();
         $frameIndex = max(0, $frameNumber - 1);
         foreach (array_unique([$frameIndex, 0]) as $index) {
-            $filter = 'select=eq(n\\,' . $index . '),scale=\'min(1280,iw)\':-2';
+            $filter = 'select=eq(n\\,' . $index . '),' . $this->thumbnailFilter($width, $height);
             try {
                 $process = @proc_open(
                     [$ffmpeg, '-nostdin', '-y', '-v', 'error', '-i', $videoPath, '-vf', $filter, '-frames:v', '1', '-q:v', '2', $outputPath],
@@ -167,7 +257,7 @@ class FfmpegService
             fclose($pipes[2]);
             $exitCode = proc_close($process);
 
-            if ($exitCode === 0 && is_file($outputPath) && @getimagesize($outputPath) !== false) {
+            if ($exitCode === 0 && $this->hasThumbnailDimensions($outputPath, $width, $height)) {
                 return true;
             }
             if (is_file($outputPath)) {
@@ -176,5 +266,35 @@ class FfmpegService
         }
 
         return false;
+    }
+
+    /** @return array{0: int, 1: int} */
+    private function thumbnailDimensions(): array
+    {
+        $width = (int) (Yii::$app->params['thumbnail.width'] ?? 0);
+        $height = (int) (Yii::$app->params['thumbnail.height'] ?? 0);
+        if ($width <= 0 || $height <= 0) {
+            throw new RuntimeException('Thumbnail dimensions must be configured as positive integers.');
+        }
+
+        return [$width, $height];
+    }
+
+    private function thumbnailFilter(int $width, int $height): string
+    {
+        return sprintf(
+            "scale=w='min(%d,iw)':h='min(%d,ih)':force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2",
+            $width,
+            $height,
+            $width,
+            $height
+        );
+    }
+
+    private function hasThumbnailDimensions(string $path, int $width, int $height): bool
+    {
+        $imageSize = is_file($path) ? @getimagesize($path) : false;
+
+        return $imageSize !== false && $imageSize[0] === $width && $imageSize[1] === $height;
     }
 }

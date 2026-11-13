@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace restful\controllers;
 
+use common\models\ShortVideo;
 use restful\components\ApiResponder;
 use restful\exceptions\ValidationException;
 use Yii;
@@ -23,35 +24,92 @@ final class UploadController extends ApiController
         $kind = self::kind($this->payload());
         $config = Yii::$app->params['api.uploadKinds'][$kind];
 
-        $file = UploadedFile::getInstanceByName('file');
-        if ($file === null) {
+        $files = UploadedFile::getInstancesByName('file');
+        if ($files === []) {
             throw new ValidationException(['file' => ['请用 multipart/form-data 提交 file 字段。']]);
         }
-        self::assertAccepted($file, $kind, $config);
-
-        $directory = self::makeDirectory(Yii::getAlias('@frontend/web') . self::sourceDirectory($config));
-        $name = Yii::$app->security->generateRandomString(32) . '.' . strtolower((string) $file->extension);
-        $storedFile = $directory . DIRECTORY_SEPARATOR . $name;
-        if (!$file->saveAs($storedFile)) {
-            return ApiResponder::fail(500, '文件写入失败，请检查 ' . self::sourceDirectory($config) . ' 的目录权限。');
+        $files = array_values(array_filter(
+            $files,
+            static fn (UploadedFile $file): bool => $file->error !== UPLOAD_ERR_NO_FILE
+        ));
+        if ($files === []) {
+            throw new ValidationException(['file' => ['请至少提交一个文件。']]);
         }
 
-        $path = self::sourceDirectory($config) . '/' . $name;
-        [$thumbnailPath, $warning] = self::makeThumbnail($config, $storedFile, $path);
+        $multipleImages = in_array($kind, ['blog', 'moment', 'images'], true);
+        if (!$multipleImages && count($files) > 1) {
+            throw new ValidationException(['file' => [$kind . ' 每次只能上传一个文件。']]);
+        }
+        foreach ($files as $file) {
+            self::assertAccepted($file, $kind, $config);
+        }
 
-        $data = [
-            'kind' => $kind,
-            'path' => $path,
-            'url' => ApiResponder::assetUrl($path),
-            'size' => (int) $file->size,
-            'thumbnail_path' => $thumbnailPath,
-            'thumbnail_url' => ApiResponder::assetUrl($thumbnailPath),
-        ];
+        $firstFile = $files[0];
+        $videoMetadata = $kind === 'video'
+            ? Yii::$app->get('ffmpegService')->getVideoMetadata($firstFile->tempName)
+            : null;
+        $directory = self::makeDirectory(Yii::getAlias('@frontend/web') . self::sourceDirectory($config));
+        $paths = [];
+        $images = [];
+        $storedFiles = [];
+        foreach ($files as $file) {
+            $name = Yii::$app->security->generateRandomString(32) . '.' . strtolower((string) $file->extension);
+            $storedFile = $directory . DIRECTORY_SEPARATOR . $name;
+            if (!$file->saveAs($storedFile)) {
+                if (is_file($storedFile)) {
+                    @unlink($storedFile);
+                }
+                foreach ($storedFiles as $storedPath) {
+                    @unlink($storedPath);
+                }
+
+                return ApiResponder::fail(500, '文件写入失败，请检查 ' . self::sourceDirectory($config) . ' 的目录权限。');
+            }
+
+            $storedFiles[] = $storedFile;
+            $path = self::sourceDirectory($config) . '/' . $name;
+            $paths[] = $path;
+            if ($multipleImages) {
+                $images[] = [
+                    'path' => $path,
+                    'original_name' => $file->name,
+                ];
+            }
+        }
+
+        [$thumbnailPath, $warning] = self::makeThumbnail($config, $storedFiles[0], $paths[0]);
+
+        if ($kind === 'video') {
+            $data = [
+                'kind' => $kind,
+                'video_path' => $paths[0],
+                'thumbnail_path' => $thumbnailPath,
+                'duration_seconds' => $videoMetadata['duration_seconds'],
+                'video_type' => $videoMetadata['width'] < $videoMetadata['height']
+                    ? ShortVideo::ORIENTATION_VERTICAL
+                    : ShortVideo::ORIENTATION_HORIZONTAL,
+            ];
+        } elseif ($multipleImages) {
+            $data = [
+                'kind' => $kind,
+                'imgs' => $images,
+                'thumbnail_path' => $thumbnailPath,
+            ];
+        } else {
+            $data = [
+                'kind' => $kind,
+                'path' => $paths[0],
+                'url' => ApiResponder::assetUrl($paths[0]),
+                'size' => (int) $firstFile->size,
+                'thumbnail_path' => $thumbnailPath,
+                'thumbnail_url' => ApiResponder::assetUrl($thumbnailPath),
+            ];
+        }
         if ($warning !== null) {
             $data['warning'] = $warning;
         }
 
-        return ApiResponder::ok($data, '文件已保存，把 path（或 thumbnail_path）提交给对应的内容接口即可。');
+        return ApiResponder::ok($data, '文件已保存，可把返回的路径字段提交给对应的内容接口。');
     }
 
     /** @param array<string, mixed> $config @param array<string, mixed> $payload */
@@ -93,8 +151,10 @@ final class UploadController extends ApiController
         if ($config['thumb_from'] !== 'video' && @getimagesize($file->tempName) === false) {
             throw new ValidationException(['file' => ['文件不是有效的图片。']]);
         }
-        if ($config['thumb_from'] === 'video'
-            && !Yii::$app->get('ffmpegService')->isPlayableVideo($file->tempName, (string) $file->extension)) {
+        if (
+            $config['thumb_from'] === 'video'
+            && !Yii::$app->get('ffmpegService')->isPlayableVideo($file->tempName, (string) $file->extension)
+        ) {
             throw new ValidationException(['file' => ['文件不是有效的视频，或视频内容无法解码播放。']]);
         }
     }
@@ -143,7 +203,7 @@ final class UploadController extends ApiController
             $service = Yii::$app->get('ffmpegService');
             $generated = $mode === 'video'
                 ? $service->extractFrame($storedFile, $thumbnail, 5)
-                : $service->createThumbnail($storedFile, $thumbnail, 640, 640);
+                : $service->createThumbnail($storedFile, $thumbnail);
         } catch (\Throwable $exception) {
             Yii::warning('API 缩略图生成失败：' . $exception->getMessage(), __METHOD__);
             $generated = false;
