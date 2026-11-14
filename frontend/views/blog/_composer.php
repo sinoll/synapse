@@ -124,8 +124,6 @@ $this->registerCss(<<<'CSS'
 .rich-editor-swatch-reset { grid-column: 1 / -1; justify-self: start; color: var(--bs-body-color); background: var(--bs-tertiary-bg); font-size: .8rem; font-weight: 700; }
 .rich-editor-swatch-reset::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top right, transparent calc(50% - .6px), var(--bs-danger) calc(50% - .6px), var(--bs-danger) calc(50% + .6px), transparent calc(50% + .6px)); }
 .rich-editor-surface { min-height: 300px; padding: 1rem; overflow-wrap: anywhere; border: 1px solid var(--bs-border-color); border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius); background: var(--bs-body-bg); outline: 0; line-height: 1.75; }
-.rich-editor-surface > p, .rich-editor-surface > div { text-indent: 2em; }
-.rich-editor-surface > p:has(img, video), .rich-editor-surface > div:has(img, video) { text-indent: 0; }
 .rich-editor-surface:focus { border-color: var(--bs-primary); box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .18); }
 .rich-editor-surface:empty::before { content: attr(data-placeholder); color: var(--bs-secondary-color); pointer-events: none; }
 .rich-editor-surface > :first-child { margin-top: 0; }

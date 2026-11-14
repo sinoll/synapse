@@ -513,10 +513,14 @@ class BlogController extends Controller
         $directory = $webRoot . '/uploads/blog/' . $yearMonth;
         $thumbDirectory = $webRoot . '/uploads/thumb/blog';
 
-        foreach ([$directory, $thumbDirectory] as $targetDirectory) {
-            if (!is_dir($targetDirectory) && !mkdir($targetDirectory, 0775, true) && !is_dir($targetDirectory)) {
-                return [];
-            }
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return [];
+        }
+        $thumbDirectoryAvailable = is_dir($thumbDirectory)
+            || @mkdir($thumbDirectory, 0775, true)
+            || is_dir($thumbDirectory);
+        if (!$thumbDirectoryAvailable) {
+            Yii::warning('Blog image thumbnail directory is unavailable; original images will be used.', __METHOD__);
         }
 
         $paths = [];
@@ -530,6 +534,10 @@ class BlogController extends Controller
 
             $paths[] = '/uploads/blog/' . $yearMonth . '/' . $name;
 
+            if (!$thumbDirectoryAvailable) {
+                continue;
+            }
+
             $thumbnail = $thumbDirectory . DIRECTORY_SEPARATOR . $name;
             try {
                 $generated = Yii::$app->get('ffmpegService')->createThumbnail($storedFile, $thumbnail);
@@ -542,8 +550,7 @@ class BlogController extends Controller
                 if (is_file($thumbnail)) {
                     @unlink($thumbnail);
                 }
-                $this->deleteRichEditorImages($paths);
-                return [];
+                Yii::warning('Blog image thumbnail generation failed; the original image will be used.', __METHOD__);
             }
         }
         return $paths;
@@ -616,7 +623,9 @@ class BlogController extends Controller
             }
         }
 
-        return null;
+        $source = Yii::getAlias('@frontend/web') . $imagePath;
+
+        return is_file($source) ? $imagePath : null;
     }
 
     private function deleteBlogThumbnail(string $thumbPath): void

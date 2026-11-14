@@ -51,7 +51,6 @@ final class Moment extends ApiResource
         return [
             'content' => $detail ? $moment?->content : null,
             'text' => self::plainText((string) ($moment?->content ?? ''), 500),
-            'thumb' => ApiResponder::assetUrl($moment?->thumb),
             'thumb_url' => ApiResponder::assetUrl($moment?->thumb),
         ];
     }

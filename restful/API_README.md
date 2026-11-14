@@ -207,9 +207,9 @@ curl -sS "$BASE/cate/3"
 
 | 资源 | 读（列表） | 读（详情多给） | 写 | 创建时必填 |
 | --- | --- | --- | --- | --- |
-| 博客 | `summary`、`thumb`、`thumb_url`、`categories[]`（`content` 为 `null`） | `content`（已净化） | `summary`、`content`、`thumb`、`cate_id` | `content` |
-| 动态 | `text`（正文纯文本截断）、`thumb`、`thumb_url` | `content` | `content`、`thumb` | `content` |
-| 图集 | `caption`、`image_count`、`images[]`（`id/title/alt_text/file_path/file_url/thumbnail_path/thumbnail_url/sort_order/created_at`） | 同左 | `caption`、`file_paths[]` | `file_paths[]` |
+| 博客 | `summary`、`thumb_url`、`categories[]`（`content` 为 `null`） | `content`（已净化） | `summary`、`content`、`thumb`、`cate_id` | `content` |
+| 动态 | `text`（正文纯文本截断）、`thumb_url` | `content` | `content`、`thumb` | `content` |
+| 图集 | `caption`、`image_count`、`images[]`（`id/title/alt_text/file_url/thumbnail_url/sort_order/created_at`） | 同左 | `caption`、`file_paths[]` | `file_paths[]` |
 | 短视频 | `video_path`、`video_url`、`cover_path`、`cover_url`、`duration_seconds`、`video_type`、`video_type_label`、`is_vertical` | `description` | `description`、`video_path`、`thumbnail_path`、`duration_seconds`、`video_type` | `video_path` |
 
 补充口径（都与前台一致）：

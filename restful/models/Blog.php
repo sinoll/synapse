@@ -51,7 +51,6 @@ final class Blog extends ApiResource
 
         return [
             'summary' => $blog?->summary,
-            'thumb' => ApiResponder::assetUrl($blog?->thumb),
             'thumb_url' => ApiResponder::assetUrl($blog?->thumb),
             'content' => $detail ? $blog?->content : null,
             'categories' => array_map(
