@@ -50,22 +50,11 @@ phpunit.phar
 /frontend/web/index.php
 /frontend/web/index-test.php
 /frontend/web/robots.txt
-/frontend/config/main-local.php
-/frontend/config/params-local.php
-/frontend/config/test.php
+
 /backend/web/index.php
 /backend/web/index-test.php
 /backend/web/robots.txt
-/backend/config/main-local.php
-/backend/config/params-local.php
-/backend/config/test.php
-/common/config/main-local.php
-/common/config/params-local.php
-/common/config/test.php
-/console/config/main-local.php
-/console/config/params-local.php
-/console/config/test.php
-/restful/config/main-local.php
-# params-local.php 里有 SMTP 明文授权码；runtime/ 是日志与缓存，都不该进版本库。
-/restful/config/params-local.php
-/restful/runtime/
+
+/restful/web/index.php
+/restful/web/robots.txt
+
