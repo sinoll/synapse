@@ -63,6 +63,26 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 `YII_DEBUG=true`（`web/index.php`）时错误响应额外带 `debug{type,file,line,trace}`，
 排查完请把它切回生产值。
 
+## @用户与站内消息
+
+以下接口均需要 Bearer 令牌，响应使用上述统一封装：
+
+* `GET /users/suggest?q=关键词`：按用户名或昵称模糊查询活跃用户，排除当前用户，最多 8 条；省略 `q` 时返回候选用户。`data.users` 的每项包含 `id`、`username`、`nickname`、`name` 和 `avatar_url`，不返回邮箱等私密字段。
+* `POST /messages`：发送私信，请求体示例 `{"recipient_username":"alice","content":"你好"}`。收件人必须是其他活跃用户；内容不能为空或超过 5000 字符。响应 `data` 是消息对象。
+* `GET /messages?page=1&per_page=20`：按时间及 ID 倒序返回当前用户发送或接收的消息，`data` 包含 `items`、`page`、`per_page`、`total`、`total_pages`，每页上限与内容列表一致。
+* `GET /messages/{id}`：仅消息发送人和收件人可访问；收件人读取时自动标记已读。
+* `PATCH /messages/{id}/read`：仅收件人可用，幂等标记已读；非收件人及不存在的消息均返回 404。
+* `GET /messages/unread-count`：返回 `data.unread_count`，只统计当前用户收到的未读消息。
+
+消息对象包含 `id`、`type`（`private` 或 `mention`）、`content`、`sender`、`recipient`、
+`source_type`、`source_id`、`read_at`、`created_at`；时间为带时区的 ISO 8601，未读时
+`read_at` 为 null。提及消息的来源为动态或图集；来源可能随后被删除或变为不可见，应通过对应内容
+详情接口重新检查访问权限。
+
+通过 API 创建或更新已发布的动态和图集时，非私密内容中的 `@用户名` 或 `@昵称` 会沿用网站规则
+通知活跃用户；不通知作者本人，同一内容对同一用户只通知一次。草稿和私密内容不发送通知，
+草稿发布后会检查正文。博客、短视频及评论暂不产生提及通知，与现有网站行为一致。
+
 ## 认证
 
 * `POST /auth/login` → `{token, token_type:"Bearer", expires_in, expires_at, user}`。

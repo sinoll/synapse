@@ -8,6 +8,7 @@ use common\models\Cate;
 use common\models\Post;
 use common\models\PostLike;
 use common\models\Tag;
+use frontend\components\MentionNotifier;
 use restful\components\ApiResponder;
 use restful\exceptions\ValidationException;
 use RuntimeException;
@@ -373,6 +374,18 @@ abstract class ApiResource
             }
             static::persistChild($post, $payload, $isCreate);
             self::syncTaxonomy($post, $payload, $isCreate);
+            if ((int) $post->status === Post::STATUS_PUBLISHED) {
+                if ($post->type === Post::TYPE_MOMENT) {
+                    $post->refresh();
+                    MentionNotifier::notify((string) $post->moment?->content, $post);
+                } elseif ($post->type === Post::TYPE_IMAGES) {
+                    $post->refresh();
+                    $image = $post->images[0] ?? null;
+                    if ($image !== null) {
+                        MentionNotifier::notify($image->buildCaption(), $post);
+                    }
+                }
+            }
         });
     }
 
