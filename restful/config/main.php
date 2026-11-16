@@ -82,6 +82,7 @@ return [
             'rules' => $resourceRules + [
                 'GET cate' => 'cate/index',
                 'GET cate/<id:\d+>' => 'cate/view',
+                'GET search' => 'search/index',
                 'POST auth/register/code' => 'auth/register-code',
                 'POST auth/register' => 'auth/register',
                 'POST auth/login' => 'auth/login',

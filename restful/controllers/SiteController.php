@@ -58,6 +58,7 @@ final class SiteController extends ApiController
                 'usage' => '把返回的 path 填进内容接口的 thumb / file_paths / video_path / thumbnail_path 字段。',
             ],
             'list_query' => ['page', 'per_page', 'sort（created_at|updated_at|like_count|views）', 'order（asc|desc）', 'user_id', 'q', 'tag'],
+            'search' => 'GET /search?q=关键词&type=blog|moment|images|short_video&page=1&per_page=20',
             'users' => ['suggest' => 'GET /users/suggest?q=用户名或昵称（需要令牌）'],
             'messages' => [
                 'list' => 'GET /messages',

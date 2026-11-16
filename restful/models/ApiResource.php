@@ -245,7 +245,7 @@ abstract class ApiResource
     }
 
     /** 整页的点赞状态一次查完，别让 item() 每行问一次库。 @return int[] */
-    private static function likedIds(array $posts, int|null $viewerId): array
+    public static function likedIds(array $posts, int|null $viewerId): array
     {
         if ($viewerId === null || $posts === []) {
             return [];

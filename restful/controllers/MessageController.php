@@ -6,6 +6,7 @@ namespace restful\controllers;
 
 use common\models\User;
 use common\models\UserMessage;
+use restful\components\ApiPagination;
 use restful\components\ApiResponder;
 use restful\exceptions\ValidationException;
 use RuntimeException;
@@ -18,12 +19,7 @@ final class MessageController extends ApiController
     {
         $userId = $this->actorId();
         $queryParams = Yii::$app->request->getQueryParams();
-        $page = $this->positiveInteger($queryParams, 'page', 1);
-        $perPage = $this->positiveInteger($queryParams, 'per_page', (int) Yii::$app->params['api.pageSizeDefault']);
-        $max = (int) Yii::$app->params['api.pageSizeMax'];
-        if ($perPage > $max) {
-            throw new ValidationException(['per_page' => ["per_page 只能在 1 到 $max 之间。"]]);
-        }
+        [$page, $perPage] = ApiPagination::parse($queryParams);
 
         $query = UserMessage::find()
             ->where(['or', ['sender_id' => $userId], ['recipient_id' => $userId]]);
@@ -149,18 +145,5 @@ final class MessageController extends ApiController
             'read_at' => $message->read_at === null ? null : ApiResponder::timestamp((int) $message->read_at),
             'created_at' => ApiResponder::timestamp((int) $message->created_at),
         ];
-    }
-
-    private function positiveInteger(array $query, string $key, int $default): int
-    {
-        if (!array_key_exists($key, $query)) {
-            return $default;
-        }
-        $value = filter_var($query[$key], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        if ($value === false) {
-            throw new ValidationException([$key => [$key . ' 必须是正整数。']]);
-        }
-
-        return $value;
     }
 }

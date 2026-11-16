@@ -63,6 +63,47 @@ curl -s -X POST $BASE/upload -H "Authorization: Bearer $TOKEN" \
 `YII_DEBUG=true`（`web/index.php`）时错误响应额外带 `debug{type,file,line,trace}`，
 排查完请把它切回生产值。
 
+## 站内搜索 `GET /search`
+
+无需登录；可选携带 Bearer 令牌。和网站搜索共用匹配规则，搜索博客、动态、图集和短视频的标题、
+博客摘要和正文、动态正文、短视频简介、图集说明、标签名、分类名及作者用户名或昵称。关键词按字面
+模糊匹配（`%` 和 `_` 不作为通配符）；同一内容即使匹配多张图片或多个标签也只返回一次。
+
+| 查询参数 | 说明 |
+| --- | --- |
+| `q` | 关键词；去除首尾空格后截取前 60 个字符。为空或未提供时返回空结果 |
+| `type` | 可选：`blog`、`moment`、`images`、`short_video`；也接受网站使用的 `video`，响应统一为 `short_video` |
+| `page` | 从 1 开始，默认 1 |
+| `per_page` | 默认 20，上限 100，以 `api.pageSizeDefault` 和 `api.pageSizeMax` 配置为准 |
+
+参数类型或取值不合法返回 422。仅搜索已发布内容：游客只看到公开内容，登录用户还可看到注册用户
+可见内容和自己的私密内容；草稿不会出现在搜索中。结果按创建时间、ID 倒序排列；超出末页返回空数组。
+
+```bash
+curl -G "$BASE/search" --data-urlencode "q=旅行" --data-urlencode "type=blog" \
+     --data-urlencode "page=1" --data-urlencode "per_page=20"
+```
+
+响应 `data` 示例（`items` 中的每项与相应类型的列表接口结构一致，完整字段因类型而异）：
+
+```json
+{
+  "q": "旅行",
+  "type": "blog",
+  "authenticated": false,
+  "page": 1,
+  "per_page": 20,
+  "total": 1,
+  "total_pages": 1,
+  "items": [
+    { "id": 12, "type": "blog", "title": "旅行", "liked": false }
+  ]
+}
+```
+
+不指定类型时 `type` 为 `null`。搜索结果不增加内容浏览量；详情可通过 `/blog/{id}`、
+`/moment/{id}`、`/images/{id}` 或 `/short_video/{id}` 获取。
+
 ## @用户与站内消息
 
 以下接口均需要 Bearer 令牌，响应使用上述统一封装：
