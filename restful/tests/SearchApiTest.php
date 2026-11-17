@@ -7,6 +7,7 @@ use common\services\PostSearch;
 use PHPUnit\Framework\TestCase;
 use restful\controllers\SearchController;
 use restful\exceptions\ValidationException;
+use restful\models\Blog;
 use restful\services\ApiToken;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
@@ -45,6 +46,7 @@ final class SearchApiTest extends TestCase
             'CREATE TABLE cate (id INTEGER PRIMARY KEY, name TEXT, slug TEXT)',
             'CREATE TABLE post_cate (post_id INTEGER, cate_id INTEGER)',
             'CREATE TABLE post_like (post_id INTEGER, user_id INTEGER)',
+            'CREATE TABLE post_comment (id INTEGER PRIMARY KEY, post_id INTEGER, comment_id INTEGER, parent_comment_id INTEGER, root_comment_id INTEGER, depth INTEGER, created_at INTEGER)',
         ] as $sql) {
             Yii::$app->db->createCommand($sql)->execute();
         }
@@ -78,6 +80,10 @@ final class SearchApiTest extends TestCase
         $db->createCommand()->insert('cate', ['id' => 1, 'name' => 'category-key', 'slug' => 'category'])->execute();
         $db->createCommand()->insert('post_cate', ['post_id' => 1, 'cate_id' => 1])->execute();
         $db->createCommand()->insert('post_like', ['post_id' => 2, 'user_id' => 1])->execute();
+        $db->createCommand()->batchInsert('post_comment', ['id', 'post_id', 'comment_id', 'parent_comment_id', 'root_comment_id', 'depth', 'created_at'], [
+            [1, 2, 1, null, null, 0, 1],
+            [2, 2, 2, 1, 1, 1, 2],
+        ])->execute();
     }
 
     protected function tearDown(): void
@@ -138,6 +144,16 @@ final class SearchApiTest extends TestCase
         $result = $this->search(['q' => 'needle']);
         self::assertSame([7, 5], array_column($result['items'], 'id'));
         self::assertTrue($result['authenticated']);
+    }
+
+    public function testContentResponsesIncludeCommentCount(): void
+    {
+        self::assertSame(0, $this->search(['q' => 'body-key'])['items'][0]['comment_count']);
+        self::assertSame(2, $this->search(['q' => 'moment-key'])['items'][0]['comment_count']);
+
+        $page = Blog::page([], null);
+        self::assertSame(0, $page['items'][0]['comment_count']);
+        self::assertSame(0, Blog::item(Post::findOne(1), null, true)['comment_count']);
     }
 
     public function testSharedQueryDeduplicatesAndWebsitePaginationMatches(): void

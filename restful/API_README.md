@@ -96,7 +96,7 @@ curl -G "$BASE/search" --data-urlencode "q=旅行" --data-urlencode "type=blog" 
   "total": 1,
   "total_pages": 1,
   "items": [
-    { "id": 12, "type": "blog", "title": "旅行", "liked": false }
+    { "id": 12, "type": "blog", "title": "旅行", "liked": false, "comment_count": 0 }
   ]
 }
 ```
@@ -271,8 +271,10 @@ curl -sS "$BASE/cate/3"
 ### 公共字段
 
 读（列表与详情都有）：`id`、`type`、`title`、`status`、`visibility`（0 私密 / 1 仅注册用户 / 2 公开）、
-`like_count`、`views`、`liked`、`author{id,username,nickname,avatar_url}`、`tags[]`、`cover_url`、
+`like_count`、`comment_count`、`views`、`liked`、`author{id,username,nickname,avatar_url}`、`tags[]`、`cover_url`、
 `created_at`、`updated_at`（ISO-8601，带 `+08:00`）。
+`comment_count` 同时出现在内容列表、详情、搜索及创建/更新响应中，统计该内容下的全部评论节点（含回复）；
+没有评论时为 `0`。
 
 所有媒体路径字段及 `avatar_url`、`cover_url`、`file_url`、`thumbnail_url`、`video_url` 等 URL 字段
 均只返回根相对路径（如 `/uploads/example.jpg`），不包含主机名。客户端可按自身配置使用

@@ -6,6 +6,7 @@ namespace restful\models;
 
 use common\models\Cate;
 use common\models\Post;
+use common\models\PostComment;
 use common\models\PostLike;
 use common\models\Tag;
 use frontend\components\MentionNotifier;
@@ -14,6 +15,7 @@ use restful\exceptions\ValidationException;
 use RuntimeException;
 use Yii;
 use yii\db\ActiveRecord;
+use yii\db\Expression;
 use yii\db\Query;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
@@ -154,6 +156,7 @@ abstract class ApiResource
             ->limit($perPage)
             ->all();
         $liked = self::likedIds($posts, $viewerId);
+        $commentCounts = self::commentCounts($posts);
 
         return [
             'authenticated' => $viewerId !== null,
@@ -164,7 +167,13 @@ abstract class ApiResource
             'sort' => $sort,
             'order' => $order === SORT_ASC ? 'asc' : 'desc',
             'items' => array_map(
-                static fn (Post $post): array => self::item($post, $viewerId, false, in_array((int) $post->id, $liked, true)),
+                static fn (Post $post): array => self::item(
+                    $post,
+                    $viewerId,
+                    false,
+                    in_array((int) $post->id, $liked, true),
+                    $commentCounts[(int) $post->id] ?? 0
+                ),
                 $posts
             ),
         ];
@@ -186,8 +195,13 @@ abstract class ApiResource
     }
 
     /** @return array 单条内容的对外结构 */
-    public static function item(Post $post, int|null $viewerId, bool $detail = false, bool|null $liked = null): array
-    {
+    public static function item(
+        Post $post,
+        int|null $viewerId,
+        bool $detail = false,
+        bool|null $liked = null,
+        int|null $commentCount = null
+    ): array {
         return [
             'id' => (int) $post->id,
             'type' => $post->type,
@@ -195,6 +209,7 @@ abstract class ApiResource
             'status' => (int) $post->status,
             'visibility' => (int) $post->visibility,
             'like_count' => (int) $post->like_count,
+            'comment_count' => $commentCount ?? self::commentCount($post),
             'views' => (int) $post->views,
             'liked' => $liked ?? self::isLiked($post, $viewerId),
             'author' => self::author($post),
@@ -255,6 +270,34 @@ abstract class ApiResource
             'intval',
             PostLike::find()->select('post_id')->where(['user_id' => $viewerId, 'post_id' => array_map(static fn (Post $p): int => (int) $p->id, $posts)])->column()
         );
+    }
+
+    /** 整页评论数一次查完，包含顶级评论和所有回复。 @return array<int, int> */
+    public static function commentCounts(array $posts): array
+    {
+        if ($posts === []) {
+            return [];
+        }
+
+        $postIds = array_map(static fn (Post $post): int => (int) $post->id, $posts);
+        $rows = (new Query())
+            ->select(['post_id', 'comment_count' => new Expression('COUNT(*)')])
+            ->from(PostComment::tableName())
+            ->where(['post_id' => $postIds])
+            ->groupBy('post_id')
+            ->all();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[(int) $row['post_id']] = (int) $row['comment_count'];
+        }
+
+        return $counts;
+    }
+
+    private static function commentCount(Post $post): int
+    {
+        return (int) PostComment::find()->where(['post_id' => $post->id])->count();
     }
 
     /** @return array{0: int, 1: int} */

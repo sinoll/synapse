@@ -44,6 +44,7 @@ final class MessageApiTest extends TestCase
             'CREATE TABLE tag (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, slug TEXT)',
             'CREATE TABLE post_tag (post_id INTEGER, tag_id INTEGER)',
             'CREATE TABLE post_like (post_id INTEGER, user_id INTEGER)',
+            'CREATE TABLE post_comment (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER, comment_id INTEGER, parent_comment_id INTEGER, root_comment_id INTEGER, depth INTEGER, created_at INTEGER)',
         ];
         foreach ($sql as $statement) {
             Yii::$app->db->createCommand($statement)->execute();
