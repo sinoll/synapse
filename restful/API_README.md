@@ -104,6 +104,26 @@ curl -G "$BASE/search" --data-urlencode "q=旅行" --data-urlencode "type=blog" 
 不指定类型时 `type` 为 `null`。搜索结果不增加内容浏览量；详情可通过 `/blog/{id}`、
 `/moment/{id}`、`/images/{id}` 或 `/short_video/{id}` 获取。
 
+## 评论
+
+评论读取遵循内容接口的可见性规则：游客只能读取已发布的公开内容；登录用户还可读取注册用户可见内容和
+自己的私密内容、草稿。不可见或不存在的内容均返回 404。评论正文被隐藏时仍会返回评论节点以保持回复树完整，
+但 `content` 为 `null` 且 `status` 为 `0`。
+
+* `GET /comments?post_id={内容ID}&page=1&per_page=20`：按创建时间和 ID 正序分页返回顶级评论。
+  每个顶级评论内嵌最多 3 条最早回复，并带 `reply_count` 和 `has_more_replies`；页大小遵循内容列表配置。
+* `GET /comments/{顶级评论ID}/replies?page=1&per_page=20`：按创建时间和 ID 正序分页返回该楼层的所有回复，
+  包括回复其他回复的节点；超过末页返回空数组。
+* `POST /comments`：需要登录。请求体为 `{"post_id":12,"parent_id":34,"content":"评论内容"}`；
+  `parent_id` 可省略或设为 `null`/`0` 以发表顶级评论。正文去除首尾空格后不能为空，最多 500 个字符；
+  回复目标必须属于同一内容，最多回复至模型允许的层级。
+* `DELETE /comments/{评论ID}`：需要登录。评论作者只能删除自己的节点，回复会保留并重新挂接；
+  内容作者或管理员可删除该节点及其回复子树。没有删除权限返回 403。
+
+每条评论包含 `id`（评论节点 ID）、`post_id`、`parent_id`、`root_id`、`depth`、`content`、`status`、
+`author`、`reply_to` 和 `created_at`。`author`/`reply_to` 使用用户摘要结构；`created_at` 为带时区的 ISO 8601
+时间。分页响应含 `items`、`page`、`per_page`、`total` 和 `total_pages`。评论端点不发送 @提及通知。
+
 ## @用户与站内消息
 
 以下接口均需要 Bearer 令牌，响应使用上述统一封装：
