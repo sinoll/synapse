@@ -7,6 +7,7 @@ namespace restful\models;
 use common\models\Cate;
 use common\models\Post;
 use common\models\PostComment;
+use common\models\PostFavorite;
 use common\models\PostLike;
 use common\models\Tag;
 use frontend\components\MentionNotifier;
@@ -156,6 +157,7 @@ abstract class ApiResource
             ->limit($perPage)
             ->all();
         $liked = self::likedIds($posts, $viewerId);
+        $favorited = self::favoritedIds($posts, $viewerId);
         $commentCounts = self::commentCounts($posts);
 
         return [
@@ -172,6 +174,7 @@ abstract class ApiResource
                     $viewerId,
                     false,
                     in_array((int) $post->id, $liked, true),
+                    in_array((int) $post->id, $favorited, true),
                     $commentCounts[(int) $post->id] ?? 0
                 ),
                 $posts
@@ -200,6 +203,7 @@ abstract class ApiResource
         int|null $viewerId,
         bool $detail = false,
         bool|null $liked = null,
+        bool|null $favorited = null,
         int|null $commentCount = null
     ): array {
         return [
@@ -212,6 +216,7 @@ abstract class ApiResource
             'comment_count' => $commentCount ?? self::commentCount($post),
             'views' => (int) $post->views,
             'liked' => $liked ?? self::isLiked($post, $viewerId),
+            'favorited' => $favorited ?? self::isFavorited($post, $viewerId),
             'author' => self::author($post),
             'tags' => array_map(static fn (Tag $tag): string => $tag->name, $post->tags),
             'cover_url' => ApiResponder::assetUrl($post->coverUrl()),
@@ -257,6 +262,31 @@ abstract class ApiResource
         }
 
         return PostLike::find()->where(['post_id' => $post->id, 'user_id' => $viewerId])->exists();
+    }
+
+    private static function isFavorited(Post $post, int|null $viewerId): bool
+    {
+        if ($viewerId === null) {
+            return false;
+        }
+
+        return PostFavorite::find()->where(['post_id' => $post->id, 'user_id' => $viewerId])->exists();
+    }
+
+    /** 整页的收藏状态一次查完。 @return int[] */
+    public static function favoritedIds(array $posts, int|null $viewerId): array
+    {
+        if ($viewerId === null || $posts === []) {
+            return [];
+        }
+
+        return array_map(
+            'intval',
+            PostFavorite::find()->select('post_id')->where([
+                'user_id' => $viewerId,
+                'post_id' => array_map(static fn (Post $post): int => (int) $post->id, $posts),
+            ])->column()
+        );
     }
 
     /** 整页的点赞状态一次查完，别让 item() 每行问一次库。 @return int[] */
@@ -400,6 +430,14 @@ abstract class ApiResource
         $post = self::find($postId, $userId);
 
         return PostLike::toggle($userId, $post) + ['post_id' => (int) $post->id];
+    }
+
+    /** 收藏切换：遵循与详情、点赞相同的内容可见性规则。 */
+    public static function favorite(int $postId, int $userId): array
+    {
+        $post = self::find($postId, $userId);
+
+        return ['post_id' => (int) $post->id, 'favorited' => PostFavorite::toggle($userId, $post)];
     }
 
     /**

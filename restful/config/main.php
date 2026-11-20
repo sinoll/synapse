@@ -24,6 +24,7 @@ foreach (['blog' => 'blog', 'moment' => 'moment', 'images' => 'images', 'short_v
         "PATCH $urlPath/<id:\d+>" => "$controller/update",
         "DELETE $urlPath/<id:\d+>" => "$controller/delete",
         "POST $urlPath/<id:\d+>/like" => "$controller/like",
+        "POST $urlPath/<id:\d+>/favorite" => "$controller/favorite",
     ];
 }
 
@@ -91,6 +92,9 @@ return [
                 'POST auth/logout' => 'auth/logout',
                 'GET auth/me' => 'auth/me',
                 'GET users/suggest' => 'users/suggest',
+                'GET favorites' => 'favorite/index',
+                'POST favorites' => 'favorite/toggle',
+                'DELETE favorites/<id:\d+>' => 'favorite/remove',
                 'GET messages' => 'message/index',
                 'POST messages' => 'message/create',
                 'GET messages/unread-count' => 'message/unread-count',

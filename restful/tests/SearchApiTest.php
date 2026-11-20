@@ -46,6 +46,7 @@ final class SearchApiTest extends TestCase
             'CREATE TABLE cate (id INTEGER PRIMARY KEY, name TEXT, slug TEXT)',
             'CREATE TABLE post_cate (post_id INTEGER, cate_id INTEGER)',
             'CREATE TABLE post_like (post_id INTEGER, user_id INTEGER)',
+            'CREATE TABLE post_favorite (post_id INTEGER, user_id INTEGER, created_at INTEGER, PRIMARY KEY (user_id, post_id))',
             'CREATE TABLE post_comment (id INTEGER PRIMARY KEY, post_id INTEGER, comment_id INTEGER, parent_comment_id INTEGER, root_comment_id INTEGER, depth INTEGER, created_at INTEGER)',
         ] as $sql) {
             Yii::$app->db->createCommand($sql)->execute();

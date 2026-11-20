@@ -73,4 +73,12 @@ abstract class ContentController extends ApiController
 
         return ApiResponder::ok($resource::like($id, $this->actorId()));
     }
+
+    /** 收藏是切换：已收藏则取消，返回切换后的状态。 */
+    public function actionFavorite(int $id): array
+    {
+        $resource = $this->resource();
+
+        return ApiResponder::ok($resource::favorite($id, $this->actorId()));
+    }
 }

@@ -104,6 +104,25 @@ curl -G "$BASE/search" --data-urlencode "q=旅行" --data-urlencode "type=blog" 
 不指定类型时 `type` 为 `null`。搜索结果不增加内容浏览量；详情可通过 `/blog/{id}`、
 `/moment/{id}`、`/images/{id}` 或 `/short_video/{id}` 获取。
 
+## 收藏
+
+以下接口均需要 `Authorization: Bearer {token}`。
+
+* `POST /blog/{id}/favorite`、`POST /moment/{id}/favorite`、`POST /images/{id}/favorite`、
+  `POST /short_video/{id}/favorite`：切换指定内容的收藏状态；已收藏会取消收藏。
+  响应 `data` 为 `{"post_id":12,"favorited":true}`。
+* `POST /favorites`：按 ID 切换任意类型内容的收藏状态，请求体为 `{"post_id":12}`。
+  返回结构与内容类型专属收藏接口相同。
+* `DELETE /favorites/{post_id}`：取消指定内容的收藏。接口幂等，未收藏时也返回
+  `{"post_id":12,"favorited":false}`。
+* `GET /favorites?page=1&per_page=20&type=blog`：按收藏时间倒序返回当前用户的收藏；
+  `type` 可选值为 `blog`、`moment`、`images`、`short_video`，也兼容 `video`。
+  每项与对应内容列表接口结构相同，并额外返回 `favorited_at`。
+
+收藏列表只返回当前仍可查看且已发布的内容；内容被删除、转为草稿或收紧为用户无权查看的可见范围后，
+列表中会自动消失。所有内容列表、详情和搜索结果同时返回 `favorited`，游客统一为 `false`。
+不存在、类型不符或用户无权查看的内容无法执行切换，接口返回 404。
+
 ## 评论
 
 评论读取遵循内容接口的可见性规则：游客只能读取已发布的公开内容；登录用户还可读取注册用户可见内容和
@@ -247,12 +266,12 @@ curl -sS "$BASE/cate/3"
 `thumb` 和 `thumb_url` 均为根相对路径（例如 `/uploads/thumb/cate/example.jpg`），没有封面时两者均为 `null`。
 列表不分页。
 
-| 资源 | 子表 | 列表 | 详情 | 创建 | 更新 | 删除 | 点赞 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 博客 | `blog` | `GET /blog` | `GET /blog/{id}` | `POST /blog` | `PUT`/`PATCH /blog/{id}` | `DELETE /blog/{id}` | `POST /blog/{id}/like` |
-| 动态 | `moment` | `GET /moment` | `GET /moment/{id}` | `POST /moment` | `PUT`/`PATCH /moment/{id}` | `DELETE /moment/{id}` | `POST /moment/{id}/like` |
-| 图集 | `images`（1:N） | `GET /images` | `GET /images/{id}` | `POST /images` | `PUT`/`PATCH /images/{id}` | `DELETE /images/{id}` | `POST /images/{id}/like` |
-| 短视频 | `short_video` | `GET /short_video` | `GET /short_video/{id}` | `POST /short_video` | `PUT`/`PATCH /short_video/{id}` | `DELETE /short_video/{id}` | `POST /short_video/{id}/like` |
+| 资源 | 子表 | 列表 | 详情 | 创建 | 更新 | 删除 | 点赞 | 收藏 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 博客 | `blog` | `GET /blog` | `GET /blog/{id}` | `POST /blog` | `PUT`/`PATCH /blog/{id}` | `DELETE /blog/{id}` | `POST /blog/{id}/like` | `POST /blog/{id}/favorite` |
+| 动态 | `moment` | `GET /moment` | `GET /moment/{id}` | `POST /moment` | `PUT`/`PATCH /moment/{id}` | `DELETE /moment/{id}` | `POST /moment/{id}/like` | `POST /moment/{id}/favorite` |
+| 图集 | `images`（1:N） | `GET /images` | `GET /images/{id}` | `POST /images` | `PUT`/`PATCH /images/{id}` | `DELETE /images/{id}` | `POST /images/{id}/like` | `POST /images/{id}/favorite` |
+| 短视频 | `short_video` | `GET /short_video` | `GET /short_video/{id}` | `POST /short_video` | `PUT`/`PATCH /short_video/{id}` | `DELETE /short_video/{id}` | `POST /short_video/{id}/like` | `POST /short_video/{id}/favorite` |
 
 ### 列表查询参数
 
@@ -271,7 +290,7 @@ curl -sS "$BASE/cate/3"
 ### 公共字段
 
 读（列表与详情都有）：`id`、`type`、`title`、`status`、`visibility`（0 私密 / 1 仅注册用户 / 2 公开）、
-`like_count`、`comment_count`、`views`、`liked`、`author{id,username,nickname,avatar_url}`、`tags[]`、`cover_url`、
+`like_count`、`comment_count`、`views`、`liked`、`favorited`、`author{id,username,nickname,avatar_url}`、`tags[]`、`cover_url`、
 `created_at`、`updated_at`（ISO-8601，带 `+08:00`）。
 `comment_count` 同时出现在内容列表、详情、搜索及创建/更新响应中，统计该内容下的全部评论节点（含回复）；
 没有评论时为 `0`。

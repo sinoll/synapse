@@ -57,8 +57,9 @@ final class SearchController extends ApiController
             }
         }
         $likedIds = ApiResource::likedIds($posts, $viewerId);
+        $favoritedIds = ApiResource::favoritedIds($posts, $viewerId);
         $commentCounts = ApiResource::commentCounts($posts);
-        $items = array_map(static function (Post $post) use ($viewerId, $likedIds, $commentCounts): array {
+        $items = array_map(static function (Post $post) use ($viewerId, $likedIds, $favoritedIds, $commentCounts): array {
             $resource = self::RESOURCES[$post->type];
 
             return $resource::item(
@@ -66,6 +67,7 @@ final class SearchController extends ApiController
                 $viewerId,
                 false,
                 in_array((int) $post->id, $likedIds, true),
+                in_array((int) $post->id, $favoritedIds, true),
                 $commentCounts[(int) $post->id] ?? 0
             );
         }, $posts);
